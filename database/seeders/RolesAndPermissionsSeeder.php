@@ -952,6 +952,15 @@ class RolesAndPermissionsSeeder extends Seeder
                 ['name' => 'access-pos-reports', 'label' => 'Access Pos Reports', 'module' => 'pos-reports', 'description' => 'permission to access pos reports'],
                 ['name' => 'view-pos-reports', 'label' => 'View Pos Reports', 'module' => 'pos-reports', 'description' => 'permission to view pos reports'],
                 ['name' => 'export-pos-reports', 'label' => 'Export Pos Reports', 'module' => 'pos-reports', 'description' => 'permission to export pos reports'],
+                ['name' => 'access-purchase-orders-module', 'label' => 'Access Purchase Orders Module', 'module' => 'purchase-orders', 'description' => 'permission to access purchase orders module'],
+                ['name' => 'access-purchase-orders', 'label' => 'Access Purchase Orders', 'module' => 'purchase-orders', 'description' => 'permission to access purchase orders'],
+                ['name' => 'access-purchase-order-items', 'label' => 'Access Purchase Order Items', 'module' => 'purchase-order-items', 'description' => 'permission to access purchase order items'],
+                ['name' => 'create-purchase-order', 'label' => 'Create Purchase Order', 'module' => 'purchase-orders', 'description' => 'permission to create purchase order'],
+                ['name' => 'view-purchase-order', 'label' => 'View Purchase Order', 'module' => 'purchase-orders', 'description' => 'permission to view purchase order'],
+                ['name' => 'edit-purchase-order', 'label' => 'Edit  Purchase Order', 'module' => 'purchase-orders', 'description' => 'permission to edit purchase order'],
+                ['name' => 'receive-purchase-order', 'label' => 'Receive Purchase Order', 'module' => 'purchase-orders', 'description' => 'permission to receive purchase order'],
+                ['name' => 'delete-purchase-order', 'label' => 'Delete Purchase Order', 'module' => 'purchase-orders', 'description' => 'permission to delete purchase order'],
+                ['name' => 'export-purchase-order', 'label' => 'Export Purchase Order', 'module' => 'purchase-orders', 'description' => 'permission to export purchase order'],
         ];
 
         $now = now();
