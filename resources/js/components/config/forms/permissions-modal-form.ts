@@ -21,6 +21,24 @@ const ALL_MODULES = [
     {label: 'Adjustment Reasons', value: 'adjustment-reasons', key: 'adjustment-reasons'},
     {label: 'Stock Transfers', value: 'stock-transfers', key: 'stock-transfers'},
     {label: 'Stock Transfer Items', value: 'transfer-items', key: 'transfer-items'},
+    {label: 'Invoices', value: 'invoices', key: 'invoices'},
+    {label: 'Invoice Items', value: 'invoice-items', key: 'invoice-items'},
+    {label: 'Store Payment Settings', value: 'store-payment-settings', key: 'store-payment-settings'},
+    {label: 'Debts', value: 'debts', key: 'debts'},
+    {label: 'Quotations', value: 'quotations', key: 'quotations'},
+    {label: 'Quotation Items', value: 'quotation-items', key: 'quotation-items'},
+    {label: 'Sales', value: 'sales', key: 'sales'},
+    {label: 'Payments', value: 'payments', key: 'payments'},
+    {label: 'Payments to Customer', value: 'payments-to-customer', key: 'payments-to-customer'},
+    {label: 'Sale Items', value: 'sale-items', key: 'sale-items'},
+    {label: 'POS Terminal', value: 'pos', key: 'pos'},
+    {label: 'Debts & Credits Reports', value: 'debts-reports', key: 'debts-reports'},
+    {label: 'Company Settings', value: 'company-settings', key: 'company-settings'},
+    {label: 'Master Settings', value: 'master-settings', key: 'master-settings'},
+    {label: 'POS Reports', value: 'pos-reports', key: 'pos-reports'},
+    {label: 'Purchase Orders', value: 'purchase-orders', key: 'purchase-orders'},
+    {label: 'Purchase Order Items', value: 'purchase-order-items', key: 'purchase-order-items'},
+
 ];
 
 

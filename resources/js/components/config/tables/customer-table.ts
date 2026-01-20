@@ -7,11 +7,12 @@ export const CustomerTableConfig = {
         key: 'name',
         className: 'p-4 border text-left font-semibold',
         isMandatory: true,
+        sortable: true
     },
     {
         label: 'Contact Number',
         key: 'number',
-        className: 'p-4 border text-center text-sm'
+        className: 'p-4 border text-center text-sm',
     },
     {
         label: 'Email',
@@ -27,7 +28,8 @@ export const CustomerTableConfig = {
     {
         label: 'Created Date',
         key: 'created_at',
-        className: 'p-4 border text-center text-xs'
+        className: 'p-4 border text-center text-xs',
+        sortable: true,
     },
     {
         label: 'Actions',

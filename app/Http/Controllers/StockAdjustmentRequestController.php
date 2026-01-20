@@ -169,6 +169,13 @@ class StockAdjustmentRequestController extends Controller
 
         try {
             $request->update(['status' => 'pending_approval']);
+            // 🟢 NOTIFY STORE MANAGERS
+            $this->notifyStore(
+                $request->store_id,
+                "Adjustment Request Pending",
+                "Request #{$request->id} submitted by " . Auth::user()->name . ". Please review.",
+                route('stock-adjustment-requests.index')
+            );
             return back()->with('success', 'Request submitted for approval.');
         } catch (\Exception $e) {
             Log::error("Failed to submit request for approval: " . $e->getMessage());
@@ -210,6 +217,14 @@ class StockAdjustmentRequestController extends Controller
                 'adjustment_reason_id' => $validated['adjustment_reason_id'],
                 'notes' => $validated['notes'],
             ]);
+
+            // 🟢 NOTIFY STORE MANAGERS
+            $this->notifyStore(
+                $request->store_id,
+                "Adjustment Request Pending",
+                "Request #{$request->id} submitted by " . Auth::user()->name . ". Please review.",
+                route('stock-adjustment-requests.index')
+            );
 
             return back()->with('success', 'Draft updated successfully.');
 
@@ -272,6 +287,16 @@ class StockAdjustmentRequestController extends Controller
             ]);
 
             DB::commit();
+
+            // 🟢 NOTIFY REQUESTER (Confirmation)
+            // Note: We use the requester's user ID if possible, or just notify the whole store
+            $this->notifyStore(
+                $request->store_id,
+                "Request Approved",
+                "Adjustment Request #{$request->id} was APPROVED. Stock updated.",
+                route('stock-adjustment-requests.index')
+            );
+
             return back()->with('success', 'Stock Adjustment Request approved and stock levels updated.');
 
         } catch (\Exception $e) {
@@ -307,6 +332,14 @@ class StockAdjustmentRequestController extends Controller
                 'approved_by_id' => Auth::id(),
                 'approved_at' => Carbon::now(),
             ]);
+
+            // 🟢 NOTIFY REQUESTER (Rejection)
+            $this->notifyStore(
+                $request->store_id,
+                "Request Rejected",
+                "Adjustment Request #{$request->id} was REJECTED by " . Auth::user()->name,
+                route('stock-adjustment-requests.index')
+            );
 
             return back()->with('success', 'Stock Adjustment Request rejected.');
 

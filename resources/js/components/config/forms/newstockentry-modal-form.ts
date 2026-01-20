@@ -61,7 +61,7 @@ export const NewStockEntryModalFormConfig = {
                     key: 'product_id',
                     name: 'product_id',
                     label: 'Product *',
-                    type: 'single-select',
+                    type: 'searchable-select',
                     optionsSource: 'products',
                     placeholder: 'Select Product',
                     tabIndex: 3,

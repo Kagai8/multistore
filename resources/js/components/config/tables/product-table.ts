@@ -13,17 +13,20 @@ export const ProductTableConfig = {
     {
         label: 'Product Name',
         key: 'name',
-        className: 'p-4 border text-left font-semibold'
+        className: 'p-4 border text-left font-semibold',
+        sortable: true
     },
     {
         label: 'SKU',
         key: 'sku',
-        className: 'p-4 border text-center text-sm'
+        className: 'p-4 border text-center text-sm',
+        sortable: true
     },
     {
         label: 'Barcode', // ➕ Added missing field
         key: 'barcode',
-        className: 'p-4 border text-center text-sm'
+        className: 'p-4 border text-center text-sm',
+        sortable: true
     },
 
     // Relationships
@@ -59,25 +62,29 @@ export const ProductTableConfig = {
         label: 'Retail Price',
         key: 'retail_price',
         type: 'currency',
-        className: 'p-4 border text-right font-bold text-green-700'
+        className: 'p-4 border text-right font-bold text-green-700',
+        sortable: true
     },
     {
         label: 'Special Price', // ➕ Added missing field
         key: 'special_price',
         type: 'currency',
-        className: 'p-4 border text-right'
+        className: 'p-4 border text-right',
+        sortable: true
     },
     {
         label: 'Wholesale Price', // ➕ Added missing field
         key: 'wholesale_price',
         type: 'currency',
-        className: 'p-4 border text-right'
+        className: 'p-4 border text-right',
+        sortable: true
     },
     {
         label: 'Buying Price',
         key: 'buying_price',
         type: 'currency',
-        className: 'p-4 border text-right'
+        className: 'p-4 border text-right',
+        sortable: true
     },
     {
         label: 'Discount', // ➕ Added missing field
@@ -109,7 +116,8 @@ export const ProductTableConfig = {
     {
         label: 'Created Date',
         key: 'created_at',
-        className: 'p-4 border text-center text-xs'
+        className: 'p-4 border text-center text-xs',
+        sortable: true
     },
     {
         label: 'Actions',

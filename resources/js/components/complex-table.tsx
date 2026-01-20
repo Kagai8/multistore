@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react'; // 🟢 Added useMemo
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Eye, X, CheckCircle, Ban, Clock, RotateCw, Check } from 'lucide-react';
+// 🟢 Added Arrow icons
+import { MoreHorizontal, Eye, X, CheckCircle, Ban, Clock, RotateCw, Check, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
 import { hasPermission } from '@/utilis/authorization';
 
@@ -25,9 +26,9 @@ interface TableColumn {
   isMandatory?: boolean;
   conditionalClass?: (row: TableRow) => string;
   component?: React.ComponentType<{ data: TableRow }>;
+  sortable?: boolean; // 🟢 NEW: Enable sorting for specific columns
 }
 
-// 🟢 FIX 1: UPDATED INTERFACE to support multi-conditions
 interface ActionConfig {
   label: string;
   icon: any;
@@ -36,8 +37,8 @@ interface ActionConfig {
   permission?: string;
   conditionKey?: string;
   conditionValue?: string | number;
-  conditionKeys?: string[]; // New array for multi-condition logic
-  conditionValues?: (string | number)[]; // New array of values
+  conditionKeys?: string[];
+  conditionValues?: (string | number)[];
   condition?: (row: TableRow, currentUserContext: any) => boolean;
   tooltip?: string;
 }
@@ -69,9 +70,12 @@ interface CustomTableProps {
   bulkDeletePermission?: string;
   bulkExportPdfPermission?: string;
   bulkExportExcelPermission?: string;
-  // 🟢 NEW: Added specific permission props to Interface
   importPermission?: string;
   downloadTemplatePermission?: string;
+  onSelectionChange?: (ids: number[]) => void;
+  // 🟢 NEW: Optional server-side sort handler.
+  // If not provided, sorting happens client-side on the current page data.
+  onSort?: (key: string, direction: 'asc' | 'desc') => void;
 }
 
 const getNestedValue = (obj: any, key: string): any => {
@@ -97,143 +101,193 @@ export const ComplexTable: React.FC<CustomTableProps> = ({
   onFileSelected,
   onDateFilterChange,
   onCustomAction,
-  // 🟢 NEW: Destructure the new props
   importPermission,
   downloadTemplatePermission,
+  onSelectionChange,
+  onSort, // 🟢 NEW
 }) => {
   const { auth } = usePage<AuthPageProps>().props;
   const permissions: string[] = auth.permissions || [];
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
-  const allSelected = data.length > 0 && selectedRows.length === data.length;
+
+  // 🟢 NEW: Sorting State
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
     columns.reduce((acc, column) => {
       acc[column.key] = column.isAction || column.isImage || !column.defaultHidden;
       return acc;
     }, {} as Record<string, boolean>)
   );
+
   const toggleColumnVisibility = (key: string) => {
     setColumnVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
   const visibleColumns = columns.filter((column) => columnVisibility[column.key]);
+
+  // 🟢 NEW: Sorting Logic
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+
+    setSortConfig({ key, direction });
+
+    // If parent provided a handler, call it (Server-side sort)
+    if (onSort) {
+      onSort(key, direction);
+    }
+  };
+
+  // 🟢 NEW: Processed Data (Handles Client-Side Sorting if onSort is missing)
+  const displayData = useMemo(() => {
+    // If onSort exists, we assume data passed in prop is already sorted by server
+    if (onSort || !sortConfig) return data;
+
+    // Otherwise, sort the current page data locally
+    return [...data].sort((a, b) => {
+      const valA = getNestedValue(a, sortConfig.key);
+      const valB = getNestedValue(b, sortConfig.key);
+
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [data, sortConfig, onSort]);
+
+  const allSelected = displayData.length > 0 && selectedRows.length === displayData.length;
+
   const toggleSelectAll = () => {
-    setSelectedRows(allSelected ? [] : data.map((row) => row.id));
+    const newSelection = allSelected ? [] : displayData.map((row) => row.id);
+    setSelectedRows(newSelection);
+    if (onSelectionChange) {
+      onSelectionChange(newSelection);
+    }
   };
+
   const toggleRowSelect = (id: number) => {
-    setSelectedRows((prev) => (prev.includes(id) ? prev.filter((rid) => rid !== id) : [...prev, id]));
+    const newSelection = selectedRows.includes(id)
+      ? selectedRows.filter((rid) => rid !== id)
+      : [...selectedRows, id];
+
+    setSelectedRows(newSelection);
+    if (onSelectionChange) {
+      onSelectionChange(newSelection);
+    }
   };
 
-  // 🟢 FIX 2: UPDATED renderActionButtons logic for filtering
- const renderActionButtons = (row: TableRow) => {
-  const { inventoryConfig } = usePage<any>().props;
-  const currentUserContext = inventoryConfig?.userContext || null;
+  const renderActionButtons = (row: TableRow) => {
+    const { inventoryConfig } = usePage<any>().props;
+    const currentUserContext = inventoryConfig?.userContext || null;
 
-  const permittedActions = actions.filter(action => {
-    // 1. Permission Check
-    if (action.permission && !hasPermission(permissions, [action.permission])) {
-      return false;
-    }
-
-    // 2. NEW: Custom condition function support
-    if (typeof action.condition === 'function') {
-      return action.condition(row, currentUserContext);
-    }
-
-    // 3. Multi-Condition Check
-    if (action.conditionKeys && action.conditionValues) {
-      if (action.conditionKeys.length !== action.conditionValues.length) {
+    const permittedActions = actions.filter(action => {
+      if (action.permission && !hasPermission(permissions, [action.permission])) {
         return false;
       }
-      return action.conditionKeys.every((key, i) => {
-        const rowValue = getNestedValue(row, key);
-        return rowValue === action.conditionValues![i];
-      });
-    }
 
-    // 4. Legacy Single-Condition Check
-    if (action.conditionKey && action.conditionValue !== undefined) {
-      const rowValue = getNestedValue(row, action.conditionKey);
-      return rowValue === action.conditionValue;
-    }
+      if (typeof action.condition === 'function') {
+        return action.condition(row, currentUserContext);
+      }
 
-    // 5. No Conditions: Action is visible
-    return true;
-  });
+      if (action.conditionKeys && action.conditionValues) {
+        if (action.conditionKeys.length !== action.conditionValues.length) {
+          return false;
+        }
+        return action.conditionKeys.every((key, i) => {
+          const rowValue = getNestedValue(row, key);
+          return rowValue === action.conditionValues![i];
+        });
+      }
 
-  const mainActions = permittedActions.filter(a => !['Export PDF', 'Export Excel'].includes(a.label));
-  const moreActions = permittedActions.filter(a => ['Export PDF', 'Export Excel'].includes(a.label));
+      if (action.conditionKey && action.conditionValue !== undefined) {
+        const rowValue = getNestedValue(row, action.conditionKey);
+        return rowValue === action.conditionValue;
+      }
 
-  if (mainActions.length === 0 && moreActions.length === 0) return null;
+      return true;
+    });
 
-  return (
-    <div className="flex justify-center items-center gap-1">
-      {mainActions.map((action, index) => {
-        const IconComponent = action.icon as React.ElementType;
-        const isDisabled = false;
+    const mainActions = permittedActions.filter(a => !['Export PDF', 'Export Excel'].includes(a.label));
+    const moreActions = permittedActions.filter(a => ['Export PDF', 'Export Excel'].includes(a.label));
 
-        const handleClick = action.label === 'View'
-          ? () => onView?.(row)
-          : action.label === 'Edit'
-          ? () => onEdit?.(row)
-          : action.label === 'Delete'
-          ? () => onDelete?.(row)
-          : () => onCustomAction?.(action.label, row);
+    if (mainActions.length === 0 && moreActions.length === 0) return null;
 
-        return (
-          <Button
-            key={index}
-            size="sm"
-            className={action.className}
-            title={action.tooltip}
-            onClick={handleClick}
-            disabled={isDisabled}
-          >
-            {IconComponent && <IconComponent size={18} />}
-          </Button>
-        );
-      })}
-      {moreActions.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="border-gray-300 hover:bg-gray-100">
-              <MoreHorizontal size={18} />
+    return (
+      <div className="flex justify-center items-center gap-1">
+        {mainActions.map((action, index) => {
+          const IconComponent = action.icon as React.ElementType;
+          const isDisabled = false;
+
+          const handleClick = action.label === 'View'
+            ? () => onView?.(row)
+            : action.label === 'Edit'
+            ? () => onEdit?.(row)
+            : action.label === 'Delete'
+            ? () => onDelete?.(row)
+            : () => onCustomAction?.(action.label, row);
+
+          return (
+            <Button
+              key={index}
+              size="sm"
+              className={action.className}
+              title={action.tooltip}
+              onClick={handleClick}
+              disabled={isDisabled}
+            >
+              {IconComponent && <IconComponent size={18} />}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {moreActions.map((action, index) => {
-              const IconComponent = action.icon as React.ElementType;
-              const handleClick = action.label === 'Export PDF'
-                ? () => onExportPDF?.(row)
-                : action.label === 'Export Excel'
-                ? () => onExportExcel?.(row)
-                : () => onCustomAction?.(action.label, row);
-              return (
-                <DropdownMenuItem key={index} onSelect={handleClick} className="flex items-center gap-2 cursor-pointer">
-                  {IconComponent && <IconComponent size={16} />}
-                  {action.label}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  );
-};
-  // ... (rest of the component remains unchanged)
-  // ...
+          );
+        })}
+        {moreActions.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="border-gray-300 hover:bg-gray-100">
+                <MoreHorizontal size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {moreActions.map((action, index) => {
+                const IconComponent = action.icon as React.ElementType;
+                const handleClick = action.label === 'Export PDF'
+                  ? () => onExportPDF?.(row)
+                  : action.label === 'Export Excel'
+                  ? () => onExportExcel?.(row)
+                  : () => onCustomAction?.(action.label, row);
+                return (
+                  <DropdownMenuItem key={index} onSelect={handleClick} className="flex items-center gap-2 cursor-pointer">
+                    {IconComponent && <IconComponent size={16} />}
+                    {action.label}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    );
+  };
+
   const handleBulkDeleteClick = () => {
     if (selectedRows.length === 0) return;
     if (onBulkDelete) onBulkDelete(selectedRows);
     setSelectedRows([]);
+    if (onSelectionChange) onSelectionChange([]);
   };
+
   const handleBulkExportPDFClick = () => {
     if (selectedRows.length === 0) return;
     if (onBulkExportPDF) onBulkExportPDF(selectedRows);
   };
+
   const handleBulkExportExcelClick = () => {
     if (selectedRows.length === 0) return;
     if (onBulkExportExcel) onBulkExportExcel(selectedRows);
   };
+
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const handleDateFromChange = (e: React.ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value);
@@ -246,19 +300,17 @@ export const ComplexTable: React.FC<CustomTableProps> = ({
     setDateTo('');
     if (onDateFilterChange) onDateFilterChange(null, null);
   };
-  const moduleSlug = moduleName.toLowerCase().replace(/\s+/g, '_');
 
-  // 🟢 FIX 3: Updated Permission Logic to prefer props, then fallback to auto-generated slug
+  const moduleSlug = moduleName.toLowerCase().replace(/\s+/g, '_');
   const requiredTemplatePerm = downloadTemplatePermission || `${moduleSlug}_download_template`;
   const requiredImportPerm = importPermission || `${moduleSlug}_import`;
-
   const canDownloadTemplate = onDownloadTemplate && hasPermission(permissions, [requiredTemplatePerm]);
   const canImport = onFileSelected && hasPermission(permissions, [requiredImportPerm]);
-
   const canBulkExportPdf = !!onBulkExportPDF;
   const canBulkExportExcel = !!onBulkExportExcel;
   const canBulkDelete = !!onBulkDelete;
   const anyBulkActionAvailable = canBulkExportPdf || canBulkExportExcel || canBulkDelete;
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-md">
       <div className="flex justify-between items-center p-3 border-b bg-orange-50">
@@ -327,15 +379,31 @@ export const ComplexTable: React.FC<CustomTableProps> = ({
               </th>
               <th className="p-4 border text-center">#</th>
               {visibleColumns.map((column) => (
-                <th key={column.key} className={`p-4 border text-center font-semibold ${column.className || ''}`}>
-                  {column.label}
+                // 🟢 UPDATED: Header cell with sorting
+                <th
+                  key={column.key}
+                  className={`p-4 border text-center font-semibold ${column.className || ''} ${column.sortable ? 'cursor-pointer hover:bg-orange-700 transition-colors' : ''}`}
+                  onClick={() => column.sortable && handleSort(column.key)}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    {column.label}
+                    {column.sortable && (
+                        <span className="opacity-80">
+                          {sortConfig?.key === column.key ? (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                          ) : (
+                            <ArrowUpDown size={14} className="opacity-50" />
+                          )}
+                        </span>
+                    )}
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {data.length > 0 ? (
-              data.map((row, index) => {
+            {displayData.length > 0 ? ( // 🟢 UPDATED: Use displayData
+              displayData.map((row, index) => {
                 const isSelected = selectedRows.includes(row.id);
                 const rowConditionalClass = visibleColumns.map(col => col.conditionalClass?.(row) || '').join(' ');
                 return (
@@ -393,18 +461,22 @@ export const ComplexTable: React.FC<CustomTableProps> = ({
                                   case 'posted':
                                   case 'received':
                                   case 'approved':
+                                  case 'paid' :
                                     return <Badge className="bg-green-600 hover:bg-green-700 text-white font-medium capitalize flex items-center gap-1"><Check size={14} /> {status}</Badge>;
                                   case 'pending':
                                   case 'draft':
+                                    case 'void':
                                     return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium capitalize flex items-center gap-1"><Clock size={14} /> {status}</Badge>;
                                   case 'in_progress':
                                   case 'in-progress':
                                   case 'sent':
+                                    case 'partial':
                                     return <Badge className="bg-blue-500 hover:bg-blue-600 text-white font-medium capitalize flex items-center gap-1"><RotateCw size={14} /> {status.replace('_', ' ')}</Badge>;
                                   case 'cancelled':
                                   case 'failed':
                                     case 'denied':
                                     case 'rejected':
+                                    case 'unpaid':
                                     return <Badge className="bg-red-600 hover:bg-red-700 text-white font-medium capitalize flex items-center gap-1"><X size={14} /> {status}</Badge>;
                                   default:
                                     return <Badge variant="secondary" className="bg-gray-200 text-gray-700 font-medium capitalize">{status}</Badge>;
@@ -457,7 +529,12 @@ export const ComplexTable: React.FC<CustomTableProps> = ({
             </DropdownMenu>
           </div>
           <div>
-            <Button variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100" onClick={() => setSelectedRows([])}>Clear Selection</Button>
+            <Button variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100" onClick={() => {
+                setSelectedRows([]);
+                if (onSelectionChange) onSelectionChange([]);
+            }}>
+                Clear Selection
+            </Button>
           </div>
         </div>
       )}

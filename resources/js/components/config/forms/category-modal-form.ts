@@ -42,7 +42,7 @@ export const CategoryModalFormConfig = {
 
   buttons: [
     { key: 'cancel', label: 'Cancel', type: 'button', variant: 'outline' },
-    { key: 'submit', label: 'Save Category', type: 'submit', variant: 'default' },
+    { key: 'submit', className: 'bg-orange-600 hover:bg-orange-500 text-white', label: 'Save Category', type: 'submit', variant: 'default' },
   ],
 
   addButton: {

@@ -27,7 +27,7 @@ class BrandController extends Controller
         $dateTo = $request->input('dateTo');
 
         // base query
-        $query = Brand::query();
+        $query = Brand::query()->withCount('products');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -104,7 +104,7 @@ class BrandController extends Controller
         }
 
         return Inertia::render('brands/index', [
-            'brands' => $brands,
+            'brands' => $query->latest()->paginate($request->perPage ?? 10),
             'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
@@ -157,7 +157,7 @@ class BrandController extends Controller
         //
     }
 
-    
+
 
     /**
      * Update the specified resource in storage.
@@ -170,12 +170,17 @@ class BrandController extends Controller
             'logo' => 'nullable|image|max:2048',
         ]);
 
+        // 🟢 FIX: Remove 'logo' from the array initially.
+        // This prevents overwriting the existing DB value with 'null' if no new file is sent.
+        unset($validated['logo']);
+
         if ($request->hasFile('logo')) {
-            // delete old if exists
-            if ($brand->logo && Storage::disk('public')->exists($brand->logo)) {
-                Storage::disk('public')->delete($brand->logo);
+            // 1. Delete old image if it exists
+            if ($brand->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($brand->logo)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($brand->logo);
             }
 
+            // 2. Store new image and add key back to array
             $validated['logo'] = $request->file('logo')->store('brands', 'public');
         }
 
@@ -340,47 +345,64 @@ class BrandController extends Controller
         $extension = $file->getClientOriginalExtension();
         $rows = [];
 
+        // 1. Parse File (Your existing logic)
         if ($extension === 'csv' || $extension === 'txt') {
-            // Handle CSV manually
             if (($handle = fopen($file->getRealPath(), 'r')) !== false) {
                 $header = fgetcsv($handle, 1000, ',');
+                // Sanitize header to lowercase just in case
+                $header = array_map('strtolower', $header);
+
                 while (($data = fgetcsv($handle, 1000, ',')) !== false) {
-                    $rows[] = array_combine($header, $data);
+                    // Ensure row length matches header length to avoid crash
+                    if (count($header) === count($data)) {
+                        $rows[] = array_combine($header, $data);
+                    }
                 }
                 fclose($handle);
             }
         } else {
-            // Handle Excel file
-            $sheets = Excel::toArray([], $file);
-            $rows = $sheets[0] ?? [];
-            $header = array_map('strtolower', $rows[0]);
-            unset($rows[0]);
-            $rows = array_map(fn($r) => array_combine($header, $r), $rows);
+            $sheets = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
+            $rawRows = $sheets[0] ?? [];
+            if (count($rawRows) > 0) {
+                $header = array_map('strtolower', $rawRows[0]);
+                unset($rawRows[0]);
+                $rows = array_map(function($r) use ($header) {
+                    // Handle mismatched row lengths in Excel
+                    return count($header) === count($r) ? array_combine($header, $r) : [];
+                }, $rawRows);
+            }
         }
 
         $imported = 0;
 
+        // 2. Import Loop with "While" Check
         foreach ($rows as $row) {
-            $name = trim($row['name'] ?? '');
-            if (empty($name)) continue;
+            // Skip empty rows caused by Excel formatting or parsing
+            if (empty($row)) continue;
 
-            $baseSlug = Str::slug($name);
-            $slug = $baseSlug;
+            $originalName = trim($row['name'] ?? '');
+            if (empty($originalName)) continue;
 
-            $exists = Brand::where('slug', $slug)
-                ->orWhere('name', $name)
-                ->exists();
+            // Start with the intended name
+            $name = $originalName;
+            $slug = \Illuminate\Support\Str::slug($name);
 
-            if ($exists) {
-                $name .= ' (duplicate)';
-                $slug .= '-duplicate';
+            // 🟢 THE FIX: Keep checking until we find a free slot
+            $counter = 1;
+            while (Brand::where('name', $name)->orWhere('slug', $slug)->exists()) {
+                // If collision, try "Name (duplicate 1)", then "Name (duplicate 2)", etc.
+                $name = "{$originalName} (duplicate {$counter})";
+                $slug = \Illuminate\Support\Str::slug($name);
+                $counter++;
             }
 
+            // 3. Create
             Brand::create([
                 'name' => $name,
                 'slug' => $slug,
-                'description' => $row['description'] ?? 'No description provided',
-                'created_at' => Carbon::now(),
+                'description' => $row['description'] ?? 'Imported via CSV',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             $imported++;

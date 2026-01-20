@@ -88,6 +88,21 @@ class StockTransferController extends Controller
         $totalCount = StockTransfer::count();
         $filteredCount = $query->count();
 
+        // 🟢 NEW: Calculate KPI Stats (Global Counts)
+        $pendingApproval = StockTransfer::where('approved_status', 'pending')
+            ->where('status', '!=', 'draft') // Exclude drafts, only count submitted ones
+            ->count();
+
+        $inTransit = StockTransfer::where('status', 'sent')->count();
+
+        $completed = StockTransfer::where('status', 'received')->count();
+
+        $stats = [
+            'pending_approval' => $pendingApproval,
+            'in_transit' => $inTransit,
+            'completed' => $completed,
+        ];
+
         // 🔑 TRANSFORM (unchanged)
         $transform = function (StockTransfer $transfer) {
             return [
@@ -172,6 +187,7 @@ class StockTransferController extends Controller
                 'deliveryUsers',   // 🔑 NEW
                 'deliveryTypes'    // 🔑 NEW
             ),
+            'stats' => $stats,
         ]);
     }
 
@@ -306,6 +322,14 @@ class StockTransferController extends Controller
             $stockTransfer->update(['status' => 'initiated']);
 
             DB::commit();
+            // 🟢 NOTIFY SOURCE STORE (Management)
+            $this->notifyStore(
+                $stockTransfer->source_store_id,
+                "Transfer Review Pending",
+                "Transfer #{$stockTransfer->reference} initiated by " . Auth::user()->name . ". Waiting for approval.",
+                route('stock-transfers.index')
+            );
+
             Log::info("Transfer #{$stockTransfer->id} successfully initiated for review.", ['user_id' => Auth::id()]);
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} submitted for review (Status: INITIATED).");
 
@@ -345,6 +369,15 @@ class StockTransferController extends Controller
             ]);
 
             DB::commit();
+
+            // 🟢 NOTIFY SOURCE STORE (Warehouse/Staff)
+            $this->notifyStore(
+                $stockTransfer->source_store_id,
+                "Transfer Approved",
+                "Transfer #{$stockTransfer->reference} has been approved. Ready to Send.",
+                route('stock-transfers.index')
+            );
+
             Log::info("Transfer #{$stockTransfer->id} accepted/approved. Ready to send.", ['user_id' => Auth::id()]);
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} accepted successfully! Ready for dispatch.");
 
@@ -384,6 +417,14 @@ class StockTransferController extends Controller
             ]);
 
             DB::commit();
+
+            $this->notifyStore(
+                $stockTransfer->source_store_id,
+                "Transfer Rejected",
+                "Transfer #{$stockTransfer->reference} was rejected by " . Auth::user()->name,
+                route('stock-transfers.index')
+            );
+
             Log::info("Transfer #{$stockTransfer->id} denied/rejected. Flow stopped.", ['user_id' => Auth::id()]);
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} denied. Transfer flow stopped.");
 
@@ -531,6 +572,22 @@ public final function send(Request $request, StockTransfer $stockTransfer)
         ]);
 
         DB::commit();
+        // 🟢 1. NOTIFY SOURCE (Confirmation)
+        $this->notifyStore(
+            $stockTransfer->source_store_id,
+            "Transfer Dispatched",
+            "Transfer #{$stockTransfer->reference} marked as SENT.",
+            route('stock-transfers.index')
+        );
+
+        // 🟢 2. NOTIFY DESTINATION (Alert Incoming)
+        $this->notifyStore(
+            $stockTransfer->destination_store_id,
+            "Incoming Stock",
+            "Transfer #{$stockTransfer->reference} is on its way from " . $stockTransfer->sourceStore->name,
+            route('stock-transfers.index')
+        );
+
         Log::info('Transfer SENT successfully with delivery info.', [
             'transfer_id' => $stockTransfer->id,
             'delivery_type' => $deliveryType,
@@ -647,6 +704,23 @@ public final function send(Request $request, StockTransfer $stockTransfer)
             ]);
 
             DB::commit();
+
+            // 🟢 1. NOTIFY DESTINATION (Stock Added)
+            $this->notifyStore(
+                $stockTransfer->destination_store_id,
+                "Stock Received",
+                "Transfer #{$stockTransfer->reference} items added to inventory.",
+                route('stock-transfers.index')
+            );
+
+            // 🟢 2. NOTIFY SOURCE (Completion)
+            $this->notifyStore(
+                $stockTransfer->source_store_id,
+                "Transfer Completed",
+                "Transfer #{$stockTransfer->reference} was received by destination.",
+                route('stock-transfers.index')
+            );
+            
             Log::info('Transfer RECEIVED successfully. Stock updated at destination.', [
                 'transfer_id' => $stockTransfer->id,
                 'destination_store_id' => $stockTransfer->destination_store_id,

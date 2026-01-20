@@ -8,24 +8,28 @@ export const NewStockEntryTableConfig = {
     {
         label: 'Invoice #',
         key: 'invoice_number',
-        className: 'p-4 border text-center font-semibold'
+        className: 'p-4 border text-center font-semibold',
+        sortable: true
     },
 
     // Relationships
     {
         label: 'Product Name',
         key: 'product_name',
-        className: 'p-4 border text-left font-semibold'
+        className: 'p-4 border text-left font-semibold',
+        sortable: true
     },
     {
         label: 'Supplier',
         key: 'supplier_name',
-        className: 'p-4 border text-center'
+        className: 'p-4 border text-center',
+        sortable: true,
     },
     {
         label: 'Receiving Store',
         key: 'store_name',
-        className: 'p-4 border text-center'
+        className: 'p-4 border text-center',
+        sortable: true,
     },
 
     // Quantity & Status
@@ -65,7 +69,8 @@ export const NewStockEntryTableConfig = {
     {
         label: 'Recorded Date',
         key: 'created_at',
-        className: 'p-4 border text-center text-xs'
+        className: 'p-4 border text-center text-xs',
+        sortable: true,
     },
 
     // Actions

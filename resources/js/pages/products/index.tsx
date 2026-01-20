@@ -342,7 +342,7 @@ const handleSubmit = (e: React.FormEvent) => {
             forceFormData: true,
 
             onSuccess: () => {
-                toast.success("Product updated");
+                //toast.success("Product updated");
                 closeModal();
             },
 
@@ -356,7 +356,7 @@ const handleSubmit = (e: React.FormEvent) => {
             forceFormData: true,
 
             onSuccess: () => {
-                toast.success("Product created");
+                //toast.success("Product created");
                 closeModal();
             },
 

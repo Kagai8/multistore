@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Eye, FileSpreadsheet, FileText, Pencil, Trash2, Truck, CheckCircle, Upload, XCircle } from "lucide-react";
 
 export const StockTransferTableConfig = {
@@ -19,7 +20,8 @@ export const StockTransferTableConfig = {
         {
             label: 'Transfer Date',
             key: 'transfer_date',
-            className: 'p-4 border text-center'
+            className: 'p-4 border text-center',
+            sortable: true
         },
 
         // Workflow Status (draft, initiated, accepted, denied, sent, received)
@@ -35,7 +37,8 @@ export const StockTransferTableConfig = {
             label: 'Approval Status',
             key: 'approved_status', // pending, approved, rejected
             type: 'tag-status',
-            className: 'p-4 border text-center font-bold w-32'
+            className: 'p-4 border text-center font-bold w-32',
+            sortable: true
         },
         {
             label: 'Approved By',
@@ -89,7 +92,8 @@ export const StockTransferTableConfig = {
             label: 'Created At',
             key: 'created_at',
             type: 'date-time',
-            className: 'p-4 border text-center text-xs'
+            className: 'p-4 border text-center text-xs',
+            sortable: true
         },
 
         // Actions (Mandatory as defined in your component)

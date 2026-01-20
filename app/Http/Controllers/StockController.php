@@ -44,6 +44,22 @@ class StockController extends Controller
         });
     }
 
+    // 🟢 NEW: Calculate KPI Stats
+    $totalStockValue = \App\Models\Stock::join('products', 'stocks.product_id', '=', 'products.id')
+        ->sum(DB::raw('stocks.current_stock * products.buying_price'));
+
+    $lowStockCount = \App\Models\Stock::whereColumn('current_stock', '<=', 'reorder_level')
+        ->where('reorder_level', '>', 0)
+        ->count();
+
+    $outOfStockCount = \App\Models\Stock::where('current_stock', 0)->count();
+
+    $stats = [
+        'total_value' => $totalStockValue,
+        'low_stock' => $lowStockCount,
+        'out_of_stock' => $outOfStockCount,
+    ];
+
     // 4. Apply Date Range Filter (Filter by the Stock record's last update time)
     if ($dateFrom || $dateTo) {
         // Ensure Carbon is imported if it's not already
@@ -125,8 +141,8 @@ class StockController extends Controller
         'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
         'totalCount' => $totalCount,
         'filteredCount' => $filteredCount,
-        // 🛑 FIX: Pass the lookup data to the frontend under the 'lookupData' key
         'lookupData' => compact('stores', 'products', 'adjustmentReasons'),
+        'stats' => $stats,
     ]);
 }
 
@@ -163,87 +179,7 @@ class StockController extends Controller
     /**
      * Handle single PDF export.
      */
-    public function adjustStoreStock(Request $request)
-{
-    // 1. Validation
-    $validated = $request->validate([
-        'store_id' => 'required|exists:stores,id',
-        'product_id' => 'required|exists:products,id',
-        'adjustment_reason_id' => 'required|exists:adjustment_reasons,id',
-        'quantity' => 'required|numeric|not_in:0', // Must be a non-zero number
-        'notes' => 'nullable|string|max:500',
-    ]);
 
-    $user = Auth::user();
-
-    // Determine the direction and log quantity (always positive absolute value)
-    $quantityInput = $validated['quantity'];
-    $quantityAdjusted = abs($quantityInput);
-    $isPositiveAdjustment = $quantityInput > 0;
-    $type = $isPositiveAdjustment ? 'in' : 'out';
-
-    DB::beginTransaction();
-    try {
-        // 2. Find/Create Stock Record
-        $stock = Stock::firstOrCreate(
-            ['store_id' => $validated['store_id'], 'product_id' => $validated['product_id']],
-            [
-                'current_stock' => 0,
-                'reorder_level' => 0,
-                'reorder_quantity' => 0
-            ]
-        );
-
-        $oldStock = $stock->current_stock;
-        $newStock = $isPositiveAdjustment
-            ? $oldStock + $quantityAdjusted
-            : $oldStock - $quantityAdjusted;
-
-        // 3. Insufficient Stock Check (Only for negative/OUT adjustments)
-        if (!$isPositiveAdjustment && $oldStock < $quantityAdjusted) {
-            DB::rollBack();
-            // Return back with a specific error message
-            return redirect()->back()->withErrors([
-                'quantity' => 'Insufficient stock for this OUT adjustment. Current stock: ' . $oldStock,
-            ]);
-        }
-
-        // 4. Log the Stock Adjustment (Audit Trail)
-        StockAdjustment::create([
-            'product_id' => $validated['product_id'],
-            'store_id' => $validated['store_id'],
-            'user_id' => $user->id,
-            'type' => $type, // 'in' or 'out'
-            'adjustment_reason_id' => $validated['adjustment_reason_id'],
-            'quantity' => $quantityAdjusted, // Always the absolute value
-            'old_stock' => $oldStock,
-            'new_stock' => $newStock,
-            'notes' => $validated['notes'],
-            'related_transfer_id' => null, // Explicitly null for manual adjustment
-        ]);
-
-        // 5. Update the Live Stock
-        if ($isPositiveAdjustment) {
-            $stock->increment('current_stock', $quantityAdjusted);
-        } else {
-            $stock->decrement('current_stock', $quantityAdjusted);
-        }
-
-        DB::commit();
-
-        // 🛑 CRITICAL FIX: Return a redirect back with a success flash message for Inertia
-        return redirect()->back()
-            ->with('success', 'Stock successfully adjusted and inventory levels updated.');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error("Manual Stock Adjustment Failed: " . $e->getMessage());
-
-        // 🛑 CRITICAL FIX: Return a redirect back with a generic error flash message
-        return redirect()->back()
-            ->with('error', 'Failed to process stock adjustment. Check logs for details.');
-    }
-}
 
     public function exportSinglePdf(Stock $stock)
     {

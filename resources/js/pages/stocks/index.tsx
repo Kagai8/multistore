@@ -1,24 +1,22 @@
-// resources/js/Pages/Stocks/Index.tsx
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { route } from 'ziggy-js';
 import { useEffect, useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 
-// 🟢 Config and Component Imports
+// Config and Component Imports
 import { StockTableConfig } from '@/components/config/tables/stock-table';
 import { StockModalFormConfig } from '@/components/config/forms/stock-modal-form';
 import ComplexModalForm from '@/components/complex-modal-form';
 import { CustomToast, toast } from '@/components/custom-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { BoxesIcon, X } from 'lucide-react';
+import { BoxesIcon, X, TrendingDown, AlertCircle, DollarSign } from 'lucide-react'; // 🟢 Added Icons
 import Pagination from '@/components/ui/pagination';
 import { type BreadcrumbItem } from '@/types';
 import ComplexTable from '@/components/complex-table';
 
-// 🟢 Updated Breadcrumbs
+// Updated Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Inventory', href: '/inventory' },
   { title: 'Inventory Levels', href: '/stocks' },
@@ -30,7 +28,6 @@ interface LinkProps {
   url: string | null;
 }
 
-// ✅ Stock Interface - Data structure returned from Laravel
 interface Stock {
   id: number;
   product_id: number;
@@ -39,24 +36,17 @@ interface Stock {
   reorder_level: number;
   reorder_quantity: number;
   updated_at: string;
-
-  // Relationships
   product: { id: number; name: string; sku: string };
   store: { id: number; name: string; code: string };
 }
 
-// 🟢 StockForm interface - The data structure sent to Inertia/Laravel for POLICY UPDATE
 interface StockForm {
-  // Only the fields allowed for direct update
   reorder_level: number;
   reorder_quantity: number;
-
-  // Hidden fields used for display in the modal but required for update logic
   id: number;
   store_name: string;
   product_name: string;
   current_stock: number;
-
   _method?: 'PUT';
 }
 
@@ -80,20 +70,41 @@ interface LookupItem {
     name: string;
 }
 
+// 🟢 NEW: Stats Interface
+interface StockStats {
+    total_value: number;
+    low_stock: number;
+    out_of_stock: number;
+}
+
 interface IndexProps {
   stocks: StockPagination;
   filters: FilterProps;
   totalCount: number;
   filteredCount: number;
-  // Kept for prop compatibility, even if unused in this view now
   lookupData: {
     stores: LookupItem[];
     products: LookupItem[];
     adjustmentReasons: LookupItem[];
   };
+  stats: StockStats; // 🟢 Receive Stats
 }
 
-export default function Index({ stocks, filters, totalCount, filteredCount }: IndexProps) {
+// 🟢 Helper Component for Stat Cards
+const StatCard = ({ title, value, icon: Icon, colorClass, subText }: any) => (
+    <div className="flex flex-col rounded-xl border bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-500">{title}</span>
+            <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>
+                <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
+            </div>
+        </div>
+        <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
+        {subText && <span className="text-xs text-gray-400 mt-1">{subText}</span>}
+    </div>
+);
+
+export default function Index({ stocks, filters, totalCount, filteredCount, stats }: IndexProps) {
   const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
   const flashMessage = flash?.success || flash?.error;
 
@@ -102,7 +113,6 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
 
-  // 🟢 useForm Initialization for Policy Update
   const {
     data, setData, reset, errors, processing, post
   } = useForm<StockForm>({
@@ -114,7 +124,6 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
     current_stock: 0,
   });
 
-  // Filter form
   const { data: filtersForm, setData: setFilterData } = useForm({
     search: filters.search || '',
     perPage: filters.perPage || '10',
@@ -122,10 +131,8 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
     dateTo: filters.dateTo || null,
   });
 
-  // 🟢 Centralized Data Handler
   const handleSetData = (key: string, value: any) => {
     const isNumericField = ['reorder_level', 'reorder_quantity'].includes(key);
-
     if (isNumericField) {
         const numericValue = value === '' || value === null ? 0 : Number(value);
         setData(key as keyof StockForm, numericValue);
@@ -136,7 +143,6 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
     }
   };
 
-  // Toast Handling
   useEffect(() => {
     if (flashMessage) {
         if (flash.success) toast.success(flash.success);
@@ -144,25 +150,18 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
     }
   }, [flashMessage, flash]);
 
-  // ✅ openModal function for Policy Edit/View
   const openModal = (m: 'view' | 'edit', stock: Stock) => {
     setMode(m);
     setSelectedStock(stock);
-
     setData({
-        // Policy Fields (Editable in Edit Mode)
         reorder_level: stock.reorder_level,
         reorder_quantity: stock.reorder_quantity,
-
-        // Read-Only/Hidden Fields
         id: stock.id,
         store_name: stock.store.name,
         product_name: stock.product.name,
         current_stock: stock.current_stock,
-
         _method: 'PUT',
     } as StockForm);
-
     setModalOpen(true);
   };
 
@@ -173,10 +172,8 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
     setModalOpen(false);
   };
 
-  // 🟢 CRITICAL: handleSubmit for POLICY UPDATE
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (selectedStock) {
         post(route("stocks.update", selectedStock.id), {
             forceFormData: true,
@@ -243,41 +240,29 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
   };
 
   const handleDateFilterChange = (dateFrom: string | null, dateTo: string | null) => {
-    setFilterData((prev) => ({
-        ...prev,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
-    }));
-
+    setFilterData((prev) => ({ ...prev, dateFrom, dateTo }));
     const query = {
         ...(filtersForm.search && { search: filtersForm.search }),
         ...(filtersForm.perPage && { perPage: filtersForm.perPage }),
         ...(dateFrom && { dateFrom: dateFrom }),
         ...(dateTo && { dateTo: dateTo }),
     };
-
     router.get(route('stocks.index'), query, { preserveState: true, preserveScroll: true });
   };
 
-  // Unified Action Handler
   const handleCustomAction = (label: string, row: Stock) => {
     switch (label) {
-        case 'Edit Policy':
-            openModal('edit', row);
-            break;
-        case 'Request Transfer':
-            toast.info(`Placeholder: Transfer request for ${row.product.name} at ${row.store.name} not yet implemented.`);
-            break;
-        case 'Export PDF':
-            handleExportPDF(row);
-            break;
-        case 'Export Excel':
-            handleExportExcel(row);
-            break;
-        default:
-            toast.error(`Action "${label}" not configured.`);
-            break;
+        case 'Edit Policy': openModal('edit', row); break;
+        case 'Request Transfer': toast.info(`Placeholder: Transfer request for ${row.product.name} not yet implemented.`); break;
+        case 'Export PDF': handleExportPDF(row); break;
+        case 'Export Excel': handleExportExcel(row); break;
+        default: toast.error(`Action "${label}" not configured.`); break;
     }
+  };
+
+  // 🟢 Helper for formatting currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(value);
   };
 
   return (
@@ -290,11 +275,36 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
             <BoxesIcon size={26} className="text-orange-600 mr-1" />
             Inventory Levels Hub
         </h2>
+
+        {/* 🟢 STAT TABS GRID - Dashboard Style */}
+        <div className="grid gap-4 md:grid-cols-3 mb-2">
+            <StatCard
+                title="Total Stock Value"
+                value={formatCurrency(stats?.total_value || 0)}
+                icon={DollarSign}
+                colorClass="text-green-600 bg-green-100"
+                subText="Based on Buying Price"
+            />
+            <StatCard
+                title="Low Stock Items"
+                value={stats?.low_stock || 0}
+                icon={TrendingDown}
+                colorClass="text-orange-600 bg-orange-100"
+                subText="Items below reorder level"
+            />
+            <StatCard
+                title="Out of Stock"
+                value={stats?.out_of_stock || 0}
+                icon={AlertCircle}
+                colorClass="text-red-600 bg-red-100"
+                subText="Critical items (0 qty)"
+            />
+        </div>
+
         <p className="text-sm text-gray-600 max-w-2xxl">
-            Here you can view inventory levels of all products across a specific store or all stores. Use the search and filters to quickly find products by name or SKU, and adjust reorder policies as needed.
+            View inventory levels across all stores. Use the filters to find products and adjust reorder policies.
         </p>
 
-        {/* 🟢 LAYOUT FIX: Removed justify-between and wrapped Input+Button in a flex group */}
         <div className="mb-4 flex w-full flex-wrap items-center gap-2 sm:gap-4">
             <div className="flex w-full sm:w-1/2 items-center gap-2">
                 <Input
@@ -343,7 +353,6 @@ export default function Index({ stocks, filters, totalCount, filteredCount }: In
         )}
       </div>
 
-      {/* Modal Form for Policy Update/View */}
       <ComplexModalForm
         key={selectedStock ? `stock-edit-${selectedStock.id}` : 'stock-view'}
         title={mode === 'view' ? 'View Inventory Policy' : 'Update Reorder Policy'}

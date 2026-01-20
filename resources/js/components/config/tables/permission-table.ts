@@ -18,19 +18,37 @@ const ALL_MODULES = [
     {label: 'Adjustment Reasons', value: 'adjustment-reasons', key: 'adjustment-reasons'},
     {label: 'Stock Transfers', value: 'stock-transfers', key: 'stock-transfers'},
     {label: 'Stock Transfer Items', value: 'transfer-items', key: 'transfer-items'},
+    {label: 'Invoices', value: 'invoices', key: 'invoices'},
+    {label: 'Invoice Items', value: 'invoice-items', key: 'invoice-items'},
+    {label: 'Store Payment Settings', value: 'store-payment-settings', key: 'store-payment-settings'},
+    {label: 'Debts', value: 'debts', key: 'debts'},
+    {label: 'Quotations', value: 'quotations', key: 'quotations'},
+    {label: 'Quotation Items', value: 'quotation-items', key: 'quotation-items'},
+    {label: 'Sales', value: 'sales', key: 'sales'},
+    {label: 'Payments', value: 'payments', key: 'payments'},
+    {label: 'Payments to Customer', value: 'payments-to-customer', key: 'payments-to-customer'},
+    {label: 'Sale Items', value: 'sale-items', key: 'sale-items'},
+    {label: 'POS Terminal', value: 'pos', key: 'pos'},
+    {label: 'Debts & Credits Reports', value: 'debts-reports', key: 'debts-reports'},
+    {label: 'Company Settings', value: 'company-settings', key: 'company-settings'},
+    {label: 'Master Settings', value: 'master-settings', key: 'master-settings'},
+    {label: 'POS Reports', value: 'pos-reports', key: 'pos-reports'},
+    {label: 'Purchase Orders', value: 'purchase-orders', key: 'purchase-orders'},
+    {label: 'Purchase Order Items', value: 'purchase-order-items', key: 'purchase-order-items'},
+
 ];
 
 
 export const PermissionsTableConfig = {
     // 🛑 1. Filterable Columns
     columns: [
-        {label: 'Permission Name', key: 'label', className: 'p-4 border', isSortable: true},
-        {label: 'Module', key: 'module', className: 'capitalize p-4 border', isSortable: true},
+        {label: 'Permission Name', key: 'label', className: 'p-4 border', sortable: true},
+        {label: 'Module', key: 'module', className: 'capitalize p-4 border', sortable: true},
         {label: 'Slug (Name)', key: 'name', className: 'p-4 border text-sm text-gray-500', isHidden: true},
         {label: 'Description', key: 'description', className:'w-90 p-4 border'},
         // Using the 'boolean' type from your ComplexTable component for Active/Inactive status
         {label: 'Status', key: 'is_active', className:'p-4 border', type: 'boolean'},
-        {label: 'Created', key: 'created_at', className:'p-4 border', isSortable: true},
+        {label: 'Created', key: 'created_at', className:'p-4 border', sortable: true},
         {label: 'Actions', key: 'actions', isAction: true, className: 'p-4 border'},
     ],
 
@@ -57,7 +75,7 @@ export const PermissionsTableConfig = {
             icon: Trash2,
             // Consistent small size class
             className: 'bg-red-600 text-white p-1 rounded-lg cursor-pointer hover:opacity-90',
-            
+
             actionType: 'delete',
 
         },

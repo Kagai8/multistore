@@ -11,12 +11,14 @@ export const UserTableConfig = {
     {
         label: 'Name',
         key: 'name',
-        className: 'p-4 border text-left font-semibold w-1/4'
+        className: 'p-4 border text-left font-semibold w-1/4',
+        sortable: true
     },
     {
         label: 'Email',
         key: 'email',
-        className: 'p-4 border text-left text-sm w-1/4'
+        className: 'p-4 border text-left text-sm w-1/4',
+        sortable: true
     },
     {
         label: 'Email Verified',

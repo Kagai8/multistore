@@ -6,12 +6,12 @@
     <style>
         /** DOMPDF COMPATIBILITY SETTINGS */
         @page {
-            margin: 100px 20px 60px 20px; /* Tighter margins for wide data */
+            margin: 100px 20px 60px 20px;
         }
 
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 9px; /* Smaller font for high density */
+            font-size: 9px;
             color: #333;
             line-height: 1.3;
         }
@@ -22,7 +22,7 @@
             top: -80px;
             left: 0px;
             right: 0px;
-            height: 80px;
+            height: 85px; /* Slightly taller for logo */
             border-bottom: 2px solid #ea580c;
         }
 
@@ -45,7 +45,7 @@
             margin-bottom: 10px;
         }
 
-        .header-table td { vertical-align: middle; }
+        .header-table td { vertical-align: top; }
 
         h1 {
             font-size: 18px;
@@ -56,8 +56,9 @@
             text-align: right;
         }
 
-        .company-name { font-size: 14px; font-weight: bold; color: #111; }
+        .company-name { font-size: 15px; font-weight: bold; color: #111; text-transform: uppercase; }
         .company-details { font-size: 9px; color: #555; }
+        .logo-img { max-height: 50px; width: auto; margin-right: 10px; }
 
         /* --- AUDIT META BOX --- */
         .meta-box {
@@ -95,46 +96,15 @@
             vertical-align: middle;
         }
 
-        /* Zebra Striping */
         .data-table tr:nth-child(even) { background-color: #ffedd5; }
 
         /* --- SPECIAL COLUMN STYLES --- */
-        .img-cell {
-            text-align: center;
-            width: 40px;
-        }
-
-        .product-thumb {
-            width: 35px;
-            height: 35px;
-            object-fit: contain;
-            border-radius: 3px;
-            border: 1px solid #ddd;
-            background: #fff;
-        }
-
-        .sku-text {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            color: #ea580c;
-            font-size: 8px;
-        }
-
-        .price-cell {
-            text-align: right;
-            font-family: 'Courier New', monospace;
-            font-size: 9px;
-            white-space: nowrap;
-        }
-
-        .retail-price { font-weight: bold; color: #15803d; } /* Green for Retail */
-
-        .meta-text {
-            font-size: 8px;
-            color: #666;
-            display: block;
-        }
-
+        .img-cell { text-align: center; width: 40px; }
+        .product-thumb { width: 35px; height: 35px; object-fit: contain; border-radius: 3px; border: 1px solid #ddd; background: #fff; }
+        .sku-text { font-family: 'Courier New', monospace; font-weight: bold; color: #ea580c; font-size: 8px; }
+        .price-cell { text-align: right; font-family: 'Courier New', monospace; font-size: 9px; white-space: nowrap; }
+        .retail-price { font-weight: bold; color: #15803d; }
+        .meta-text { font-size: 8px; color: #666; display: block; }
         .page-number:before { content: "Page " counter(page); }
     </style>
 </head>
@@ -143,14 +113,31 @@
     <header>
         <table class="header-table">
             <tr>
-                <td width="60%">
-                    <div class="company-name">ALPHA LOGISTICS SYSTEMS</div>
+                <td width="15%" valign="top">
+                    @if(isset($company) && $company->logo_path)
+                        <img src="{{ public_path('storage/' . $company->logo_path) }}" class="logo-img">
+                    @endif
+                </td>
+
+                <td width="45%">
+                    <div class="company-name">
+                        {{ $company->name ?? $store->name ?? 'Alpha Logistics Systems' }}
+                    </div>
                     <div class="company-details">
-                        123 Industrial Area, Enterprise Road<br>
-                        Nairobi, Kenya 00100<br>
-                        support@alphalogistics.com | +254 700 000 000
+                        {{ $company->address ?? $store->address ?? 'Address Not Set' }}<br>
+                        {{ $company->city ?? $store->city ?? 'City Not Set' }}
+                        @if(!empty($company->phone) || !empty($store->phone))
+                            | Tel: {{ $company->phone ?? $store->phone }}
+                        @endif
+                        @if(!empty($company->email) || !empty($store->email))
+                            | Email: {{ $company->email ?? $store->email }}
+                        @endif
+                        @if(!empty($company->website))
+                            <br>{{ $company->website }}
+                        @endif
                     </div>
                 </td>
+
                 <td width="40%" align="right">
                     <h1>Product Master List</h1>
                     <div class="company-details" style="margin-top: 5px;">
@@ -164,7 +151,7 @@
     <footer>
         <table width="100%">
             <tr>
-                <td align="left" width="33%">Generated via Alpha System</td>
+                <td align="left" width="33%">{{ $company->name ?? 'Alpha System' }}</td>
                 <td align="center" width="33%">CONFIDENTIAL DOCUMENT</td>
                 <td align="right" width="33%"><span class="page-number"></span></td>
             </tr>
@@ -181,7 +168,7 @@
                     </td>
                     <td width="25%">
                         <strong>Role / Position:</strong><br>
-                        {{ auth()->user()->role->label ?? 'N/A' }}
+                       {{ ucfirst(auth()->user()->roles->first()?->name ?? auth()->user()->role?->name ?? 'Standard User') }}
                     </td>
                     <td width="25%">
                         <strong>Store / Branch:</strong><br>
@@ -214,7 +201,6 @@
                     <tr>
                         <td align="center">{{ $loop->iteration }}</td>
 
-                        {{-- Image Column --}}
                         <td class="img-cell">
                             @if($product->main_image && file_exists(public_path('storage/' . $product->main_image)))
                                 <img src="{{ public_path('storage/' . $product->main_image) }}" class="product-thumb" alt="Img">
@@ -223,24 +209,20 @@
                             @endif
                         </td>
 
-                        {{-- Identity Column (Name & SKU) --}}
                         <td>
                             <strong style="color: #1a202c;">{{ $product->name ?? '—' }}</strong><br>
                             <span class="sku-text">SKU: {{ $product->sku ?? '—' }}</span>
                         </td>
 
-                        {{-- Classification (Category & Brand) --}}
                         <td>
                             <span class="meta-text">Cat:</span> {{ $product->category->name ?? 'N/A' }}<br>
                             <span class="meta-text">Brand:</span> {{ $product->brand->name ?? 'N/A' }}
                         </td>
 
-                        {{-- Unit --}}
                         <td align="center">
                             {{ $product->unit->name ?? 'Item' }}
                         </td>
 
-                        {{-- Price Columns --}}
                         <td class="price-cell">
                             {{ number_format($product->buying_price ?? 0, 2) }}
                         </td>

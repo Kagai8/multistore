@@ -16,6 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import InputError from './input-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+// 🟢 NEW: Import the custom component
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from './ui/checkbox';
 import TagInput from './ui/tag-input';
@@ -28,7 +30,8 @@ interface FieldProps {
   key: string;
   name: string;
   label: string;
-  type: 'text' | 'number' | 'email' | 'password' | 'textarea' | 'file' | 'multi-file' | 'single-select' | 'multi-select' | 'checkbox' | 'tag-input' | 'hidden' | 'date';
+  // 🟢 NEW: Added 'searchable-select' to the type union
+  type: 'text' | 'number' | 'email' | 'password' | 'textarea' | 'file' | 'multi-file' | 'single-select' | 'searchable-select' | 'multi-select' | 'checkbox' | 'tag-input' | 'hidden' | 'date';
   placeholder?: string;
   autocomplete?: string;
   tabIndex?: number;
@@ -47,7 +50,6 @@ interface FieldGroup {
   columns: number;
 }
 
-// Define the type for the user context being passed in as a prop
 interface UserContext {
     store_id: number | null;
     is_global_user: boolean;
@@ -140,10 +142,8 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
   children,
   currentUserContext,
 }) => {
-    // Safely get permissions
     const { auth } = usePage<AuthPageProps>().props;
     const permissions = auth.permissions || [];
-
 
   const optionsMap = useMemo(() => {
     const map: Record<string, { label: string; value: string; key: string }[]> = {};
@@ -246,6 +246,15 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
               ))}
             </SelectContent>
           </Select>
+        // 🟢 NEW: Searchable Select Implementation
+        ) : field.type === 'searchable-select' ? (
+           <SearchableSelect
+              options={optionsMap[field.optionsSource as string] ?? []}
+              value={data[field.name]}
+              onChange={(val) => setData(field.name, val)}
+              placeholder={`Select ${field.label}`}
+              disabled={isDisabled}
+           />
         ) : field.type === 'file' ? (
           <div className="space-y-2">
             {(mainImagePreview || data[field.name] instanceof File) && (
@@ -365,7 +374,6 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal>
-    {/* 🟢 SECURE CHECK: Render trigger only if addButton exists AND (no permission required OR user has permission) */}
     {addButton && (!addButton.permission || hasPermission(permissions, [addButton.permission])) && (
         <DialogTrigger asChild>
         <Button

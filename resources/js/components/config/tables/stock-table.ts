@@ -8,23 +8,27 @@ export const StockTableConfig = {
     {
         label: 'Store Name',
         key: 'store.name', // Accessing the related store's name
-        className: 'p-4 border text-left font-semibold w-1/5'
+        className: 'p-4 border text-left font-semibold w-1/5',
+        sortable: true
     },
     {
         label: 'Store Code',
         key: 'store.code', // Accessing the related store's code
-        className: 'p-4 border text-center text-sm'
+        className: 'p-4 border text-center text-sm',
+        sortable: true
     },
     // Product Details
     {
         label: 'Product Name',
         key: 'product.name', // Accessing the related product's name
-        className: 'p-4 border text-left'
+        className: 'p-4 border text-left',
+        sortable: true
     },
     {
         label: 'Product SKU',
         key: 'product.sku', // Accessing the related product's SKU
-        className: 'p-4 border text-center text-sm'
+        className: 'p-4 border text-center text-sm',
+        sortable: true
     },
 
     // Inventory Data (The core metrics)
@@ -62,7 +66,8 @@ export const StockTableConfig = {
     {
         label: 'Last Updated',
         key: 'updated_at',
-        className: 'p-4 border text-center text-xs'
+        className: 'p-4 border text-center text-xs',
+        sortable: true
     },
     {
         label: 'Actions',

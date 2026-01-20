@@ -183,7 +183,7 @@ export default function Index({ roles, filters, totalCount, filteredCount, permi
         post(route("roles.update", selectedRole.id), {
             forceFormData: true,
             onSuccess: () => {
-                toast.success("Role updated");
+                //toast.success("Role updated");
                 closeModal();
             },
             onError: (err: any) => {
@@ -198,7 +198,7 @@ export default function Index({ roles, filters, totalCount, filteredCount, permi
         post(route("roles.store"), {
             forceFormData: true,
             onSuccess: () => {
-                toast.success("Role created");
+                //toast.success("Role created");
                 closeModal();
             },
             onError: (err: any) => {

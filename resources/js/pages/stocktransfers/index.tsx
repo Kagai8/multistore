@@ -14,7 +14,8 @@ import ComplexTable from '@/components/complex-table';
 import { CustomToast, toast } from '@/components/custom-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { X, ArrowLeftRightIcon } from 'lucide-react';
+// 🟢 ADDED ICONS: Truck, Clock, CheckCircle
+import { X, ArrowLeftRightIcon, Truck, Clock, CheckCircle } from 'lucide-react';
 import Pagination from '@/components/ui/pagination';
 import { type BreadcrumbItem } from '@/types';
 
@@ -112,16 +113,38 @@ interface LookupData {
     productStocksArray: Record<string, Record<string, number>>;
 }
 
+// 🟢 NEW: Stats Interface
+interface TransferStats {
+    pending_approval: number;
+    in_transit: number;
+    completed: number;
+}
+
 interface IndexProps {
     transfers: StockTransferPagination;
     filters: FilterProps;
     totalCount: number;
     filteredCount: number;
     lookupData: LookupData;
+    stats: TransferStats; // 🟢 Receive Stats
     [key: string]: any;
 }
 
-export default function Index({ transfers, filters, totalCount, filteredCount, lookupData }: IndexProps) {
+// 🟢 NEW: StatCard Component
+const StatCard = ({ title, value, icon: Icon, colorClass, subText }: any) => (
+    <div className="flex flex-col rounded-xl border bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-500">{title}</span>
+            <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>
+                <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
+            </div>
+        </div>
+        <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
+        {subText && <span className="text-xs text-gray-400 mt-1">{subText}</span>}
+    </div>
+);
+
+export default function Index({ transfers, filters, totalCount, filteredCount, lookupData, stats }: IndexProps) {
     const { inventoryConfig } = usePage<PagePropsWithConfig>().props;
     const currentUserContext = inventoryConfig?.userContext || null;
     const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
@@ -150,7 +173,6 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [transferToDelete, setTransferToDelete] = useState<StockTransfer | null>(null);
 
-    // 🟢 Destructured 'put' for safe updates
     const transferForm = useForm<StockTransferForm>(initialTransferData);
     const deliveryForm = useForm<StockTransferDeliveryForm>({
         delivery_type: 'internal',
@@ -205,7 +227,6 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
         deliveryForm.reset();
     };
 
-    // 🟢 NEW: Integrity Check Function
     const checkStockAvailability = (): boolean => {
         const sourceStoreId = transferForm.data.source_store_id;
         if (!sourceStoreId) return true;
@@ -219,12 +240,10 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
             if (currentStock <= 0) {
                 const product = lookupData.products.find(p => String(p.id) === productId);
                 const productName = product ? product.name : `Product #${productId}`;
-
                 toast.error(`Cannot transfer item below 0! (${productName} has 0 stock)`);
                 return false;
             }
 
-            // Optional: Block if requested quantity > current stock
             if (item.quantity > currentStock) {
                  const product = lookupData.products.find(p => String(p.id) === productId);
                  const productName = product ? product.name : `Product #${productId}`;
@@ -237,22 +256,17 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Basic Validations
         if (transferForm.data.items.length === 0) {
             return toast.error("Transfer must contain at least one item.");
         }
         if (transferForm.data.source_store_id === transferForm.data.destination_store_id) {
             return toast.error("Source and Destination stores cannot be the same.");
         }
-
-        // 🟢 Run Integrity Check
         if (!checkStockAvailability()) {
             return;
         }
 
         if (mode === "edit" && selectedTransfer) {
-            // Safe Update Logic
             transferForm.put(route("stock-transfers.update", selectedTransfer.id), {
                 onSuccess: () => {
                     toast.success("Stock Transfer updated");
@@ -324,11 +338,7 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
                     onError: (e: any) => toast.error(e.message || 'Failed to submit transfer for review. Check permissions/status.'),
                 });
                 break;
-
-            case 'Send Transfer':
-                handleSendTransfer(transfer);
-                break;
-
+            case 'Send Transfer': handleSendTransfer(transfer); break;
             case 'Approve Transfer':
                 router.post(route('stock-transfers.approve', transfer.id), {}, {
                     onSuccess: () => {
@@ -338,7 +348,6 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
                     onError: (e: any) => toast.error(e.message || 'Failed to approve transfer. Check permissions/status.'),
                 });
                 break;
-
             case 'Reject Transfer':
                 router.post(route('stock-transfers.reject', transfer.id), {}, {
                     onSuccess: () => {
@@ -348,7 +357,6 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
                     onError: (e: any) => toast.error(e.message || 'Failed to reject transfer. Check permissions/status.'),
                 });
                 break;
-
             case 'Receive Transfer':
                 router.post(route('stock-transfers.receive', transfer.id), {}, {
                     onSuccess: () => {
@@ -358,8 +366,7 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
                     onError: (e: any) => toast.error(e.message || 'Failed to receive transfer. Check approval/status.'),
                 });
                 break;
-            default:
-                toast.error(`Action "${label}" not configured.`);
+            default: toast.error(`Action "${label}" not configured.`);
         }
     };
 
@@ -421,7 +428,6 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
             ...(dateFrom && { dateFrom: dateFrom }),
             ...(dateTo && { dateTo: dateTo }),
         };
-
         router.get(route('stock-transfers.index'), query, { preserveState: true, preserveScroll: true });
     };
 
@@ -455,6 +461,32 @@ export default function Index({ transfers, filters, totalCount, filteredCount, l
                     <ArrowLeftRightIcon size={26} className="text-orange-600 mr-1" />
                     Stock Transfer Hub
                 </h2>
+
+                {/* 🟢 STAT TABS GRID - Dashboard Style */}
+                <div className="grid gap-4 md:grid-cols-3 mb-2">
+                    <StatCard
+                        title="Pending Approval"
+                        value={stats?.pending_approval || 0}
+                        icon={Clock}
+                        colorClass="text-orange-600 bg-orange-100"
+                        subText="Awaiting authorization"
+                    />
+                    <StatCard
+                        title="In Transit"
+                        value={stats?.in_transit || 0}
+                        icon={Truck}
+                        colorClass="text-blue-600 bg-blue-100"
+                        subText="Dispatched to destination"
+                    />
+                    <StatCard
+                        title="Completed"
+                        value={stats?.completed || 0}
+                        icon={CheckCircle}
+                        colorClass="text-green-600 bg-green-100"
+                        subText="Successfully received"
+                    />
+                </div>
+
                 <p className="text-sm text-gray-600 max-w-2xxl">
                     Here you can request for stock transfers. Use the controls below to filter and get accurate reports.
                 </p>

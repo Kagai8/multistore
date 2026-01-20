@@ -4,9 +4,9 @@ import { Eye, FileSpreadsheet, FileText, Pencil, Trash } from "lucide-react";
 export const BrandTableConfig = {
   columns: [
 
-    { label: 'Brand Name', key: 'name', className: 'p-4 border' },
+    { label: 'Brand Name', key: 'name', className: 'p-4 border', sortable: true },
     { label: 'Logo', key: 'logo', isImage: true, className: 'p-4 border text-center' },
-    { label: 'Created Date', key: 'created_at', className: 'p-4 border text-center' },
+    { label: 'Created Date', key: 'created_at', className: 'p-4 border text-center', sortable: true },
     { label: 'Actions', key: 'actions', isAction: true, className: 'p-4 border text-center' },
   ],
   actions: [

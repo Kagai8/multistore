@@ -176,7 +176,7 @@ export default function Index({ permissions, filters, totalCount, filteredCount 
         // Use Inertia's post method with _method spoofing for update
         post(route("permissions.update", selectedPermission.id), {
             onSuccess: () => {
-                toast.success("Permission updated");
+                //toast.success("Permission updated");
                 closeModal();
             },
             onError: () => {
@@ -187,7 +187,7 @@ export default function Index({ permissions, filters, totalCount, filteredCount 
         // Use Inertia's post method for create
         post(route("permissions.store"), {
             onSuccess: () => {
-                toast.success("Permission created");
+                //toast.success("Permission created");
                 closeModal();
             },
             onError: () => {

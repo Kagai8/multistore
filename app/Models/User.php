@@ -8,13 +8,14 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Permission\Traits\HasRoles; // 🟢 NEW: Import Spatie Trait
+use Laravel\Sanctum\HasApiTokens;
 
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     // 🟢 NEW: Add HasRoles trait
-    use HasFactory, Notifiable, TwoFactorAuthenticatable, HasRoles;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable, HasRoles, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -79,14 +80,17 @@ class User extends Authenticatable
      * * Global Access is granted if the user is a Super Admin OR
      * they are assigned to the primary Alpha/Warehouse store (ID 1).
      */
-   public function getIsGlobalUserAttribute(): bool
+   public function isGlobal(): bool
     {
-        // Keep your existing, correct logic:
-        if ($this->role) {
-            return $this->role->all_store_access;
+        // 1. Robust: Check for specific Super Admin role name (Spatie)
+        if ($this->hasRole('super-administrator')) {
+            return true;
         }
 
-        // Default to restricted access
-        return false;
+        // 2. Flexible: Check if ANY assigned role has the 'all_store_access' flag
+        // This handles your existing database column logic
+        return $this->roles->contains(function ($role) {
+            return (bool) $role->all_store_access;
+        });
     }
 }

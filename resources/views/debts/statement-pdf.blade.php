@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Statement of Account</title>
+    <style>
+        @page { margin: 100px 25px 120px 25px; } /* Large bottom margin for payment footer */
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10px; color: #333; line-height: 1.4; }
+
+        /* HEADER & FOOTER (Fixed) */
+        header { position: fixed; top: -80px; left: 0px; right: 0px; height: 90px; border-bottom: 2px solid #ea580c; }
+        footer { position: fixed; bottom: -100px; left: 0px; right: 0px; height: 90px; border-top: 1px solid #ea580c; padding-top: 10px; }
+
+        /* LAYOUT TABLES */
+        .w-full { width: 100%; border-collapse: collapse; }
+        .col-half { width: 50%; vertical-align: top; }
+
+        /* TYPOGRAPHY */
+        h1 { font-size: 20px; text-transform: uppercase; color: #ea580c; margin: 0; font-weight: bold; text-align: right; }
+        .company-name { font-size: 16px; font-weight: bold; color: #111; }
+        .company-details { font-size: 9px; color: #555; margin-top: 5px; }
+
+        /* CUSTOMER BOX */
+        .bill-to-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; margin-bottom: 20px; margin-top: 20px; }
+        .label { font-size: 8px; text-transform: uppercase; color: #64748b; font-weight: bold; letter-spacing: 0.5px; }
+        .customer-name { font-size: 14px; font-weight: bold; color: #0f172a; margin: 2px 0 5px 0; }
+
+        /* DATA TABLE */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .data-table th { background: #ea580c; color: white; text-transform: uppercase; font-size: 9px; padding: 8px 5px; text-align: left; border: 1px solid #c2410c; }
+        .data-table td { border: 1px solid #e2e8f0; padding: 6px 5px; }
+        .data-table tr:nth-child(even) { background: #fff7ed; }
+
+        /* ALIGNMENT & FORMATTING */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-mono { font-family: monospace; }
+        .bold { font-weight: bold; }
+
+        /* STATUS BADGES (Text only for PDF reliability) */
+        .status-active { color: #dc2626; font-weight: bold; }
+        .status-settled { color: #16a34a; font-weight: bold; }
+
+        /* SUMMARY BOX */
+        .summary-box { float: right; width: 40%; margin-top: 20px; border: 1px solid #ea580c; }
+        .summary-row { border-bottom: 1px solid #fed7aa; }
+        .summary-label { background: #fff7ed; padding: 8px; font-weight: bold; color: #ea580c; }
+        .summary-val { padding: 8px; text-align: right; font-weight: bold; }
+        .summary-total { background: #ea580c; color: white; }
+
+        /* PAYMENT FOOTER */
+        .pay-footer { font-size: 9px; color: #555; }
+        .bank-details { margin-top: 5px; padding: 5px; background: #f1f5f9; border: 1px dashed #cbd5e1; display: inline-block; width: 45%; }
+    </style>
+</head>
+<body>
+    <header>
+        <table class="w-full">
+            <tr>
+                <td class="col-half">
+                    <div class="company-name">{{ strtoupper($store->name ?? 'Alpha Logistics Systems') }}</div>
+                    <div class="company-details">
+                        {{ $store->address ?? 'P.O. Box 12345, Nairobi' }}<br>
+                        {{ $store->city ?? 'Nairobi' }}, Kenya<br>
+                        Phone: {{ $store->phone ?? '+254 700 000 000' }}<br>
+                        Email: {{ $store->email ?? 'finance@alphalogistics.co.ke' }}
+                    </div>
+                </td>
+                <td class="col-half" align="right">
+                    <h1>Statement of Account</h1>
+                    <div style="margin-top: 5px;">Date: {{ now()->format('d M Y') }}</div>
+                    <div style="font-size: 9px; color: #777;">Ref: STMT-{{ $customer->id }}-{{ now()->timestamp }}</div>
+                </td>
+            </tr>
+        </table>
+    </header>
+
+    <footer>
+        <table class="w-full">
+            <tr>
+                <td width="60%" valign="top">
+                    <div class="pay-footer">
+                        <strong>Payment Instructions:</strong><br>
+                        Please make cheques payable to <strong>{{ $store->name ?? 'Alpha Logistics' }}</strong>.
+
+                        <div class="bank-details">
+                            <strong>Bank:</strong> Equity Bank<br>
+                            <strong>Acc No:</strong> 123 456 7890<br>
+                            <strong>M-Pesa Till:</strong> 123456
+                        </div>
+                    </div>
+                </td>
+                <td width="40%" valign="bottom" align="right">
+                    <div style="border-top: 1px solid #333; width: 80%; margin-left: auto; padding-top: 5px;">
+                        Authorized Signature
+                    </div>
+                    <div style="font-size: 8px; color: #999; margin-top: 5px;">
+                        Page <span class="page-number"></span> | Generated by System
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </footer>
+
+    <main>
+        <div class="bill-to-box">
+            <table class="w-full">
+                <tr>
+                    <td width="100%">
+                        <div class="label">To Customer</div>
+                        <div class="customer-name">{{ $customer->name }}</div>
+                        <div>{{ $customer->address ?? 'N/A' }}</div>
+                        <div>Phone: {{ $customer->phone ?? $customer->number ?? '-' }}</div>
+                        <div>Email: {{ $customer->email ?? '-' }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th width="12%">Date</th>
+                    <th width="15%">Reference</th>
+                    <th width="30%">Description / Source</th>
+                    <th width="10%">Due Date</th>
+                    <th width="13%" class="text-right">Original Amt</th>
+                    <th width="10%" class="text-right">Paid</th>
+                    <th width="10%" class="text-right">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($debts as $debt)
+                <tr>
+                    <td>{{ $debt->created_at->format('d M Y') }}</td>
+                    <td class="font-mono">
+                        @if($debt->source_type === 'App\\Models\\Invoice')
+                            {{ $debt->source->invoice_number ?? 'INV-'.$debt->source_id }}
+                        @elseif($debt->source_type === 'App\\Models\\OpeningBalance')
+                            OP-BAL
+                        @else
+                            {{ $debt->source_id }}
+                        @endif
+                    </td>
+                    <td>
+                        {{ ucfirst(class_basename($debt->source_type)) }} #{{ $debt->source_id }}
+                        <div style="font-size: 8px; color: #666;">Store: {{ $debt->store->name ?? $store->name }}</div>
+                    </td>
+                    <td>
+                        {{ $debt->due_date ? \Carbon\Carbon::parse($debt->due_date)->format('d/m/y') : '-' }}
+                    </td>
+                    <td class="text-right">{{ number_format($debt->amount, 2) }}</td>
+                    <td class="text-right">
+                        @php $paid = $debt->amount - $debt->balance; @endphp
+                        {{ number_format($paid, 2) }}
+                    </td>
+                    <td class="text-right bold">
+                        {{ number_format($debt->balance, 2) }}
+                        @if($debt->balance == 0)
+                            <span style="font-size: 8px; color: green;">(✓)</span>
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center" style="padding: 20px; color: #777;">
+                        No debt records found for this customer.
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <table class="summary-box" cellspacing="0">
+            <tr class="summary-row">
+                <td class="summary-label">Total Invoiced</td>
+                <td class="summary-val">{{ number_format($summary['invoiced'], 2) }}</td>
+            </tr>
+            <tr class="summary-row">
+                <td class="summary-label">Total Paid</td>
+                <td class="summary-val">{{ number_format($summary['paid'], 2) }}</td>
+            </tr>
+            <tr class="summary-row summary-total">
+                <td class="summary-label" style="color: white; background: transparent;">TOTAL DUE</td>
+                <td class="summary-val" style="background: transparent;">{{ number_format($summary['due'], 2) }}</td>
+            </tr>
+        </table>
+
+        <div style="clear: both; margin-top: 130px; font-size: 9px; color: #555;">
+            <strong>Aging Analysis:</strong> &nbsp;
+            Current: {{ number_format($summary['due'], 2) }} &nbsp;|&nbsp;
+            30 Days: 0.00 &nbsp;|&nbsp;
+            60 Days: 0.00 &nbsp;|&nbsp;
+            90+ Days: 0.00
+        </div>
+
+    </main>
+</body>
+</html>

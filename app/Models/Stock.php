@@ -46,16 +46,19 @@ class Stock extends Model
 
     protected static function booted(): void
     {
-        // 1. READ ACCESS: Applies the filter for restricted users
+        // 1. READ ACCESS: Applies the filter logic we just fixed above
         static::addGlobalScope(new \App\Models\Scopes\StoreScope);
 
         // 2. WRITE ACCESS: Forces store_id for restricted users
         static::creating(function ($model) {
             $user = Auth::user();
 
-            // 🛑 FIX: Change ->isGlobalUser() to ->is_global_user
-            if ($user && !$user->is_global_user) {
-                // Guarantees the record belongs to the user's store
+            // 🟢 FIX: Calculate Global Access from the Role
+            $hasGlobalAccess = $user && ($user->roles->first()?->all_store_access ?? false);
+
+            // If user exists AND does NOT have global access...
+            if ($user && !$hasGlobalAccess) {
+                // ...force the stock to belong to their store
                 $model->store_id = $user->store_id;
             }
         });

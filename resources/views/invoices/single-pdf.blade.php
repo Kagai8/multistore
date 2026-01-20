@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Invoice {{ $invoice->invoice_number }}</title>
+    <style>
+        @page { margin: 100px 25px 100px 25px; } /* Header/Footer space */
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10px; color: #333; line-height: 1.4; }
+
+        /* HEADER & FOOTER */
+        header { position: fixed; top: -80px; left: 0px; right: 0px; height: 80px; border-bottom: 2px solid #ea580c; }
+        footer { position: fixed; bottom: -60px; left: 0px; right: 0px; height: 50px; border-top: 1px solid #ea580c; font-size: 8px; color: #777; padding-top: 10px; }
+
+        /* TABLES */
+        table { width: 100%; border-collapse: collapse; }
+        .header-table td { vertical-align: top; }
+
+        .info-table { width: 100%; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .info-table th { background: #f8fafc; color: #4a5568; padding: 6px; text-align: left; font-size: 9px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+        .info-table td { padding: 6px; border-bottom: 1px solid #eee; }
+        .info-table tr:last-child td { border-bottom: none; }
+
+        /* TYPOGRAPHY */
+        h1 { font-size: 22px; color: #ea580c; margin: 0; text-transform: uppercase; font-weight: bold; text-align: right; }
+        .company-name { font-size: 14px; font-weight: bold; color: #111; }
+        .section-title { font-size: 11px; font-weight: bold; color: #ea580c; border-bottom: 1px solid #e2e8f0; margin: 15px 0 8px 0; text-transform: uppercase; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .text-red { color: #dc2626; }
+        .text-green { color: #16a34a; }
+        .text-purple { color: #7e22ce; } /* Added Purple */
+
+        /* BADGES */
+        .badge { padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 9px; text-transform: uppercase; display: inline-block; }
+        .badge-draft { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+        .badge-posted { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+        .badge-void { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .badge-refunded { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+
+        .pay-paid { color: #16a34a; border: 1px solid #16a34a; }
+        .pay-partial { color: #ea580c; border: 1px solid #ea580c; }
+        .pay-unpaid { color: #dc2626; border: 1px solid #dc2626; }
+
+        /* AUDIT GRID */
+        .audit-grid { width: 100%; border: 1px solid #eee; margin-top: 10px; }
+        .audit-grid td { width: 25%; vertical-align: top; padding: 8px; border-right: 1px solid #eee; }
+        .audit-grid td:last-child { border-right: none; }
+        .audit-label { font-size: 8px; text-transform: uppercase; color: #777; margin-bottom: 2px; }
+        .audit-val { font-weight: bold; font-size: 10px; }
+        .audit-date { font-size: 8px; color: #555; }
+
+        .watermark {
+            position: fixed; top: 30%; left: 10%; width: 80%; text-align: center;
+            font-size: 100px; color: rgba(200, 200, 200, 0.1); transform: rotate(-45deg);
+            z-index: -1000; font-weight: bold; text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    @if($invoice->status === 'void')
+        <div class="watermark">VOID</div>
+    @elseif($invoice->status === 'draft')
+        <div class="watermark">DRAFT</div>
+    @elseif($invoice->status === 'refunded')
+        <div class="watermark" style="color: rgba(128, 0, 128, 0.05);">REFUNDED</div>
+    @endif
+
+    <header>
+        <table class="header-table">
+            <tr>
+                <td width="50%">
+                    <div class="company-name">{{ strtoupper($invoice->store->name ?? 'Store Name') }}</div>
+                    <div style="font-size: 9px; color: #555; margin-top: 4px;">
+                        {{ $invoice->store->address ?? '123 Enterprise Road' }}<br>
+                        {{ $invoice->store->city ?? 'Nairobi' }}, Kenya<br>
+                        Phone: {{ $invoice->store->phone ?? '+254 ...' }}<br>
+                        Email: {{ $invoice->store->email ?? 'info@store.com' }}
+                    </div>
+                </td>
+                <td width="50%" align="right">
+                    <h1>Tax Invoice</h1>
+                    <div style="font-size: 11px; margin-top: 5px;"># {{ $invoice->invoice_number }}</div>
+                    <div style="margin-top: 5px;">
+                        <span class="badge badge-{{ $invoice->status }}">{{ $invoice->status }}</span>
+                        <span class="badge pay-{{ $invoice->payment_status }}">{{ $invoice->payment_status }}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </header>
+
+    <footer>
+        <table width="100%">
+            <tr>
+                <td width="33%" align="left">
+                    Generated by: {{ Auth::user()->name }}<br>
+                    Printed: {{ now()->format('d M Y, h:i A') }}
+                </td>
+                <td width="33%" align="center">
+                    Thank you for your business!
+                </td>
+                <td width="33%" align="right">
+                    Page <span class="page-number"></span>
+                </td>
+            </tr>
+        </table>
+    </footer>
+
+    <main>
+        <table class="w-full" style="margin-bottom: 20px;">
+            <tr>
+                <td width="50%" valign="top" style="background: #f9f9f9; padding: 10px; border: 1px solid #eee;">
+                    <div class="audit-label">Bill To Customer</div>
+                    <div style="font-size: 11px; font-weight: bold;">{{ $invoice->customer->name }}</div>
+                    @if($invoice->customer->phone)
+                        <div>Tel: {{ $invoice->customer->phone }}</div>
+                    @endif
+                    @if($invoice->customer->email)
+                        <div>Email: {{ $invoice->customer->email }}</div>
+                    @endif
+                    <div style="margin-top: 5px; font-size: 9px; color: #555;">
+                        Customer ID: #{{ $invoice->customer_id }}
+                    </div>
+                </td>
+                <td width="5%" style="border:none;"></td>
+                <td width="45%" valign="top">
+                    <table class="info-table" style="margin: 0;">
+                        <tr>
+                            <th width="40%">Invoice Date</th>
+                            <td align="right">{{ $invoice->invoice_date->format('d M Y') }}</td>
+                        </tr>
+                        <tr>
+                            <th>Due Date</th>
+                            <td align="right">{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : 'On Receipt' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Terms</th>
+                            <td align="right">{{ ucfirst($invoice->payment_arrangement ?? 'Standard') }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <div class="section-title">Item Details</div>
+        <table class="info-table">
+            <thead>
+                <tr>
+                    <th width="5%" class="text-center">#</th>
+                    <th width="45%">Description / Product</th>
+                    <th width="15%">SKU</th>
+                    <th width="10%" class="text-center">Qty</th>
+                    <th width="12%" class="text-right">Unit Price</th>
+                    <th width="13%" class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoice->items as $item)
+                <tr>
+                    <td align="center">{{ $loop->iteration }}</td>
+                    <td>
+                        <span class="font-bold">{{ $item->product->name }}</span>
+                    </td>
+                    <td style="font-family: monospace; color: #555;">{{ $item->product->sku }}</td>
+                    <td align="center">{{ $item->quantity }}</td>
+                    <td align="right">{{ number_format($item->unit_price, 2) }}</td>
+                    <td align="right" class="font-bold">{{ number_format($item->sub_total, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <table width="100%">
+            <tr>
+                <td width="55%" valign="top" style="padding-right: 20px;">
+
+                    @if($invoice->payments->count() > 0)
+                        <div class="section-title">Payment History</div>
+                        <table class="info-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Method</th>
+                                    <th>Ref</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($invoice->payments as $payment)
+                                <tr>
+                                    <td>{{ $payment->payment_date->format('d/m/y') }}</td>
+                                    <td>{{ ucfirst($payment->method) }}</td>
+                                    <td style="font-size: 8px;">{{ $payment->transaction_ref ?? '-' }}</td>
+                                    <td align="right">{{ number_format($payment->amount, 2) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+
+                    @if($invoice->notes)
+                        <div class="section-title">Notes</div>
+                        <div style="border: 1px dashed #ccc; padding: 8px; font-style: italic; background: #fff;">
+                            {{ $invoice->notes }}
+                        </div>
+                    @endif
+                </td>
+
+                <td width="45%" valign="top">
+                    <table class="info-table">
+                        <tr>
+                            <td class="text-right font-bold">Subtotal</td>
+                            <td align="right" width="40%">{{ number_format($invoice->sub_total, 2) }}</td>
+                        </tr>
+                        @if($invoice->discount_amount > 0)
+                        <tr>
+                            <td class="text-right">Discount</td>
+                            <td align="right" class="text-red">({{ number_format($invoice->discount_amount, 2) }})</td>
+                        </tr>
+                        @endif
+                        @if($invoice->tax_amount > 0)
+                        <tr>
+                            <td class="text-right">Tax / VAT</td>
+                            <td align="right">{{ number_format($invoice->tax_amount, 2) }}</td>
+                        </tr>
+                        @endif
+                        <tr style="background: #f1f5f9;">
+                            <td class="text-right font-bold" style="font-size: 12px; padding: 10px;">GRAND TOTAL</td>
+                            <td align="right" class="font-bold" style="font-size: 12px; padding: 10px;">{{ number_format($invoice->total_amount, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right font-bold">Total Paid</td>
+                            <td align="right" class="text-green font-bold">{{ number_format($invoice->paid_amount, 2) }}</td>
+                        </tr>
+
+                        @php
+                            $balance = $invoice->total_amount - $invoice->paid_amount;
+                        @endphp
+
+                        @if($invoice->status === 'refunded')
+                            <tr>
+                                <td class="text-right font-bold text-purple" style="border-top: 2px solid #ddd;">AMOUNT REFUNDED</td>
+                                <td align="right" class="text-purple font-bold" style="border-top: 2px solid #ddd;">
+                                    {{ number_format($invoice->paid_amount, 2) }}
+                                </td>
+                            </tr>
+                        @elseif($balance < -0.01)
+                            <tr>
+                                <td class="text-right font-bold" style="border-top: 2px solid #ddd;">CHANGE</td>
+                                <td align="right" class="text-green font-bold" style="border-top: 2px solid #ddd;">
+                                    {{ number_format(abs($balance), 2) }}
+                                </td>
+                            </tr>
+                        @elseif($balance > 0.01)
+                            <tr>
+                                <td class="text-right font-bold" style="border-top: 2px solid #ddd;">BALANCE DUE</td>
+                                <td align="right" class="text-red font-bold" style="border-top: 2px solid #ddd;">
+                                    {{ number_format($balance, 2) }}
+                                </td>
+                            </tr>
+                        @else
+                            <tr>
+                                <td class="text-right font-bold" style="border-top: 2px solid #ddd;">BALANCE</td>
+                                <td align="right" class="text-green font-bold" style="border-top: 2px solid #ddd;">
+                                    0.00
+                                </td>
+                            </tr>
+                        @endif
+                        </table>
+                </td>
+            </tr>
+        </table>
+
+        <div class="section-title" style="margin-top: 30px;">System Audit Trail</div>
+        <table class="audit-grid" cellspacing="0">
+            <tr>
+                <td>
+                    <div class="audit-label">Created By</div>
+                    <div class="audit-val">{{ $invoice->user->name ?? 'System' }}</div>
+                    <div class="audit-date">{{ $invoice->created_at->format('d M Y, h:i A') }}</div>
+                </td>
+
+                @if($invoice->status === 'void')
+                <td style="background: #fef2f2;">
+                    <div class="audit-label text-red">Voided By</div>
+                    <div class="audit-val text-red">{{ $invoice->voidApprover->name ?? 'N/A' }}</div>
+                    <div class="audit-date">{{ $invoice->voided_at ? $invoice->voided_at->format('d M Y, h:i A') : '-' }}</div>
+                    <div style="font-size:8px; font-style:italic; margin-top:2px;">"{{ $invoice->void_reason }}"</div>
+                </td>
+                @else
+                <td>
+                    <div class="audit-label">Void Status</div>
+                    <div class="audit-val" style="color: #ccc;">-</div>
+                </td>
+                @endif
+
+                @if($invoice->status === 'refunded')
+                <td style="background: #f3e8ff;">
+                    <div class="audit-label" style="color: #6b21a8;">Refunded By</div>
+                    <div class="audit-val" style="color: #6b21a8;">{{ $invoice->refunder->name ?? 'N/A' }}</div>
+                    <div class="audit-date">{{ $invoice->refunded_at ? $invoice->refunded_at->format('d M Y, h:i A') : '-' }}</div>
+                </td>
+                @else
+                <td>
+                    <div class="audit-label">Refund Status</div>
+                    <div class="audit-val" style="color: #ccc;">-</div>
+                </td>
+                @endif
+
+                <td>
+                    <div class="audit-label">Last Updated</div>
+                    <div class="audit-date">{{ $invoice->updated_at->format('d M Y, h:i A') }}</div>
+                </td>
+            </tr>
+        </table>
+
+        <div style="margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 10px;">
+             <table width="100%">
+                <tr>
+                    <td width="50%">
+                        <strong>Authorized Signature:</strong><br><br>
+                        __________________________________
+                    </td>
+                    <td width="50%" align="right">
+                        <strong>Customer Acknowledgement:</strong><br><br>
+                        __________________________________
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+    </main>
+</body>
+</html>

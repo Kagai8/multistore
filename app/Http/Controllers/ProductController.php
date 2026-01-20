@@ -130,203 +130,182 @@ class ProductController extends Controller
         ]);
     }
 
+    public function store(Request $request)
+    {
+        // 1. Validation Block
+        // NOTE: We MUST still validate using the keys sent from the frontend (new_main_image)
+        // to ensure validation errors are correctly linked back to the Inertia form field names.
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'barcode' => 'nullable|string|max:100|unique:products,barcode',
+            'category_id' => 'required|exists:categories,id',
+            'brand_id' => 'required|exists:brands,id',
+            'unit_id' => 'required|exists:units,id',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'weight' => 'nullable|numeric|min:0',
+            'retail_price' => 'required|numeric|min:0',
+            'special_price' => 'nullable|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'buying_price' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'colors' => 'nullable|array',
+            'description' => 'nullable|string',
+            'is_active' => 'boolean',
+            'is_purchasable' => 'boolean',
 
-// In app/Http/Controllers/ProductController.php
+            // Validation for the names sent from the frontend (to tie errors back)
+            'new_main_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'new_multi_images' => 'nullable|array',
+            'new_multi_images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
+        ]);
 
-public function store(Request $request)
-{
-    // 1. Validation Block
-    // NOTE: We MUST still validate using the keys sent from the frontend (new_main_image)
-    // to ensure validation errors are correctly linked back to the Inertia form field names.
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'barcode' => 'nullable|string|max:100|unique:products,barcode',
-        'category_id' => 'required|exists:categories,id',
-        'brand_id' => 'required|exists:brands,id',
-        'unit_id' => 'required|exists:units,id',
-        'supplier_id' => 'required|exists:suppliers,id',
-        'weight' => 'nullable|numeric|min:0',
-        'retail_price' => 'required|numeric|min:0',
-        'special_price' => 'nullable|numeric|min:0',
-        'wholesale_price' => 'nullable|numeric|min:0',
-        'buying_price' => 'nullable|numeric|min:0',
-        'discount' => 'nullable|numeric|min:0',
-        'colors' => 'nullable|array',
-        'description' => 'nullable|string',
-        'is_active' => 'boolean',
-        'is_purchasable' => 'boolean',
+        $validated['slug'] = Str::slug($validated['name']);
 
-        // Validation for the names sent from the frontend (to tie errors back)
-        'new_main_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-        'new_multi_images' => 'nullable|array',
-        'new_multi_images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
-    ]);
+        // Initialize the DB fields to NULL/empty array
+        $validated['main_image'] = null;
+        $validated['multi_images'] = [];
 
-    $validated['slug'] = Str::slug($validated['name']);
+        // 2. Handle Main Image Upload
+        // 🛑 CRITICAL FIX: The file is received under the key 'main_image' in the request object!
+        if ($request->file('main_image') && $request->file('main_image')->isValid()) {
+            $validated['main_image'] = $request->file('main_image')->store('products/main', 'public');
+        }
 
-    // Initialize the DB fields to NULL/empty array
-    $validated['main_image'] = null;
-    $validated['multi_images'] = [];
+        // 3. Handle Multi Images Upload
+        $multiImagePaths = [];
 
-    // 2. Handle Main Image Upload
-    // 🛑 CRITICAL FIX: The file is received under the key 'main_image' in the request object!
-    if ($request->file('main_image') && $request->file('main_image')->isValid()) {
-        $validated['main_image'] = $request->file('main_image')->store('products/main', 'public');
-    }
+        // 🛑 CRITICAL FIX: The multi-files are received under the key 'multi_images'!
+        $files = $request->file('multi_images');
 
-    // 3. Handle Multi Images Upload
-    $multiImagePaths = [];
-
-    // 🛑 CRITICAL FIX: The multi-files are received under the key 'multi_images'!
-    $files = $request->file('multi_images');
-
-    if ($files && is_array($files)) {
-        foreach ($files as $file) {
-            // Check if $file is a valid uploaded file object before storing
-            if ($file && $file->isValid()) {
-                 $multiImagePaths[] = $file->store('products/multi', 'public');
+        if ($files && is_array($files)) {
+            foreach ($files as $file) {
+                // Check if $file is a valid uploaded file object before storing
+                if ($file && $file->isValid()) {
+                    $multiImagePaths[] = $file->store('products/multi', 'public');
+                }
             }
         }
+        $validated['multi_images'] = $multiImagePaths;
+
+        // 4. SKU Generation (Unchanged)
+        $tempSku = 'TEMP-' . Str::uuid()->toString();
+        $validated['sku'] = $tempSku;
+
+        $product = Product::create($validated);
+
+        $productId = $product->id;
+        $paddedId = str_pad($productId, 6, '0', STR_PAD_LEFT);
+        $finalSku = 'P-' . $paddedId;
+        $product->update(['sku' => $finalSku]);
+
+        return redirect()
+            ->route('products.index')
+            ->with('flash.success', 'Product created successfully.');
     }
-    $validated['multi_images'] = $multiImagePaths;
 
-    // 4. SKU Generation (Unchanged)
-    $tempSku = 'TEMP-' . Str::uuid()->toString();
-    $validated['sku'] = $tempSku;
+    public function update(Request $request, Product $product)
+    {
+        // ✅ Validate normal fields (no files yet)
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'barcode' => ['nullable', 'string', 'max:100', Rule::unique('products')->ignore($product->id)],
+            'category_id' => 'required|exists:categories,id',
+            'brand_id' => 'required|exists:brands,id',
+            'unit_id' => 'required|exists:units,id',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'retail_price' => 'required|numeric|min:0',
+            'special_price' => 'nullable|numeric|min:0',
+            'buying_price' => 'required|numeric|min:0',
 
-    $product = Product::create($validated);
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'weight' => 'nullable|numeric|min:0',
 
-    $productId = $product->id;
-    $paddedId = str_pad($productId, 6, '0', STR_PAD_LEFT);
-    $finalSku = 'P-' . $paddedId;
-    $product->update(['sku' => $finalSku]);
+            'colors' => 'nullable|array',
+            'description' => 'nullable|string',
 
-    return redirect()
-        ->route('products.index')
-        ->with('flash.success', 'Product created successfully.');
-}
+            'is_active' => 'boolean',
+            'is_purchasable' => 'boolean',
 
-    /**
-     * Update the specified resource in storage.
-     */
-    // In ProductController.php inside the update(Request $request, Product $product) method:
+            // ✅ our real file inputs
+            'main_image' => 'nullable|image|max:2048',
+            'multi_images' => 'nullable|array',
+            'multi_images.*' => 'nullable|image|max:2048',
 
+            // ✅ metadata from frontend
+            'main_image_cleared' => 'boolean',
+            'existing_multi_images' => 'nullable|array',
+        ]);
 
+        // =========================================================
+        // ✅ MAIN IMAGE HANDLING
+        // =========================================================
+        $mainImage = $product->main_image;
 
-// app/Http/Controllers/ProductController.php
+        // delete + replace
+        if ($request->hasFile('main_image')) {
+            if ($mainImage && Storage::disk('public')->exists($mainImage)) {
+                Storage::disk('public')->delete($mainImage);
+            }
 
-// In app/Http/Controllers/ProductController.php (FINAL FIX FOR NO UPDATE)
-
-// In app/Http/Controllers/ProductController.php - Replace update method
-
-public function update(Request $request, Product $product)
-{
-    // ✅ Validate normal fields (no files yet)
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'barcode' => ['nullable', 'string', 'max:100', Rule::unique('products')->ignore($product->id)],
-        'category_id' => 'required|exists:categories,id',
-        'brand_id' => 'required|exists:brands,id',
-        'unit_id' => 'required|exists:units,id',
-        'supplier_id' => 'required|exists:suppliers,id',
-        'retail_price' => 'required|numeric|min:0',
-        'special_price' => 'nullable|numeric|min:0',
-        'buying_price' => 'required|numeric|min:0',
-
-        'wholesale_price' => 'nullable|numeric|min:0',
-        'discount' => 'nullable|numeric|min:0',
-        'weight' => 'nullable|numeric|min:0',
-
-        'colors' => 'nullable|array',
-        'description' => 'nullable|string',
-
-        'is_active' => 'boolean',
-        'is_purchasable' => 'boolean',
-
-        // ✅ our real file inputs
-        'main_image' => 'nullable|image|max:2048',
-        'multi_images' => 'nullable|array',
-        'multi_images.*' => 'nullable|image|max:2048',
-
-        // ✅ metadata from frontend
-        'main_image_cleared' => 'boolean',
-        'existing_multi_images' => 'nullable|array',
-    ]);
-
-    // =========================================================
-    // ✅ MAIN IMAGE HANDLING
-    // =========================================================
-    $mainImage = $product->main_image;
-
-    // delete + replace
-    if ($request->hasFile('main_image')) {
-        if ($mainImage && Storage::disk('public')->exists($mainImage)) {
-            Storage::disk('public')->delete($mainImage);
+            $mainImage = $request->file('main_image')->store('products/main', 'public');
         }
 
-        $mainImage = $request->file('main_image')->store('products/main', 'public');
-    }
+        // just delete existing (no new upload)
+        elseif ($request->boolean('main_image_cleared')) {
 
-    // just delete existing (no new upload)
-    elseif ($request->boolean('main_image_cleared')) {
+            if ($mainImage && Storage::disk('public')->exists($mainImage)) {
+                Storage::disk('public')->delete($mainImage);
+            }
 
-        if ($mainImage && Storage::disk('public')->exists($mainImage)) {
-            Storage::disk('public')->delete($mainImage);
+            $mainImage = null;
         }
 
-        $mainImage = null;
-    }
+        // =========================================================
+        // ✅ MULTI IMAGE HANDLING
+        // =========================================================
 
-    // =========================================================
-    // ✅ MULTI IMAGE HANDLING
-    // =========================================================
+        $finalMulti = [];
 
-    $finalMulti = [];
-
-    // keep existing images from frontend
-    if ($request->filled('existing_multi_images')) {
-        foreach ($request->existing_multi_images as $path) {
-            $clean = str_replace('storage/', '', ltrim($path, '/'));
-            $finalMulti[] = $clean;
-        }
-    }
-
-    // delete removed images
-    $original = $product->multi_images ?? [];
-
-    foreach ($original as $existing) {
-        if (!in_array($existing, $finalMulti)) {
-            if (Storage::disk('public')->exists($existing)) {
-                Storage::disk('public')->delete($existing);
+        // keep existing images from frontend
+        if ($request->filled('existing_multi_images')) {
+            foreach ($request->existing_multi_images as $path) {
+                $clean = str_replace('storage/', '', ltrim($path, '/'));
+                $finalMulti[] = $clean;
             }
         }
-    }
 
-    // add new uploaded images
-    if ($request->hasFile('multi_images')) {
-        foreach ($request->file('multi_images') as $file) {
-            $finalMulti[] = $file->store('products/multi', 'public');
+        // delete removed images
+        $original = $product->multi_images ?? [];
+
+        foreach ($original as $existing) {
+            if (!in_array($existing, $finalMulti)) {
+                if (Storage::disk('public')->exists($existing)) {
+                    Storage::disk('public')->delete($existing);
+                }
+            }
         }
+
+        // add new uploaded images
+        if ($request->hasFile('multi_images')) {
+            foreach ($request->file('multi_images') as $file) {
+                $finalMulti[] = $file->store('products/multi', 'public');
+            }
+        }
+
+        // =========================================================
+        // ✅ FINAL UPDATE
+        // =========================================================
+        $validated['main_image'] = $mainImage;
+        $validated['multi_images'] = $finalMulti;
+
+        $validated['slug'] = Str::slug($validated['name']);
+
+        $product->update($validated);
+
+        return back()->with('success', 'Product updated successfully.');
     }
 
-    // =========================================================
-    // ✅ FINAL UPDATE
-    // =========================================================
-    $validated['main_image'] = $mainImage;
-    $validated['multi_images'] = $finalMulti;
-
-    $validated['slug'] = Str::slug($validated['name']);
-
-    $product->update($validated);
-
-    return back()->with('success', 'Product updated successfully.');
-}
-
-
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Product $product)
     {
         // Delete main image
@@ -348,9 +327,6 @@ public function update(Request $request, Product $product)
         return redirect()->back()->with('success', 'Product deleted successfully');
     }
 
-    /**
-     * Handle bulk deletion, including associated files.
-     */
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids', []);
@@ -393,13 +369,19 @@ public function update(Request $request, Product $product)
      */
     public function exportSinglePdf(Product $product)
     {
-        // Load the relationships for the PDF view
+        // 1. Load Product Relations
         $product->load(['category', 'brand', 'unit', 'supplier']);
 
-        $pdf = Pdf::loadView('products.product-single', compact('product'))
+        // 🟢 2. Fetch Company Context (Dynamic Header/Logo)
+        $company = \App\Models\CompanySetting::where('is_default', true)->first();
+
+        // Fallback to Store context
+        $store = auth()->user()->store ?? \App\Models\Store::first();
+
+        $pdf = Pdf::loadView('products.product-single', compact('product', 'company', 'store'))
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download("product_{$product->id}.pdf");
+        return $pdf->download("Product_{$product->sku}.pdf");
     }
 
     /**
@@ -444,13 +426,24 @@ public function update(Request $request, Product $product)
     public function bulkExportPDF(Request $request)
     {
         $ids = explode(',', $request->input('ids', ''));
-        $products = Product::whereIn('id', $ids)->with(['category', 'brand', 'unit', 'supplier'])->get();
+
+        // 1. Fetch Data
+        $products = Product::whereIn('id', $ids)
+            ->with(['category', 'brand', 'unit', 'supplier'])
+            ->get();
 
         if ($products->isEmpty()) {
             return back()->with('error', 'No products selected for export.');
         }
 
-        $pdf = Pdf::loadView('products.products-bulk-pdf', compact('products'))
+        // 🟢 2. Fetch Company Settings (Dynamic Header)
+        $company = \App\Models\CompanySetting::where('is_default', true)->first();
+
+        // Fallback to Store context if no company profile
+        $store = auth()->user()->store ?? \App\Models\Store::first();
+
+        // 3. Generate PDF
+        $pdf = Pdf::loadView('products.products-bulk-pdf', compact('products', 'company', 'store'))
             ->setPaper('a4', 'portrait');
 
         return $pdf->download('products_export.pdf');
@@ -508,17 +501,40 @@ public function update(Request $request, Product $product)
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Headers
+        // 🟢 HEADERS: Organized logically (Name -> Prices -> Relations -> Details)
         $sheet->setCellValue('A1', 'name');
-        $sheet->setCellValue('B1', 'retail_price');
-        $sheet->setCellValue('C1', 'buying_price');
-        $sheet->setCellValue('D1', 'category_name'); // Need names for import lookup
-        $sheet->setCellValue('E1', 'brand_name');
-        $sheet->setCellValue('F1', 'supplier_name');
-        $sheet->setCellValue('G1', 'unit_name');
-        $sheet->setCellValue('H1', 'description');
-        $sheet->setCellValue('I1', 'special_price');
-        $sheet->setCellValue('J1', 'wholesale_price');
+
+        // --- Price Group ---
+        $sheet->setCellValue('B1', 'buying_price');
+        $sheet->setCellValue('C1', 'retail_price');
+        $sheet->setCellValue('D1', 'wholesale_price');
+        $sheet->setCellValue('E1', 'special_price');
+
+        // --- Relations Group ---
+        $sheet->setCellValue('F1', 'category_name');
+        $sheet->setCellValue('G1', 'brand_name');
+        $sheet->setCellValue('H1', 'supplier_name');
+        $sheet->setCellValue('I1', 'unit_name');
+
+        // --- Details ---
+        $sheet->setCellValue('J1', 'description');
+
+        // 🟢 UX IMPROVEMENT: Add a Sample Row so users know what to type
+        $sheet->setCellValue('A2', 'Sample Product');
+        $sheet->setCellValue('B2', '1000'); // Buying
+        $sheet->setCellValue('C2', '1500'); // Retail
+        $sheet->setCellValue('D2', '1400'); // Wholesale
+        $sheet->setCellValue('E2', '1350'); // Special
+        $sheet->setCellValue('F2', 'Electronics');
+        $sheet->setCellValue('G2', 'Samsung');
+        $sheet->setCellValue('H2', 'Tech Supplier Ltd');
+        $sheet->setCellValue('I2', 'Pcs');
+        $sheet->setCellValue('J2', 'Optional product description');
+
+        // 🟢 FORMATTING: Auto-size columns A through J
+        foreach (range('A', 'J') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
         // Output file
         $writer = new Xlsx($spreadsheet);
@@ -539,190 +555,217 @@ public function update(Request $request, Product $product)
 /**
  * Handle bulk import of products.
  */
-// app/Http/Controllers/ProductController.php
 
-// app/Http/Controllers/ProductController.php
 
-// app/Http/Controllers/ProductController.php
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv|max:4096',
+        ]);
 
-public function import(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,csv|max:4096',
-    ]);
+        $file = $request->file('file');
+        $errors = [];
+        $GLOBALS['imported_count'] = 0;
 
-    $file = $request->file('file');
-    $errors = [];
+        // 1. Cache Lookups
+        $categories = \App\Models\Category::all()->keyBy(fn ($c) => \Illuminate\Support\Str::lower($c->name));
+        $brands     = \App\Models\Brand::all()->keyBy(fn ($b) => \Illuminate\Support\Str::lower($b->name));
+        $units      = \App\Models\Unit::all()->keyBy(fn ($u) => \Illuminate\Support\Str::lower($u->name));
+        $suppliers  = \App\Models\Supplier::all()->keyBy(fn ($s) => \Illuminate\Support\Str::lower($s->name));
 
-    // 🟢 CRITICAL FIX: Initialize global variable for counting successes
-    $GLOBALS['imported_count'] = 0;
+        // 🟢 2. AUTO-CREATE DEFAULTS (Fixed)
 
-    // 1. Cache Lookups
-    $categories = Category::all()->keyBy(fn ($c) => Str::lower($c->name));
-    $brands     = Brand::all()->keyBy(fn ($b) => Str::lower($b->name));
-    $units      = Unit::all()->keyBy(fn ($u) => Str::lower($u->name));
-    $suppliers  = Supplier::all()->keyBy(fn ($s) => Str::lower($s->name));
-
-    // 2. Determine Fallback IDs (Based on your "General" and "Pieces" entries)
-    // We use 'get' on the keyed collection to find the ID of the fallback names.
-    $defaultCategory = $categories->get('general')?->id;
-    $defaultBrand    = $brands->get('general')?->id;
-    $defaultSupplier = $suppliers->get('general')?->id;
-    $defaultUnit     = $units->get('pieces')?->id; // Using 'pieces' as the fallback name
-
-    // 🛑 Final Safety Check: If any required default is missing, halt the import
-    if (!$defaultUnit || !$defaultCategory || !$defaultBrand || !$defaultSupplier) {
-        $missing = [];
-        if (!$defaultUnit) $missing[] = 'Unit ("Pieces")';
-        if (!$defaultCategory) $missing[] = 'Category ("General")';
-        if (!$defaultBrand) $missing[] = 'Brand ("General")';
-        if (!$defaultSupplier) $missing[] = 'Supplier ("General")';
-
-        $errorMsg = 'Import failed. Missing required fallback entities in DB: ' . implode(', ', $missing) . '. Please create them.';
-        Log::error("Import Setup Failure: " . $errorMsg);
-        return back()->with('error', $errorMsg);
-    }
-
-    DB::beginTransaction();
-    try {
-        Excel::import(new class($categories, $brands, $units, $suppliers, $errors) implements \Maatwebsite\Excel\Concerns\ToCollection {
-
-            // ... (Properties and __construct remain the same) ...
-            private $categories; private $brands; private $units; private $suppliers; private $errors;
-
-            public function __construct($categories, $brands, $units, $suppliers, &$errors)
-            {
-                $this->categories = $categories;
-                $this->brands = $brands;
-                $this->units = $units;
-                $this->suppliers = $suppliers;
-                $this->errors = &$errors;
-                // Note: Fallback IDs are passed via closure scope, not __construct
-            }
-
-            public function collection(\Illuminate\Support\Collection $rows)
-            {
-                // Accessing the fallback IDs from the parent function's scope
-                $defaultUnit = $this->units->get('pieces')?->id;
-                $defaultCategory = $this->categories->get('general')?->id;
-                $defaultBrand = $this->brands->get('general')?->id;
-                $defaultSupplier = $this->suppliers->get('general')?->id;
-
-                foreach ($rows->skip(1) as $rowIndex => $row) {
-                    $data = [
-                        // ... (data mapping remains the same) ...
-                        'name'              => trim($row[0] ?? ''),
-                        'retail_price'      => $row[1] ?? 0,
-                        'buying_price'      => $row[2] ?? 0,
-                        'category_name'     => trim($row[3] ?? ''),
-                        'brand_name'        => trim($row[4] ?? ''),
-                        'supplier_name'     => trim($row[5] ?? ''),
-                        'unit_name'         => trim($row[6] ?? ''),
-                        'description'       => trim($row[7] ?? ''),
-                        'special_price'     => $row[8] ?? 0,
-                        'wholesale_price'   => $row[9] ?? 0,
-                    ];
-
-                    $rowNum = $rowIndex + 1;
-                    $rowErrors = [];
-
-                    // --- 2. Validation and Lookup ---
-                    if (empty($data['name'])) {
-                        $rowErrors[] = 'Product name is required.';
-                    }
-
-                    $categoryId = $this->lookupId($this->categories, $data['category_name']);
-                    $brandId    = $this->lookupId($this->brands, $data['brand_name']);
-                    $unitId     = $this->lookupId($this->units, $data['unit_name']);
-                    $supplierId = $this->lookupId($this->suppliers, $data['supplier_name']);
-
-                    // The lookup error checks are now purely informational, as the DB fix is below.
-                    if (!empty($data['category_name']) && !$categoryId) $rowErrors[] = "Category '{$data['category_name']}' not found.";
-                    if (!empty($data['brand_name']) && !$brandId)    $rowErrors[] = "Brand '{$data['brand_name']}' not found.";
-                    if (!empty($data['unit_name']) && !$unitId)     $rowErrors[] = "Unit '{$data['unit_name']}' not found.";
-                    if (!empty($data['supplier_name']) && !$supplierId) $rowErrors[] = "Supplier '{$data['supplier_name']}' not found.";
-
-                    // If we have lookup errors, continue but don't skip creation yet.
-
-                    // --- 3. Product Creation ---
-                    try {
-                        // 🛑 THE FIX: Use the default ID if the lookup failed or was blank.
-                        // Based on the error, unit_id is NOT NULL. Let's assume the others are too,
-                        // as per your stated intent of using Brands as the guide for CRUDs.
-                        $product = Product::create([
-                            'name'              => $data['name'],
-                            'slug'              => Str::slug($data['name']),
-                            'barcode'           => null,
-
-                            // Apply Fallback IDs for required NOT NULL columns
-                            'category_id'       => $categoryId ?? $defaultCategory,
-                            'brand_id'          => $brandId ?? $defaultBrand,
-                            'unit_id'           => $unitId ?? $defaultUnit,
-                            'supplier_id'       => $supplierId ?? $defaultSupplier,
-
-                            // Numerical values
-                            'retail_price'      => max(0, (float) $data['retail_price']),
-                            'buying_price'      => max(0, (float) $data['buying_price']),
-                            'special_price'     => max(0, (float) $data['special_price']),
-                            'wholesale_price'   => max(0, (float) $data['wholesale_price']),
-                            'discount'          => 0,
-                            'weight'            => 0,
-
-                            // String/Array values
-                            'description'       => $data['description'] ?: 'Not provided',
-                            'colors'            => [],
-                            'is_active'         => true,
-                            'is_purchasable'    => true,
-                        ]);
-
-                        // Final SKU generation and count update
-                        $paddedId = str_pad($product->id, 6, '0', STR_PAD_LEFT);
-                        $product->update(['sku' => 'P-' . $paddedId]);
-                        $GLOBALS['imported_count']++;
-
-                    } catch (\Exception $e) {
-                        // This catch is now purely for *unexpected* DB errors,
-                        // as we handled the expected NOT NULL errors with default IDs.
-                        $rowErrors[] = "Database Error: " . Str::limit($e->getMessage(), 100);
-                        Log::error("Product Import DB Error on row {$rowNum}: " . $e->getMessage());
-                    }
-
-                    // Collect any row errors (lookup failures or unexpected DB errors)
-                    if (!empty($rowErrors)) {
-                        $this->errors[$rowNum] = $rowErrors;
-                    }
-                }
-            }
-
-            // Helper function for ID lookup
-            private function lookupId($collection, $name)
-            {
-                if (empty($name)) return null;
-                return $collection->get(Str::lower($name))?->id;
-            }
-        }, $file);
-
-        // 🟢 Retrieve and clean up global variable
-        $imported = $GLOBALS['imported_count'];
-        unset($GLOBALS['imported_count']);
-
-        if (!empty($errors)) {
-            // Commit successful partial imports before returning error summary
-            DB::commit();
-            $errorSummary = "Successfully imported {$imported} product(s). Failed to import " . count($errors) . " row(s).";
-            Log::error("Product Import Failure Details: " . json_encode($errors));
-            return back()->with('error', $errorSummary . " Check the application logs for detailed errors.");
+        // A. Category ("General")
+        if (!$categories->has('general')) {
+            $genCat = \App\Models\Category::create([
+                'name' => 'General',
+                'slug' => 'general',
+                'description' => 'Default Category'
+            ]);
+            $categories->put('general', $genCat);
         }
 
-        // 🟢 Final success commit
-        DB::commit();
-        return back()->with('success', "{$imported} product(s) imported successfully.");
+        // B. Brand ("General")
+        if (!$brands->has('general')) {
+            $genBrand = \App\Models\Brand::create([
+                'name' => 'General',
+                'slug' => 'general',
+                'description' => 'Default Brand'
+            ]);
+            $brands->put('general', $genBrand);
+        }
 
-    } catch (\Exception $e) {
-        // Catch critical errors (e.g., file not found, transaction issue)
-        DB::rollBack();
-        Log::error("Critical Product Import Error: " . $e->getMessage());
-        return back()->with('error', 'A critical error occurred during import. Check logs for details.');
+        // C. Unit ("Pieces")
+        if (!$units->has('pieces')) {
+            $pcsUnit = \App\Models\Unit::create([
+                'name' => 'Pieces',
+                'slug' => 'pieces',
+                'short_name' => 'Pcs'
+            ]);
+            $units->put('pieces', $pcsUnit);
+        }
+
+        // D. Supplier ("General")
+        if (!$suppliers->has('general')) {
+            $genSup = \App\Models\Supplier::create([
+                'name' => 'General',
+                'slug' => 'general', // 🟢 ADDED THIS TO FIX THE ERROR
+                'contact_name' => 'N/A',
+                'email' => 'no-reply@general.com',
+                'phone' => '0000000000',
+            ]);
+            $suppliers->put('general', $genSup);
+        }
+
+        // 3. Set Fallback IDs (Guaranteed to exist now)
+        $defaultCategory = $categories->get('general')->id;
+        $defaultBrand    = $brands->get('general')->id;
+        $defaultSupplier = $suppliers->get('general')->id;
+        $defaultUnit     = $units->get('pieces')->id;
+
+        DB::beginTransaction();
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new class($categories, $brands, $units, $suppliers, $errors) implements \Maatwebsite\Excel\Concerns\ToCollection {
+
+                private $categories; private $brands; private $units; private $suppliers; private $errors;
+
+                public function __construct($categories, $brands, $units, $suppliers, &$errors)
+                {
+                    $this->categories = $categories;
+                    $this->brands = $brands;
+                    $this->units = $units;
+                    $this->suppliers = $suppliers;
+                    $this->errors = &$errors;
+                }
+
+                public function collection(\Illuminate\Support\Collection $rows)
+                {
+                    $defaultUnit = $this->units->get('pieces')->id;
+                    $defaultCategory = $this->categories->get('general')->id;
+                    $defaultBrand = $this->brands->get('general')->id;
+                    $defaultSupplier = $this->suppliers->get('general')->id;
+
+                    foreach ($rows->skip(1) as $rowIndex => $row) {
+                        // 1. Parse Data
+                        $originalName = trim($row[0] ?? '');
+                        if (empty($originalName)) continue;
+
+                        $data = [
+                            'retail_price'      => $row[1] ?? 0,
+                            'buying_price'      => $row[2] ?? 0,
+                            'wholesale_price'   => $row[3] ?? 0,
+                            'special_price'     => $row[4] ?? 0,
+                            'category_name'     => trim($row[5] ?? ''),
+                            'brand_name'        => trim($row[6] ?? ''),
+                            'supplier_name'     => trim($row[7] ?? ''),
+                            'unit_name'         => trim($row[8] ?? ''),
+                            'description'       => trim($row[9] ?? ''),
+                        ];
+
+                        $rowNum = $rowIndex + 1;
+                        $rowErrors = [];
+
+                        // 2. Smart Lookup & Create
+                        $categoryId = $this->getIdOrCreate($this->categories, \App\Models\Category::class, $data['category_name'], $defaultCategory);
+                        $brandId    = $this->getIdOrCreate($this->brands, \App\Models\Brand::class, $data['brand_name'], $defaultBrand);
+
+                        $unitId     = $this->lookupId($this->units, $data['unit_name']) ?? $defaultUnit;
+                        $supplierId = $this->lookupId($this->suppliers, $data['supplier_name']) ?? $defaultSupplier;
+
+                        // 3. Duplicate Handling
+                        $name = $originalName;
+                        $slug = \Illuminate\Support\Str::slug($name);
+                        $counter = 1;
+
+                        while (\App\Models\Product::where('name', $name)->orWhere('slug', $slug)->exists()) {
+                            $name = "{$originalName} (duplicate {$counter})";
+                            $slug = \Illuminate\Support\Str::slug($name);
+                            $counter++;
+                        }
+
+                        // 4. Create Product
+                        try {
+                            $product = \App\Models\Product::create([
+                                'name'              => $name,
+                                'slug'              => $slug,
+                                'barcode'           => null,
+                                'category_id'       => $categoryId,
+                                'brand_id'          => $brandId,
+                                'unit_id'           => $unitId,
+                                'supplier_id'       => $supplierId,
+                                'retail_price'      => max(0, (float) $data['retail_price']),
+                                'buying_price'      => max(0, (float) $data['buying_price']),
+                                'special_price'     => max(0, (float) $data['special_price']),
+                                'wholesale_price'   => max(0, (float) $data['wholesale_price']),
+                                'discount'          => 0,
+                                'weight'            => 0,
+                                'description'       => $data['description'] ?: 'Not provided',
+                                'colors'            => [],
+                                'is_active'         => true,
+                                'is_purchasable'    => true,
+                            ]);
+
+                            $paddedId = str_pad($product->id, 6, '0', STR_PAD_LEFT);
+                            $product->update(['sku' => 'P-' . $paddedId]);
+
+                            $GLOBALS['imported_count']++;
+
+                        } catch (\Exception $e) {
+                            $rowErrors[] = "Database Error: " . \Illuminate\Support\Str::limit($e->getMessage(), 100);
+                            Log::error("Product Import DB Error on row {$rowNum}: " . $e->getMessage());
+                        }
+
+                        if (!empty($rowErrors)) {
+                            $this->errors[$rowNum] = $rowErrors;
+                        }
+                    }
+                }
+
+                private function lookupId($collection, $name)
+                {
+                    if (empty($name)) return null;
+                    return $collection->get(\Illuminate\Support\Str::lower($name))?->id;
+                }
+
+                private function getIdOrCreate($collection, $modelClass, $name, $defaultId)
+                {
+                    if (empty($name)) return $defaultId;
+                    $key = \Illuminate\Support\Str::lower($name);
+                    $existing = $collection->get($key);
+                    if ($existing) return $existing->id;
+
+                    try {
+                        $newItem = $modelClass::create([
+                            'name' => $name,
+                            'slug' => \Illuminate\Support\Str::slug($name) . '-' . uniqid(),
+                            'description' => 'Auto-created during Product Import',
+                            'created_at' => now(),
+                        ]);
+                        $collection->put($key, $newItem);
+                        return $newItem->id;
+                    } catch (\Exception $e) {
+                        return $defaultId;
+                    }
+                }
+
+            }, $file);
+
+            $imported = $GLOBALS['imported_count'];
+            unset($GLOBALS['imported_count']);
+
+            if (!empty($errors)) {
+                DB::commit();
+                $errorSummary = "Imported {$imported} products. Failed on " . count($errors) . " rows.";
+                return back()->with('error', $errorSummary . " Check logs.");
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+            return back()->with('success', "{$imported} product(s) imported successfully.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Critical Product Import Error: " . $e->getMessage());
+            return back()->with('error', 'Critical error during import: ' . $e->getMessage());
+        }
     }
-}
 }

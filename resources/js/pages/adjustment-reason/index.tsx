@@ -111,17 +111,17 @@ export default function Index({ reasons, filters, totalCount, filteredCount }: I
   // 🧹 CLEANUP: Check permission only if we need it for a custom handler (like openModal)
   const canCreate = hasPermission(permissions, [CREATE_PERMISSION_SLUG]);
 
-  const MODULE_SLUG = 'adjustmentreason'; // Lowercase singular module name
+  const MODULE_SLUG = 'adjustment-reason'; // Lowercase singular module name
   const BULK_DELETE_SLUG = `bulk-delete-${MODULE_SLUG}`;
 
   // 🟢 CRITICAL CHANGE: Split bulk export into two unique slugs
   const BULK_EXPORT_PDF_SLUG = `bulk-export-pdf-${MODULE_SLUG}`;
   const BULK_EXPORT_EXCEL_SLUG = `bulk-export-excel-${MODULE_SLUG}`;
 
-  console.log('Index Page Permissions Array:', permissions);
-console.log('Bulk Export PDF Slug:', BULK_EXPORT_PDF_SLUG);
-console.log('Bulk Export Excel Slug:', BULK_EXPORT_EXCEL_SLUG);
-console.log('Bulk Delete Slug:', BULK_DELETE_SLUG);
+    console.log('Index Page Permissions Array:', permissions);
+    console.log('Bulk Export PDF Slug:', BULK_EXPORT_PDF_SLUG);
+    console.log('Bulk Export Excel Slug:', BULK_EXPORT_EXCEL_SLUG);
+    console.log('Bulk Delete Slug:', BULK_DELETE_SLUG);
 
 
   // --- STATE ---

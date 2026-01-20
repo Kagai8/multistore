@@ -86,7 +86,7 @@ interface FilterProps {
 
 // 🟢 Lookup data provided by the controller
 interface LookupData {
-    products: Array<{ id: number; name: string }>;
+    products: Array<{ id: number; name: string; supplier_id?: number }>;
     suppliers: Array<{ id: number; name: string }>;
     // CRITICAL: We pass the single warehouse store object here
     warehouseStore: { id: number; name: string } | null;
@@ -141,21 +141,32 @@ export default function Index({ entries, filters, totalCount, filteredCount, loo
 
   // 🟢 Centralized Data Handler - Simpler as no files
 const handleSetData = (key: string, value: any) => {
-
-    const isNumericField = [
-        'quantity_received',
-    ].includes(key);
+    let finalValue = value;
 
     // 1. Handle Numeric Fields
-    if (isNumericField) {
-        const numericValue = value === '' || value === null ? 0 : Number(value);
-        setData(key as 'quantity_received', numericValue);
+    if (['quantity_received'].includes(key)) {
+        finalValue = value === '' || value === null ? 0 : Number(value);
     }
-    // 2. For all other fields (foreign keys, text, etc.)
-    else {
-        setData(key as keyof NewStockEntryForm, value);
+
+    // 🟢 2. DEPENDENCY LOGIC: Product -> Supplier Auto-fill
+    // If the user selects a product, we look it up to see if it has a linked supplier
+    if (key === 'product_id') {
+        const selectedProduct = lookupData.products.find(p => String(p.id) === String(finalValue));
+
+        // If product found AND has a supplier_id, update BOTH the product_id AND supplier_id
+        if (selectedProduct && selectedProduct.supplier_id) {
+            setData((prevData) => ({
+                ...prevData,
+                [key]: finalValue,
+                supplier_id: String(selectedProduct.supplier_id) // Auto-fill Supplier
+            }));
+            return; // Stop here, because we just updated the state manually
+        }
     }
-};
+
+    // 3. Default behavior for all other fields
+    setData(key as keyof NewStockEntryForm, finalValue);
+  };
 
   // Handle flash messages
   useEffect(() => {

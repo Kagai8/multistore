@@ -28,7 +28,7 @@ class NewStockEntryController extends Controller
         $search = $request->input('search');
         $perPage = (int) ($request->input('perPage', 10));
 
-        $query = NewStockEntry::with(['product', 'supplier', 'store', 'user']);
+        $query = \App\Models\NewStockEntry::with(['product', 'supplier', 'store', 'user']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -38,14 +38,18 @@ class NewStockEntryController extends Controller
             });
         }
 
-        $products = Product::all(['id', 'name', 'sku']);
-        $suppliers = Supplier::all(['id', 'name']);
-        $warehouseStore = Store::where('type', 'warehouse')->first(['id', 'name']);
+        // 🟢 THE FIX: Add 'supplier_id' here so the frontend can read it!
+        $products = \App\Models\Product::select('id', 'name', 'sku', 'supplier_id') // <--- Added supplier_id
+            ->where('is_active', true) // Optional: usually you only stock active items
+            ->get();
 
-        $totalCount = NewStockEntry::count();
+        $suppliers = \App\Models\Supplier::select('id', 'name')->get();
+        $warehouseStore = \App\Models\Store::where('type', 'warehouse')->first(['id', 'name']);
+
+        $totalCount = \App\Models\NewStockEntry::count();
         $filteredCount = $query->count();
 
-        $transform = function (NewStockEntry $entry) {
+        $transform = function ($entry) {
             return [
                 'id' => $entry->id,
                 'invoice_number' => $entry->invoice_number,
@@ -67,7 +71,7 @@ class NewStockEntryController extends Controller
         $entries = $query->latest()->paginate($perPage)->withQueryString();
         $entries->getCollection()->transform($transform);
 
-        return Inertia::render('newstockentries/index', [
+        return \Inertia\Inertia::render('newstockentries/index', [
             'entries' => $entries,
             'filters' => $request->only(['search', 'perPage']),
             'totalCount' => $totalCount,
@@ -99,6 +103,13 @@ class NewStockEntryController extends Controller
             'status' => NewStockEntry::STATUS_PENDING,
             'quantity_transferred' => 0,
         ]);
+
+        $this->notifyStore(
+            $validated['store_id'],
+            "New Delivery Logged",
+            "Invoice #{$validated['invoice_number']} logged. Waiting for verification.",
+            route('new-stock-entries.index')
+        );
 
         return redirect()->back()->with('flash.success', 'New stock entry recorded successfully. Status: PENDING.');
     }
@@ -186,6 +197,14 @@ class NewStockEntryController extends Controller
                 // 🟢 FIX 2: Use STATUS_COMPLETED to signify it is now posted/live.
                 $newStockEntry->status = NewStockEntry::STATUS_COMPLETED;
                 $newStockEntry->save();
+
+                // 🟢 NOTIFY STORE (Stock Added)
+                $this->notifyStore(
+                    $newStockEntry->store_id,
+                    "Stock Confirmed",
+                    "{$quantity} units of {$newStockEntry->product->name} added to inventory.",
+                    route('stocks.index') // Link to the stock list to see the new levels
+                );
             });
 
             return redirect()->back()->with('flash.success', 'Stock successfully posted to live inventory and ready for transfer.');

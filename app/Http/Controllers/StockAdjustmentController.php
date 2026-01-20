@@ -18,59 +18,65 @@ class StockAdjustmentController extends Controller
      * Display a listing of Stock Adjustment history (Audit Trail).
      */
     public function index(Request $request)
-{
-    $search = $request->input('search');
-    $perPage = (int) ($request->input('perPage', 10));
+    {
+        $search = $request->input('search');
+        $perPage = (int) ($request->input('perPage', 10));
 
-    // 🟢 1. GET DATE FILTER INPUTS
-    $dateFrom = $request->input('dateFrom');
-    $dateTo = $request->input('dateTo');
+        $dateFrom = $request->input('dateFrom');
+        $dateTo = $request->input('dateTo');
 
-    // Base query with relationships
-    $query = StockAdjustment::with(['product', 'store', 'user', 'adjustmentReason']);
+        // 🟢 1. GET TYPE INPUT ('in' or 'out')
+        $type = $request->input('type');
 
-    // 🟢 2. APPLY DATE FILTERING LOGIC
-    if ($dateFrom) {
-        // Filter records where the date part of created_at is greater than or equal to dateFrom
-        $query->whereDate('created_at', '>=', $dateFrom);
+        // Base query with relationships
+        $query = StockAdjustment::with(['product', 'store', 'user', 'adjustmentReason']);
+
+        // Date Filtering Logic
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        // 🟢 2. APPLY TYPE FILTERING LOGIC
+        // This makes the "Only IN" and "Only OUT" buttons work
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('adjustmentReason', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $paginator = $query->latest()->paginate($perPage)->withQueryString();
+
+        $paginator->getCollection()->transform(fn (StockAdjustment $adjustment) => [
+            'id' => $adjustment->id,
+            'type' => $adjustment->type,
+            'quantity' => $adjustment->quantity,
+            'old_stock' => $adjustment->old_stock,
+            'new_stock' => $adjustment->new_stock,
+            'notes' => $adjustment->notes,
+            'reason' => $adjustment->adjustmentReason->name ?? 'N/A', // Added null safety
+            'product_name' => $adjustment->product->name ?? 'N/A',
+            'store_name' => $adjustment->store->name ?? 'N/A',
+            'adjusted_by' => $adjustment->user->name ?? 'N/A',
+            'created_at' => optional($adjustment->created_at)->toDateTimeString(),
+        ]);
+
+        return Inertia::render('stockadjustments/index', [
+            'adjustments' => $paginator,
+            // 🟢 3. INCLUDE 'type' IN RETURNED FILTERS
+            // This ensures the button stays highlighted (active) after the page reloads
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo', 'type']),
+        ]);
     }
-    if ($dateTo) {
-        // Filter records where the date part of created_at is less than or equal to dateTo
-        $query->whereDate('created_at', '<=', $dateTo);
-    }
-    // ------------------------------------
-
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            $q->orWhereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-              ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-              ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-              ->orWhereHas('adjustmentReason', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
-        });
-    }
-
-    $paginator = $query->latest()->paginate($perPage)->withQueryString();
-
-    $paginator->getCollection()->transform(fn (StockAdjustment $adjustment) => [
-        'id' => $adjustment->id,
-        'type' => $adjustment->type,
-        'quantity' => $adjustment->quantity,
-        'old_stock' => $adjustment->old_stock,
-        'new_stock' => $adjustment->new_stock,
-        'notes' => $adjustment->notes,
-        'reason' => $adjustment->adjustmentReason->name,
-        'product_name' => $adjustment->product->name,
-        'store_name' => $adjustment->store->name,
-        'adjusted_by' => $adjustment->user->name,
-        'created_at' => optional($adjustment->created_at)->toDateTimeString(),
-    ]);
-
-    return Inertia::render('stockadjustments/index', [
-        'adjustments' => $paginator,
-        // 🟢 3. INCLUDE FILTERS IN RETURN DATA
-        'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
-    ]);
-}
 
 
     /**

@@ -1,6 +1,7 @@
 // resources/js/components/AppSidebar.tsx
 import { Link, usePage } from '@inertiajs/react';
 import { dashboard } from '@/routes';
+import { route } from 'ziggy-js';
 import {
   LayoutGrid,
   Store as StoreIcon,
@@ -19,21 +20,28 @@ import {
   ArrowUpDown as ArrowUpDownIcon,
   ListCheck,
   ShieldCheck,
-  BookOpen,
-  Folder as FolderIcon,
   LogOut,
   Menu,
-  X,
   CreditCard,
+  FileText,
+  Wallet,
+  BarChart3,
+  Settings,
+  Monitor,
+  Banknote,
+  Building2, // 🟢 Imported for POS
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface NavItem {
   title: string;
   href?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon?: any;
   permission?: string;
   children?: NavItem[];
+  // 🟢 Optional: Highlight logic for special items
+  className?: string;
 }
 
 interface PermissionProps {
@@ -42,7 +50,16 @@ interface PermissionProps {
 }
 
 const masterNavItems: NavItem[] = [
-  { title: 'Dashboard', href: dashboard().url, icon: LayoutGrid },
+  { title: 'Dashboard', href: route('dashboard'), icon: LayoutGrid },
+
+  // 🟢 POS (Point of Sale) - Directly under Dashboard
+  {
+    title: 'POS Terminal',
+    href: '/pos',
+    icon: Monitor,
+    permission: 'access-pos'
+  },
+
   { title: 'Stores', href: '/stores', icon: StoreIcon, permission: 'access-stores' },
   { title: 'Customers', href: '/customers', icon: Users2, permission: 'access-customers' },
   { title: 'Suppliers', href: '/suppliers', icon: Package2, permission: 'access-suppliers' },
@@ -54,9 +71,10 @@ const masterNavItems: NavItem[] = [
       { title: 'Brands', href: '/brands', icon: Tag, permission: 'access-brands' },
       { title: 'Categories', href: '/categories', icon: Folder, permission: 'access-categories' },
       { title: 'Units', href: '/units', icon: Scale, permission: 'access-units' },
+      { title: 'Products', href: '/products', icon: Package, permission: 'access-products' },
     ],
   },
-  { title: 'Products', href: '/products', icon: Package, permission: 'access-products' },
+
   {
     title: 'Inventory Management',
     icon: WarehouseIcon,
@@ -75,6 +93,31 @@ const masterNavItems: NavItem[] = [
     permission: 'access-stock-transfers-module',
     children: [
       { title: 'Stock Transfers', href: '/stock-transfers', icon: ArrowLeftRightIcon, permission: 'access-stock-transfers' },
+        { title: 'Transfer Items', href: '/stock-transfer-items', icon: BarChart3, permission: 'access-stock-transfer-reports' },
+    ],
+  },
+  {
+     title: 'Finance Hub',
+     icon: CreditCard,
+     permission: 'access-finance',
+     children: [
+       { title: 'Invoices', href: '/invoices', icon: FileText, permission: 'access-invoices' },
+       { title: 'Quotations', href: '/quotations', icon: FileText, permission: 'access-quotations' },
+       { title: 'Sales', href: '/sales', icon: Package, permission: 'access-sales' },
+       { title: 'Sale Items', href: '/sale-items', icon: Package, permission: 'access-sale-items' },
+       { title: 'Payments History', href: '/payments', icon: Wallet, permission: 'access-payments' },
+        { title: 'Debts & Credits', href: '/debts', icon: CreditCard, permission: 'access-debts' },
+         { title: 'Outgoing Payments', href: '/payments-to-customers', icon: Banknote, permission: 'access-outgoing-payments' },
+        { title: 'POS Sessions', href: '/pos-sessions', icon: Monitor, permission: 'access-pos-reports' },
+     ],
+   },
+   {
+    title: 'Purchase Orders',
+    icon: FileText,
+    permission: 'access-purchase-orders-module',
+    children: [
+      { title: 'Purchase Orders', href: '/purchase-orders', icon: FileText, permission: 'access-purchase-orders' },
+        { title: 'Purchase Order Items', href: '/purchase-order-items', icon: BarChart3, permission: 'access-purchase-order-items' },
     ],
   },
   {
@@ -87,17 +130,15 @@ const masterNavItems: NavItem[] = [
       { title: 'Permissions', href: '/permissions', icon: ShieldCheck, permission: 'access-permissions' },
     ],
   },
-  // ✅ Example: Finance Hub (ready to uncomment when needed)
-  // {
-  //   title: 'Finance Hub',
-  //   icon: CreditCard,
-  //   permission: 'access-finance',
-  //   children: [
-  //     { title: 'Loans', href: '/loans', icon: FileText, permission: 'access-loans' },
-  //     { title: 'Payments', href: '/payments', icon: Wallet, permission: 'access-payments' },
-  //     { title: 'Reports', href: '/finance-reports', icon: BarChart3, permission: 'access-finance-reports' },
-  //   ],
-  // },
+   {
+     title: 'Settings Hub',
+     icon: Settings,
+     permission: 'access-settings',
+     children: [
+       { title: 'Payment Settings', href: '/settings/payments', icon: FileText, permission: 'access-payment-settings' },
+       { title: 'Company Settings', href: '/company-settings', icon: Building2, permission: 'access-company-settings' },
+     ],
+   },
 ];
 
 export function AppSidebar() {
@@ -239,24 +280,7 @@ export function AppSidebar() {
             <span>Logout</span>
           </button>
 
-          <a
-            href="https://github.com/laravel/react-starter-kit"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 flex items-center gap-2 px-2.5 py-1.5 text-xs text-gray-600 hover:text-orange-600 hover:bg-gray-50 rounded"
-          >
-            <FolderIcon className="h-3.5 w-3.5" />
-            <span>GitHub</span>
-          </a>
-          <a
-            href="https://laravel.com/docs/starter-kits#react"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-gray-600 hover:text-orange-600 hover:bg-gray-50 rounded"
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            <span>Docs</span>
-          </a>
+
         </div>
       </aside>
     </>
@@ -265,6 +289,7 @@ export function AppSidebar() {
 
 const LinkItem = ({ href, icon: Icon, label, active, onClick }: {
   href: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon?: any;
   label: string;
   active: boolean;

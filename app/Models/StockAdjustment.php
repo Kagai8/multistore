@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Scopes\StoreScope;
 
 class StockAdjustment extends Model
@@ -52,5 +53,10 @@ class StockAdjustment extends Model
     {
         // 🟢 Required Scope Registration
         static::addGlobalScope(new StoreScope);
+    }
+
+    public function reason(): BelongsTo
+    {
+        return $this->belongsTo(AdjustmentReason::class, 'adjustment_reason_id');
     }
 }
