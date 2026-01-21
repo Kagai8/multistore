@@ -1,7 +1,7 @@
 # 1. Start with PHP 8.3 and Apache
 FROM php:8.3-apache
 
-# 2. Install Linux Libraries (Postgres, Zip, Git, etc.)
+# 2. Install Linux Libraries
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
@@ -37,19 +37,15 @@ RUN npm run build
 # 9. Fix Permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 10. Configure Apache Root
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+# 🟢 FIX: Copy our custom Apache config (Replacing the broken default)
+COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 
-# 🟢 FIX 1: Enable .htaccess (Critical for Laravel Routing)
-RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+# 10. Handle Render's Dynamic Port
+# Render gives us a random port. We must update our config to listen on it.
+RUN sed -i 's/80/${PORT}/g' /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf
 
-# 11. Handle Render's Port
-RUN sed -i 's/80/${PORT}/g' /etc/apache2/ports.conf /etc/apache2/sites-available/*.conf
-
-# 12. Enable Rewrite Module
+# 11. Enable Rewrite Module (Required for Laravel)
 RUN a2enmod rewrite
 
-# 🟢 FIX 2: Auto-run Migrations & Seeds on Startup
+# 12. Startup Command (Migrate -> Seed -> Start)
 CMD ["bash", "-c", "php artisan migrate --force && (php artisan db:seed --force || true) && apache2-foreground"]
