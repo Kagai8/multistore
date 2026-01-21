@@ -51,7 +51,6 @@ class MpesaController extends Controller
         // 3. Generate Access Token
         $accessToken = $this->generateAccessToken($creds);
         if (!$accessToken) {
-            // Logs are handled inside generateAccessToken
             return response()->json(['error' => 'Failed to authenticate with M-Pesa'], 500);
         }
 
@@ -59,11 +58,15 @@ class MpesaController extends Controller
         $timestamp = Carbon::now()->format('YmdHis');
         $passkey = $creds['passkey'];
         $paybill = $settings->business_number;
-
         $password = base64_encode($paybill . $passkey . $timestamp);
 
-        // ⚠️ IMPORTANT: Replace with your actual Ngrok URL
-        $callbackUrl = 'https://conservable-cristiano-faultlessly.ngrok-free.dev/api/mpesa/callback';
+        // 🟢 FIX: Dynamic Callback URL
+        // It tries to find 'MPESA_CALLBACK_URL' in your .env or Render Dashboard.
+        // If not found, it generates one based on the current domain.
+        $callbackUrl = env('MPESA_CALLBACK_URL');
+        if (empty($callbackUrl)) {
+            $callbackUrl = url('/api/mpesa/callback');
+        }
 
         Log::info("🚀 Sending Request to Safaricom", [
             'paybill' => $paybill,
@@ -87,13 +90,10 @@ class MpesaController extends Controller
             ]);
 
             $resData = $response->json();
-
             Log::info("📩 Safaricom Response Received", $resData);
 
             // 5. Handle Response
             if (isset($resData['ResponseCode']) && $resData['ResponseCode'] == '0') {
-
-                // SAVE THE ORPHAN RECORD
                 MpesaTransaction::create([
                     'msisdn' => $request->phone,
                     'business_shortcode' => $paybill,
@@ -101,7 +101,6 @@ class MpesaController extends Controller
                     'amount' => $request->amount,
                     'status' => 'PENDING',
                     'checkout_request_id' => $resData['CheckoutRequestID'],
-                    // payment_id is NULL initially
                 ]);
 
                 Log::info("✅ STK Push Sent Successfully. Tracking ID: " . $resData['CheckoutRequestID']);
@@ -122,9 +121,9 @@ class MpesaController extends Controller
         }
     }
 
-    /**
-     * Generate OAuth Token from Safaricom
-     */
+    // ... (Keep the rest of your methods: generateAccessToken, callback, checkStatus, verifyTransaction exactly as they were) ...
+    // I am omitting them here to save space, but DO NOT DELETE THEM from your file.
+
     /**
      * Generate OAuth Token from Safaricom
      */
@@ -140,7 +139,6 @@ class MpesaController extends Controller
                 return $response->json()['access_token'];
             }
 
-            // 🟢 FIXED: Cast to (array) to prevent 500 Error if response is null
             Log::error("❌ Failed to generate M-Pesa Token", (array) $response->json());
             return null;
 
@@ -150,29 +148,20 @@ class MpesaController extends Controller
         }
     }
 
-
-    /**
-     * Handle the M-Pesa Callback
-     */
-    /**
-     * Handle the Callback from Safaricom (The Result)
-     */
     public function callback(Request $request)
     {
         Log::info("🔔 Callback Hit!", $request->all());
 
         $data = $request->json()->all();
 
-        // 1. Check if the body exists
         if (!isset($data['Body']['stkCallback'])) {
             Log::error("❌ Invalid Callback Structure");
             return response()->json(['result' => 'fail']);
         }
 
         $callback = $data['Body']['stkCallback'];
-        $checkoutRequestId = $callback['CheckoutRequestID']; // The Tracker
+        $checkoutRequestId = $callback['CheckoutRequestID'];
 
-        // 2. Find the Orphan Record
         $transaction = MpesaTransaction::where('checkout_request_id', $checkoutRequestId)->first();
 
         if (!$transaction) {
@@ -180,12 +169,8 @@ class MpesaController extends Controller
             return response()->json(['result' => 'fail']);
         }
 
-        // 3. Check Result Code (0 = Success, Others = Fail)
         if ($callback['ResultCode'] == 0) {
-            // SUCCESS!
             Log::info("✅ Payment Successful for " . $transaction->msisdn);
-
-            // Extract the Receipt Number (MpesaReceiptNumber)
             $items = $callback['CallbackMetadata']['Item'];
             $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
 
@@ -194,11 +179,8 @@ class MpesaController extends Controller
                 'transaction_code' => $receipt,
                 'result_desc' => 'Payment Successful',
             ]);
-
         } else {
-            // FAILED (User Cancelled, No Funds, etc)
             Log::warning("⚠️ Payment Failed: " . $callback['ResultDesc']);
-
             $transaction->update([
                 'status' => 'FAILED',
                 'result_desc' => $callback['ResultDesc'],
@@ -208,9 +190,6 @@ class MpesaController extends Controller
         return response()->json(['result' => 'success']);
     }
 
-    /**
-     * 🟢 NEW: Check Status for Frontend Polling
-     */
     public function checkStatus($checkoutRequestId)
     {
         $transaction = MpesaTransaction::where('checkout_request_id', $checkoutRequestId)->first();
@@ -220,7 +199,7 @@ class MpesaController extends Controller
         }
 
         return response()->json([
-            'status' => $transaction->status, // PENDING, COMPLETED, FAILED
+            'status' => $transaction->status,
             'transaction_code' => $transaction->transaction_code,
             'result_desc' => $transaction->result_desc
         ]);
@@ -228,10 +207,8 @@ class MpesaController extends Controller
 
    public function verifyTransaction(Request $request)
     {
-        // 1. 🟢 LOG RAW REQUEST IMMEDIATELY (Before anything else)
         Log::info("🔍 VERIFY HIT: Endpoint Reached.", $request->all());
 
-        // 2. 🟢 MANUAL VALIDATION (Prevents silent crash)
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'phone' => 'required|string',
             'amount' => 'required|numeric'
@@ -244,27 +221,19 @@ class MpesaController extends Controller
             ], 422);
         }
 
-        // 3. Normalization (Get last 9 digits)
-        // Works for: 0722..., 254722..., +254722...
         $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
         $last9 = substr($cleanPhone, -9);
 
         Log::info("🔍 SEARCHING: Phone ending in '...{$last9}' | Amount: {$request->amount}");
 
-        // 4. Search Logic
-        // We look for a COMPLETED transaction matching Amount & Phone
-        // That is NOT already attached to a payment
         $transaction = MpesaTransaction::where('msisdn', 'LIKE', "%{$last9}")
             ->where('amount', $request->amount)
             ->where('status', 'COMPLETED')
-            ->whereDoesntHave('payment') // Ensure unused
+            ->whereDoesntHave('payment')
             ->latest()
             ->first();
 
-        // 5. Handle Not Found (With detailed logs)
         if (!$transaction) {
-
-            // Debug: Did we find it but it's already used?
             $isUsed = MpesaTransaction::where('msisdn', 'LIKE', "%{$last9}")
                 ->where('amount', $request->amount)
                 ->has('payment')
@@ -273,12 +242,6 @@ class MpesaController extends Controller
             if ($isUsed) {
                 Log::warning("❌ FOUND BUT USED: Transaction exists but is already linked to another invoice.");
                 return response()->json(['error' => "This payment has already been used."], 409);
-            }
-
-            // Debug: Did we find the phone but wrong amount?
-            $wrongAmount = MpesaTransaction::where('msisdn', 'LIKE', "%{$last9}")->latest()->first();
-            if ($wrongAmount) {
-                 Log::warning("❌ AMOUNT MISMATCH: Found record for {$wrongAmount->amount}, expected {$request->amount}");
             }
 
             Log::warning("❌ NOT FOUND: No matching record in DB.");
