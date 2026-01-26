@@ -44,7 +44,8 @@ class StockTransferItemController extends Controller
                 'id' => $item->id,
                 'transfer_reference' => $item->stockTransfer->reference ?? 'N/A',
                 'transfer_status' => $item->stockTransfer->status ?? 'unknown',
-                'transfer_date' => $item->stockTransfer->transfer_date?->format('d M Y'),
+                // 🟢 FIX: Use ?-> before format() to prevent crashing on null dates
+        'transfer_date'      => $item->stockTransfer?->transfer_date?->format('d M Y') ?? 'N/A',
                 'source_store' => $item->stockTransfer->sourceStore->name ?? 'N/A',
                 'destination_store' => $item->stockTransfer->destinationStore->name ?? 'N/A',
                 'product_name' => $item->product->name ?? 'Deleted Product',
