@@ -957,9 +957,8 @@ class RolesAndPermissionsSeeder extends Seeder
             AdjustmentReason::firstOrCreate(
                 ['name' => $reason['name']],
                 [
-                    'type' => $reason['type'], // 🟢 Now this will work!
+                    'slug' => $reason['slug'],
                     'description' => $reason['description'],
-                    'store_id' => $store->id,
                     'is_active' => true
                 ]
             );
