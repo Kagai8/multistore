@@ -420,7 +420,17 @@ export const ComplexTable: React.FC<CustomTableProps> = ({
                           {col.isImage ? (
                             <div className="flex justify-center">
                               {cellValue ? (
-                                <img src={cellValue} alt="Logo" className="h-20 w-20 rounded-lg object-contain" />
+                                <img
+                                    src={
+                                        typeof cellValue === 'string'
+                                        ? (cellValue.startsWith('http') || cellValue.startsWith('/storage/')
+                                            ? cellValue
+                                            : `/storage/${cellValue.replace(/^storage\//, '')}`)
+                                        : ''
+                                    }
+                                    alt="Image"
+                                    className="h-20 w-20 rounded-lg object-contain"
+                                />
                               ) : (
                                 <span className="text-gray-400 italic">No image provided</span>
                               )}
