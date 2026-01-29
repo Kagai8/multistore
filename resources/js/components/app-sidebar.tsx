@@ -139,6 +139,15 @@ const masterNavItems: NavItem[] = [
        { title: 'Company Settings', href: '/company-settings', icon: Building2, permission: 'access-company-settings' },
      ],
    },
+   {
+     title: 'Reports Center',
+     icon: Settings,
+     permission: 'access-reports',
+     children: [
+       { title: 'Valuation Reports', href: '/valuation-reports', icon: FileText, permission: 'access-valuation-reports' },
+       { title: 'Company Settings', href: '/company-settings', icon: Building2, permission: 'access-company-settings' },
+     ],
+   },
 ];
 
 export function AppSidebar() {

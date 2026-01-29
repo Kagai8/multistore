@@ -38,6 +38,7 @@ const ALL_MODULES = [
     {label: 'POS Reports', value: 'pos-reports', key: 'pos-reports'},
     {label: 'Purchase Orders', value: 'purchase-orders', key: 'purchase-orders'},
     {label: 'Purchase Order Items', value: 'purchase-order-items', key: 'purchase-order-items'},
+    {label: 'Reports & Analytics', value: 'reports-analytics', key: 'reports-analytics'},
 
 ];
 

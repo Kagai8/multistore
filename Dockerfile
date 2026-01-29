@@ -48,4 +48,4 @@ RUN sed -i 's/80/${PORT}/g' /etc/apache2/ports.conf /etc/apache2/sites-available
 RUN a2enmod rewrite
 
 # 12. Startup Command (Migrate -> Seed -> Start)
-CMD ["bash", "-c", "php artisan migrate --force && (php artisan db:seed --force || true) && apache2-foreground"]
+CMD ["bash", "-c", "php artisan storage:link && php artisan migrate --force && (php artisan db:seed --force || true) && apache2-foreground"]

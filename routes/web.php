@@ -25,6 +25,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PosSessionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NewStockEntryController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -38,7 +39,7 @@ use App\Http\Controllers\StockTransferItemController;
 use App\Http\Controllers\StorePaymentSettingController;
 use App\Http\Controllers\StockAdjustmentRequestController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\PosSessionController;
+use App\Http\Controllers\ValuationReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -436,6 +437,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/settings/payments/{id}', [StorePaymentSettingController::class, 'update'])->name('payment-settings.update');
         Route::delete('/settings/payments/{id}', [StorePaymentSettingController::class, 'destroy'])->name('payment-settings.destroy');
     });
+
+
+
+    // =========================================================================
+    // 5. BI & ANALYTICS (Move this to the bottom to avoid prefix inheritance)
+    // =========================================================================
+    Route::middleware(['permission:access-valuation-reports'])->group(function () {
+        Route::get('/valuation-reports', [ValuationReportController::class, 'index'])->name('valuation-reports.index');
+        Route::get('/valuation-reports/export/pdf', [ValuationReportController::class, 'exportPdf'])->name('valuation-reports.export.pdf');
+        Route::get('/valuation-reports/export/excel', [ValuationReportController::class, 'exportExcel'])->name('valuation-reports.export.excel');
+    });
+
+
 
 });
 
