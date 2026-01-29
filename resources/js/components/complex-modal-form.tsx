@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import InputError from './input-error';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-// 🟢 NEW: Import the custom component
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from './ui/checkbox';
@@ -30,8 +29,21 @@ interface FieldProps {
   key: string;
   name: string;
   label: string;
-  // 🟢 NEW: Added 'searchable-select' to the type union
-  type: 'text' | 'number' | 'email' | 'password' | 'textarea' | 'file' | 'multi-file' | 'single-select' | 'searchable-select' | 'multi-select' | 'checkbox' | 'tag-input' | 'hidden' | 'date';
+  type:
+    | 'text'
+    | 'number'
+    | 'email'
+    | 'password'
+    | 'textarea'
+    | 'file'
+    | 'multi-file'
+    | 'single-select'
+    | 'searchable-select'
+    | 'multi-select'
+    | 'checkbox'
+    | 'tag-input'
+    | 'hidden'
+    | 'date';
   placeholder?: string;
   autocomplete?: string;
   tabIndex?: number;
@@ -41,7 +53,13 @@ interface FieldProps {
   className?: string;
   optionsSource?: string;
   colSpan?: number;
-  disabled?: boolean | ((mode: 'create' | 'view' | 'edit', currentUserContext?: UserContext | null, data?: Record<string, any>) => boolean);
+  disabled?:
+    | boolean
+    | ((
+        mode: 'create' | 'view' | 'edit',
+        currentUserContext?: UserContext | null,
+        data?: Record<string, any>
+      ) => boolean);
 }
 
 interface FieldGroup {
@@ -51,8 +69,8 @@ interface FieldGroup {
 }
 
 interface UserContext {
-    store_id: number | null;
-    is_global_user: boolean;
+  store_id: number | null;
+  is_global_user: boolean;
 }
 
 interface ButtonProps {
@@ -68,13 +86,13 @@ interface ExtraData {
 }
 
 interface AddButtonProps {
-    id: string;
-    label: string;
-    icon: React.ElementType;
-    type: string;
-    variant: string;
-    className: string;
-    permission: string;
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  type: string;
+  variant: string;
+  className: string;
+  permission: string;
 }
 
 interface CustomModalFormProps {
@@ -100,25 +118,44 @@ interface CustomModalFormProps {
 }
 
 interface AuthPageProps {
-    [key: string]: any;
-    auth: {
-        permissions: string[];
-    };
-    flash?: {
-        success?: string;
-        error?: string;
-    };
+  [key: string]: any;
+  auth: {
+    permissions: string[];
+  };
+  flash?: {
+    success?: string;
+    error?: string;
+  };
 }
-// --- END TYPES ---
 
+// --- END TYPES ---
 
 const getGridClass = (columns: number) => {
   switch (columns) {
-    case 4: return 'grid-cols-1 sm:grid-cols-4';
-    case 3: return 'grid-cols-1 sm:grid-cols-3';
-    case 2: return 'grid-cols-1 sm:grid-cols-2';
-    default: return 'grid-cols-1';
+    case 4:
+      return 'grid-cols-1 sm:grid-cols-4';
+    case 3:
+      return 'grid-cols-1 sm:grid-cols-3';
+    case 2:
+      return 'grid-cols-1 sm:grid-cols-2';
+    default:
+      return 'grid-cols-1';
   }
+};
+
+// ✅ Normalizes any stored path into a browser-loadable URL
+// Accepts:
+// - "products/main/x.jpg"
+// - "storage/products/main/x.jpg"
+// - "/storage/products/main/x.jpg"
+// - "http(s)://..."
+// - "blob:..."
+const toStorageUrl = (src?: string | null) => {
+  if (!src) return '';
+  if (src.startsWith('blob:') || src.startsWith('http') || src.startsWith('/storage/')) return src;
+
+  // strip leading "storage/" and leading slashes, then prefix with /storage/
+  return `/storage/${src.replace(/^storage\//, '').replace(/^\/+/, '')}`;
 };
 
 export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
@@ -142,21 +179,21 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
   children,
   currentUserContext,
 }) => {
-    const { auth } = usePage<AuthPageProps>().props;
-    const permissions = auth.permissions || [];
+  const { auth } = usePage<AuthPageProps>().props;
+  const permissions = auth.permissions || [];
 
   const optionsMap = useMemo(() => {
     const map: Record<string, { label: string; value: string; key: string }[]> = {};
     if (extraData) {
-      Object.keys(extraData).forEach(key => {
+      Object.keys(extraData).forEach((key) => {
         const dataItem = extraData[key];
 
         if (Array.isArray(dataItem)) {
-            map[key] = dataItem.map(item => ({
-              label: item.name,
-              value: String(item.id),
-              key: String(item.id),
-            }));
+          map[key] = dataItem.map((item) => ({
+            label: item.name,
+            value: String(item.id),
+            key: String(item.id),
+          }));
         }
       });
     }
@@ -166,16 +203,17 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
   const handleSingleFileChange = (field: FieldProps, e: React.ChangeEvent<HTMLInputElement>) => {
     setData(field.name, e.target.files ? e.target.files[0] : null);
     if (e.target.files && e.target.files[0]) {
-        setData('main_image_cleared', false);
+      setData('main_image_cleared', false);
     }
   };
 
   const handleDeleteMultiImage = (pathToDelete: string) => {
-    const newPathsToKeep = (data['existing_multi_images'] || [])
-        .filter((path: string) => path !== pathToDelete);
+    const newPathsToKeep = (data['existing_multi_images'] || []).filter(
+      (path: string) => path !== pathToDelete
+    );
 
     setData('existing_multi_images', newPathsToKeep);
-    setMultiImagePreviews(prev => (prev || []).filter(path => path !== pathToDelete));
+    setMultiImagePreviews((prev) => (prev || []).filter((path) => path !== pathToDelete));
   };
 
   const handleMultiFileChange = (field: FieldProps, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,9 +231,10 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
 
     const defaultDisabled = processing || mode === 'view';
 
-    const configDisabled = typeof field.disabled === 'function'
-                            ? field.disabled(mode, currentUserContext, data)
-                            : field.disabled;
+    const configDisabled =
+      typeof field.disabled === 'function'
+        ? field.disabled(mode, currentUserContext, data)
+        : field.disabled;
 
     const isDisabled = defaultDisabled || configDisabled;
     const colClass = field.colSpan ? `sm:col-span-${field.colSpan}` : 'sm:col-span-1';
@@ -226,7 +265,7 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
               disabled={isDisabled}
             />
             <Label htmlFor={field.id} className="text-sm font-normal text-gray-500">
-                {field.placeholder}
+              {field.placeholder}
             </Label>
           </div>
         ) : field.type === 'single-select' ? (
@@ -246,38 +285,39 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
               ))}
             </SelectContent>
           </Select>
-        // 🟢 NEW: Searchable Select Implementation
         ) : field.type === 'searchable-select' ? (
-           <SearchableSelect
-              options={optionsMap[field.optionsSource as string] ?? []}
-              value={data[field.name]}
-              onChange={(val) => setData(field.name, val)}
-              placeholder={`Select ${field.label}`}
-              disabled={isDisabled}
-           />
+          <SearchableSelect
+            options={optionsMap[field.optionsSource as string] ?? []}
+            value={data[field.name]}
+            onChange={(val) => setData(field.name, val)}
+            placeholder={`Select ${field.label}`}
+            disabled={isDisabled}
+          />
         ) : field.type === 'file' ? (
           <div className="space-y-2">
             {(mainImagePreview || data[field.name] instanceof File) && (
               <div className="flex flex-col gap-2">
-                 <img
-                    src={data[field.name] instanceof File
-                        ? URL.createObjectURL(data[field.name])
-                        : mainImagePreview || ''}
-                    alt={field.label}
-                    className="h-32 w-32 rounded object-contain border p-1"
-                 />
-                 {mainImagePreview && mode !== 'view' && (
-                    <Button
-                        type="button"
-                        onClick={() => setData('main_image_cleared', true)}
-                        variant="destructive"
-                        size="sm"
-                        className="w-fit"
-                    >
-                        Remove Existing Image
-                    </Button>
-                 )}
-                 <p className="text-xs text-gray-500">Current / New Image</p>
+                <img
+                  src={
+                    data[field.name] instanceof File
+                      ? URL.createObjectURL(data[field.name])
+                      : toStorageUrl(mainImagePreview)
+                  }
+                  alt={field.label}
+                  className="h-32 w-32 rounded object-contain border p-1"
+                />
+                {mainImagePreview && mode !== 'view' && (
+                  <Button
+                    type="button"
+                    onClick={() => setData('main_image_cleared', true)}
+                    variant="destructive"
+                    size="sm"
+                    className="w-fit"
+                  >
+                    Remove Existing Image
+                  </Button>
+                )}
+                <p className="text-xs text-gray-500">Current / New Image</p>
               </div>
             )}
             {mode !== 'view' && (
@@ -295,38 +335,48 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
           </div>
         ) : field.type === 'multi-file' ? (
           <div className="space-y-2">
-            {((multiImagePreviews && multiImagePreviews.length > 0) || (data[field.name] && data[field.name].length > 0)) && (
+            {((multiImagePreviews && multiImagePreviews.length > 0) ||
+              (data[field.name] && data[field.name].length > 0)) && (
               <div className="flex flex-wrap gap-2 p-2 border rounded">
                 {(multiImagePreviews || []).map((src, index) => {
-                    const srcString = typeof src === 'string' ? src : '';
-                    const finalSrc = srcString.startsWith('/storage/') ? srcString : `/storage/${srcString.replace(/^storage\//, '')}`;
+                  const srcString = typeof src === 'string' ? src : '';
+                  const finalSrc = toStorageUrl(srcString);
 
-                    return (
-                        <div key={`old-img-${index}`} className="relative h-20 w-20">
-                            <img
-                                src={finalSrc}
-                                alt={`Image ${index + 1}`}
-                                className="h-full w-full rounded object-cover border"
-                            />
-                            {mode !== 'view' && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleDeleteMultiImage(src)}
-                                    className="absolute top-0 right-0 p-1 bg-red-600 rounded-full text-white text-xs hover:bg-red-700 transition-colors"
-                                    title="Remove image"
-                                >
-                                    ❌
-                                </button>
-                            )}
-                        </div>
-                    );
+                  return (
+                    <div key={`old-img-${index}`} className="relative h-20 w-20">
+                      <img
+                        src={finalSrc}
+                        alt={`Image ${index + 1}`}
+                        className="h-full w-full rounded object-cover border"
+                      />
+                      {mode !== 'view' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMultiImage(src)}
+                          className="absolute top-0 right-0 p-1 bg-red-600 rounded-full text-white text-xs hover:bg-red-700 transition-colors"
+                          title="Remove image"
+                        >
+                          ❌
+                        </button>
+                      )}
+                    </div>
+                  );
                 })}
-                {Array.isArray(data[field.name]) && data[field.name].map((file: File, index: number) => {
+
+                {Array.isArray(data[field.name]) &&
+                  data[field.name].map((file: File, index: number) => {
                     if (file instanceof File) {
-                      return <img key={`new-img-${index}`} src={URL.createObjectURL(file)} alt={`New Image ${index + 1}`} className="h-20 w-20 rounded object-cover border border-dashed border-green-500" />;
+                      return (
+                        <img
+                          key={`new-img-${index}`}
+                          src={URL.createObjectURL(file)}
+                          alt={`New Image ${index + 1}`}
+                          className="h-20 w-20 rounded object-cover border border-dashed border-green-500"
+                        />
+                      );
                     }
                     return null;
-                })}
+                  })}
               </div>
             )}
             {mode !== 'view' && (
@@ -374,75 +424,70 @@ export const ComplexModalForm: React.FC<CustomModalFormProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal>
-    {addButton && (!addButton.permission || hasPermission(permissions, [addButton.permission])) && (
+      {addButton && (!addButton.permission || hasPermission(permissions, [addButton.permission])) && (
         <DialogTrigger asChild>
-        <Button
-            type={addButton.type as any}
-            className={addButton.className}
-            variant={addButton.variant as any}
-        >
+          <Button type={addButton.type as any} className={addButton.className} variant={addButton.variant as any}>
             {addButton.icon && React.createElement(addButton.icon, { className: 'me-2' })}
             {addButton.label}
-        </Button>
+          </Button>
         </DialogTrigger>
-    )}
+      )}
 
-    <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-        {description && <DialogDescription>{description}</DialogDescription>}
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mb-2">
-
-        {(fields ?? []).map((group, groupIndex) => (
+          {(fields ?? []).map((group, groupIndex) => (
             <div key={groupIndex} className="space-y-3 p-4 border rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-orange-600 dark:text-orange-400">
-                    {group.header}
-                </h3>
+              <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-orange-600 dark:text-orange-400">
+                {group.header}
+              </h3>
 
-                <div className={`grid gap-4 ${getGridClass(group.columns)}`}>
-                    {(group.fields ?? []).map(renderField)}
-                </div>
+              <div className={`grid gap-4 ${getGridClass(group.columns)}`}>
+                {(group.fields ?? []).map(renderField)}
+              </div>
             </div>
-        ))}
+          ))}
 
-        {children}
+          {children}
 
-        <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 border-t pt-4 z-10">
-           {buttons.map((btn) => {
-            if (btn.key === 'cancel') {
+          <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 border-t pt-4 z-10">
+            {buttons.map((btn) => {
+              if (btn.key === 'cancel') {
                 return (
-                <DialogClose asChild key={btn.key}>
+                  <DialogClose asChild key={btn.key}>
                     <Button
-                    type={btn.type as any}
-                    variant={btn.variant as any}
-                    className={btn.className}
-                    disabled={processing}
+                      type={btn.type as any}
+                      variant={btn.variant as any}
+                      className={btn.className}
+                      disabled={processing}
                     >
-                    {btn.label}
+                      {btn.label}
                     </Button>
-                </DialogClose>
+                  </DialogClose>
                 );
-            }
-            if (mode !== 'view') {
+              }
+              if (mode !== 'view') {
                 return (
-                <Button
+                  <Button
                     key={btn.key}
                     type={btn.type as any}
                     variant={btn.variant as any}
                     className={btn.className}
                     disabled={processing}
-                >
+                  >
                     {btn.label}
-                </Button>
+                  </Button>
                 );
-            }
-            return null;
+              }
+              return null;
             })}
-        </DialogFooter>
+          </DialogFooter>
         </form>
-    </DialogContent>
+      </DialogContent>
     </Dialog>
   );
 };
