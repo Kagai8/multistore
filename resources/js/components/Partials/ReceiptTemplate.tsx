@@ -1,4 +1,5 @@
-import React, { forwardRef } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { forwardRef } from 'react';
 
 // Define Interface for Company Settings
 interface CompanySettings {
@@ -14,8 +15,8 @@ interface CompanySettings {
 }
 
 interface ReceiptProps {
-    data: any;       // Transaction Data (Date, Ref, etc.)
-    items: any[];    // Cart Items
+    data: any; // Transaction Data (Date, Ref, etc.)
+    items: any[]; // Cart Items
     company: CompanySettings; // 🟢 Dynamic Company Data
 }
 
@@ -81,9 +82,18 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
 
             {/* 🟢 DYNAMIC HEADER */}
             <div className="center">
-                {logoUrl && <img src={logoUrl} alt="Logo" className="receipt-logo" />}
+                {logoUrl && (
+                    <img src={logoUrl} alt="Logo" className="receipt-logo" />
+                )}
 
-                <h2 className="bold" style={{ fontSize: '15px', marginBottom: '2px', textTransform: 'uppercase' }}>
+                <h2
+                    className="bold"
+                    style={{
+                        fontSize: '15px',
+                        marginBottom: '2px',
+                        textTransform: 'uppercase',
+                    }}
+                >
                     {company.name}
                 </h2>
 
@@ -94,7 +104,9 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
                 <div style={{ fontSize: '11px', marginTop: '3px' }}>
                     {company.phone && <p>Tel: {company.phone}</p>}
                     {company.email && <p>Email: {company.email}</p>}
-                    {company.tax_pin && <p className="bold">PIN: {company.tax_pin}</p>}
+                    {company.tax_pin && (
+                        <p className="bold">PIN: {company.tax_pin}</p>
+                    )}
                 </div>
             </div>
 
@@ -102,10 +114,26 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
 
             {/* Transaction Details */}
             <div style={{ fontSize: '11px' }}>
-                <p>RCP #: <span className="right bold">{data.number || data.receipt_number}</span></p>
-                <p>Date: <span className="right">{new Date().toLocaleString()}</span></p>
-                <p>Served By: <span className="right">{data.user_name || 'Cashier'}</span></p>
-                {data.customer_name && <p>Cust: <span className="right">{data.customer_name}</span></p>}
+                <p>
+                    RCP #:{' '}
+                    <span className="right bold">
+                        {data.number || data.receipt_number}
+                    </span>
+                </p>
+                <p>
+                    Date:{' '}
+                    <span className="right">{new Date().toLocaleString()}</span>
+                </p>
+                <p>
+                    Served By:{' '}
+                    <span className="right">{data.user_name || 'Cashier'}</span>
+                </p>
+                {data.customer_name && (
+                    <p>
+                        Cust:{' '}
+                        <span className="right">{data.customer_name}</span>
+                    </p>
+                )}
             </div>
 
             <div className="dashed-line"></div>
@@ -128,7 +156,9 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
                                 {/* <br/><span style={{fontSize:'9px'}}>{item.sku}</span> */}
                             </td>
                             <td className="center">x{item.qty}</td>
-                            <td className="right">{Number(item.price * item.qty).toLocaleString()}</td>
+                            <td className="right">
+                                {Number(item.price * item.qty).toLocaleString()}
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -143,7 +173,10 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
                     <span>{Number(data.total_amount).toLocaleString()}</span>
                 </p>
 
-                <div className="dashed-line" style={{ margin: '2px 0', opacity: 0.5 }}></div>
+                <div
+                    className="dashed-line"
+                    style={{ margin: '2px 0', opacity: 0.5 }}
+                ></div>
 
                 <p>
                     <span>CASH / PAID</span>
@@ -153,7 +186,11 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
                 {/* Only show change if relevant */}
                 <p className="bold">
                     <span>CHANGE</span>
-                    <span>{Number(data.change || data.change_amount || 0).toLocaleString()}</span>
+                    <span>
+                        {Number(
+                            data.change || data.change_amount || 0,
+                        ).toLocaleString()}
+                    </span>
                 </p>
             </div>
 
@@ -165,7 +202,9 @@ export const ReceiptTemplate = forwardRef((props: ReceiptProps, ref: any) => {
                     {company.receipt_footer || 'Thank you for shopping!'}
                 </p>
 
-                {company.website && <p style={{ fontSize: '10px' }}>{company.website}</p>}
+                {company.website && (
+                    <p style={{ fontSize: '10px' }}>{company.website}</p>
+                )}
 
                 <p style={{ fontSize: '9px', marginTop: '8px', color: '#555' }}>
                     Powered by InventoryHub

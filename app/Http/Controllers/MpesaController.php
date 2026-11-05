@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use App\Models\MpesaTransaction;
 use App\Models\StorePaymentSetting;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class MpesaController extends Controller
 {
@@ -17,11 +17,11 @@ class MpesaController extends Controller
     public function stkPush(Request $request)
     {
         $user = $request->user();
-        Log::info("💸 M-Pesa STK Push Initiated", [
+        Log::info('💸 M-Pesa STK Push Initiated', [
             'user' => $user->name,
             'store_id' => $user->store_id,
             'phone' => $request->phone,
-            'amount' => $request->amount
+            'amount' => $request->amount,
         ]);
 
         // 1. Validation
@@ -36,21 +36,23 @@ class MpesaController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$settings) {
+        if (! $settings) {
             Log::error("❌ M-Pesa Settings missing for Store ID: {$user->store_id}");
+
             return response()->json(['error' => 'M-Pesa not configured for this store'], 400);
         }
 
         // Extract credentials from JSON column
         $creds = $settings->credentials;
-        if (!isset($creds['consumer_key']) || !isset($creds['consumer_secret'])) {
-            Log::error("❌ M-Pesa Credentials incomplete in JSON", ['store_id' => $user->store_id]);
+        if (! isset($creds['consumer_key']) || ! isset($creds['consumer_secret'])) {
+            Log::error('❌ M-Pesa Credentials incomplete in JSON', ['store_id' => $user->store_id]);
+
             return response()->json(['error' => 'M-Pesa configuration invalid'], 500);
         }
 
         // 3. Generate Access Token
         $accessToken = $this->generateAccessToken($creds);
-        if (!$accessToken) {
+        if (! $accessToken) {
             return response()->json(['error' => 'Failed to authenticate with M-Pesa'], 500);
         }
 
@@ -58,20 +60,20 @@ class MpesaController extends Controller
         $timestamp = Carbon::now()->format('YmdHis');
         $passkey = $creds['passkey'];
         $paybill = $settings->business_number;
-        $password = base64_encode($paybill . $passkey . $timestamp);
+        $password = base64_encode($paybill.$passkey.$timestamp);
 
         // 🟢 FIX: Dynamic Callback URL
         // It tries to find 'MPESA_CALLBACK_URL' in your .env or Render Dashboard.
         // If not found, it generates one based on the current domain.
-        $callbackUrl = env('MPESA_CALLBACK_URL');
+        $callbackUrl = config('services.mpesa.callback_url');
         if (empty($callbackUrl)) {
             $callbackUrl = url('/api/mpesa/callback');
         }
 
-        Log::info("🚀 Sending Request to Safaricom", [
+        Log::info('🚀 Sending Request to Safaricom', [
             'paybill' => $paybill,
             'amount' => $request->amount,
-            'callback' => $callbackUrl
+            'callback' => $callbackUrl,
         ]);
 
         try {
@@ -85,12 +87,12 @@ class MpesaController extends Controller
                 'PartyB' => $paybill,
                 'PhoneNumber' => $request->phone,
                 'CallBackURL' => $callbackUrl,
-                'AccountReference' => 'POS-' . $user->store_id,
+                'AccountReference' => 'POS-'.$user->store_id,
                 'TransactionDesc' => 'Payment for goods',
             ]);
 
             $resData = $response->json();
-            Log::info("📩 Safaricom Response Received", $resData);
+            Log::info('📩 Safaricom Response Received', $resData);
 
             // 5. Handle Response
             if (isset($resData['ResponseCode']) && $resData['ResponseCode'] == '0') {
@@ -103,20 +105,22 @@ class MpesaController extends Controller
                     'checkout_request_id' => $resData['CheckoutRequestID'],
                 ]);
 
-                Log::info("✅ STK Push Sent Successfully. Tracking ID: " . $resData['CheckoutRequestID']);
+                Log::info('✅ STK Push Sent Successfully. Tracking ID: '.$resData['CheckoutRequestID']);
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Request sent to phone',
-                    'checkout_request_id' => $resData['CheckoutRequestID']
+                    'checkout_request_id' => $resData['CheckoutRequestID'],
                 ]);
             }
 
-            Log::error("❌ Safaricom Rejected Request", $resData);
+            Log::error('❌ Safaricom Rejected Request', $resData);
+
             return response()->json(['error' => $resData['errorMessage'] ?? 'Failed to initiate payment'], 400);
 
         } catch (\Exception $e) {
-            Log::error("🔥 Critical Exception in STK Push: " . $e->getMessage());
+            Log::error('🔥 Critical Exception in STK Push: '.$e->getMessage());
+
             return response()->json(['error' => 'System Error'], 500);
         }
     }
@@ -139,23 +143,26 @@ class MpesaController extends Controller
                 return $response->json()['access_token'];
             }
 
-            Log::error("❌ Failed to generate M-Pesa Token", (array) $response->json());
+            Log::error('❌ Failed to generate M-Pesa Token', (array) $response->json());
+
             return null;
 
         } catch (\Exception $e) {
-            Log::error("🔥 Token Generation Exception: " . $e->getMessage());
+            Log::error('🔥 Token Generation Exception: '.$e->getMessage());
+
             return null;
         }
     }
 
     public function callback(Request $request)
     {
-        Log::info("🔔 Callback Hit!", $request->all());
+        Log::info('🔔 Callback Hit!', $request->all());
 
         $data = $request->json()->all();
 
-        if (!isset($data['Body']['stkCallback'])) {
-            Log::error("❌ Invalid Callback Structure");
+        if (! isset($data['Body']['stkCallback'])) {
+            Log::error('❌ Invalid Callback Structure');
+
             return response()->json(['result' => 'fail']);
         }
 
@@ -164,13 +171,14 @@ class MpesaController extends Controller
 
         $transaction = MpesaTransaction::where('checkout_request_id', $checkoutRequestId)->first();
 
-        if (!$transaction) {
+        if (! $transaction) {
             Log::error("❌ Transaction Not Found for ID: $checkoutRequestId");
+
             return response()->json(['result' => 'fail']);
         }
 
         if ($callback['ResultCode'] == 0) {
-            Log::info("✅ Payment Successful for " . $transaction->msisdn);
+            Log::info('✅ Payment Successful for '.$transaction->msisdn);
             $items = $callback['CallbackMetadata']['Item'];
             $receipt = collect($items)->firstWhere('Name', 'MpesaReceiptNumber')['Value'] ?? null;
 
@@ -180,7 +188,7 @@ class MpesaController extends Controller
                 'result_desc' => 'Payment Successful',
             ]);
         } else {
-            Log::warning("⚠️ Payment Failed: " . $callback['ResultDesc']);
+            Log::warning('⚠️ Payment Failed: '.$callback['ResultDesc']);
             $transaction->update([
                 'status' => 'FAILED',
                 'result_desc' => $callback['ResultDesc'],
@@ -194,30 +202,31 @@ class MpesaController extends Controller
     {
         $transaction = MpesaTransaction::where('checkout_request_id', $checkoutRequestId)->first();
 
-        if (!$transaction) {
+        if (! $transaction) {
             return response()->json(['status' => 'PENDING'], 200);
         }
 
         return response()->json([
             'status' => $transaction->status,
             'transaction_code' => $transaction->transaction_code,
-            'result_desc' => $transaction->result_desc
+            'result_desc' => $transaction->result_desc,
         ]);
     }
 
-   public function verifyTransaction(Request $request)
+    public function verifyTransaction(Request $request)
     {
-        Log::info("🔍 VERIFY HIT: Endpoint Reached.", $request->all());
+        Log::info('🔍 VERIFY HIT: Endpoint Reached.', $request->all());
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'phone' => 'required|string',
-            'amount' => 'required|numeric'
+            'amount' => 'required|numeric',
         ]);
 
         if ($validator->fails()) {
-            Log::error("❌ VERIFY VALIDATION FAILED:", $validator->errors()->toArray());
+            Log::error('❌ VERIFY VALIDATION FAILED:', $validator->errors()->toArray());
+
             return response()->json([
-                'error' => 'Invalid data. Please check Phone and Amount.'
+                'error' => 'Invalid data. Please check Phone and Amount.',
             ], 422);
         }
 
@@ -233,20 +242,22 @@ class MpesaController extends Controller
             ->latest()
             ->first();
 
-        if (!$transaction) {
+        if (! $transaction) {
             $isUsed = MpesaTransaction::where('msisdn', 'LIKE', "%{$last9}")
                 ->where('amount', $request->amount)
                 ->has('payment')
                 ->exists();
 
             if ($isUsed) {
-                Log::warning("❌ FOUND BUT USED: Transaction exists but is already linked to another invoice.");
-                return response()->json(['error' => "This payment has already been used."], 409);
+                Log::warning('❌ FOUND BUT USED: Transaction exists but is already linked to another invoice.');
+
+                return response()->json(['error' => 'This payment has already been used.'], 409);
             }
 
-            Log::warning("❌ NOT FOUND: No matching record in DB.");
+            Log::warning('❌ NOT FOUND: No matching record in DB.');
+
             return response()->json([
-                'error' => "No payment found from ...{$last9} for KSh {$request->amount}. Ensure the SMS has arrived."
+                'error' => "No payment found from ...{$last9} for KSh {$request->amount}. Ensure the SMS has arrived.",
             ], 404);
         }
 
@@ -255,7 +266,7 @@ class MpesaController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Confirmed: {$transaction->transaction_code}",
-            'data' => $transaction
+            'data' => $transaction,
         ]);
     }
 }

@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
 use App\Models\Store;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Illuminate\Validation\Rule;
 
 class StoreController extends Controller
 {
@@ -20,8 +20,9 @@ class StoreController extends Controller
         // Find the highest existing ID to get the next sequential number
         $latestStore = Store::latest('id')->first();
         $nextId = $latestStore ? $latestStore->id + 1 : 1;
+
         // Format: STR-0001, STR-0010, STR-0100, STR-1000
-        return 'STR-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        return 'STR-'.str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -39,8 +40,8 @@ class StoreController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -49,7 +50,7 @@ class StoreController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
             if ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             } elseif ($start) {
                 $query->where('created_at', '>=', $start);
             } elseif ($end) {
@@ -84,7 +85,7 @@ class StoreController extends Controller
 
         return Inertia::render('stores/index', [
             'stores' => $stores,
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -139,6 +140,7 @@ class StoreController extends Controller
     public function destroy(Store $store)
     {
         $store->delete();
+
         return redirect()->back()->with('success', 'Store deleted successfully');
     }
 
@@ -152,9 +154,12 @@ class StoreController extends Controller
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids', []);
-        if (empty($ids)) return back()->with('error', 'No stores selected.');
+        if (empty($ids)) {
+            return back()->with('error', 'No stores selected.');
+        }
         Store::whereIn('id', $ids)->delete();
-        return back()->with('success', count($ids) . ' store(s) deleted successfully.');
+
+        return back()->with('success', count($ids).' store(s) deleted successfully.');
     }
 
     /**
@@ -162,12 +167,15 @@ class StoreController extends Controller
      */
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $stores = Store::whereIn('id', $ids)->get();
-        if ($stores->isEmpty()) return back()->with('error', 'No stores selected for export.');
+        if ($stores->isEmpty()) {
+            return back()->with('error', 'No stores selected for export.');
+        }
 
         // NOTE: Uses 'stores.store-bulk-pdf' view
         $pdf = Pdf::loadView('stores.store-bulk-pdf', compact('stores'))->setPaper('a4', 'portrait');
+
         return $pdf->download('stores_export.pdf');
     }
 
@@ -176,14 +184,22 @@ class StoreController extends Controller
      */
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $stores = Store::whereIn('id', $ids)->get();
-        if ($stores->isEmpty()) return back()->with('error', 'No stores selected for export.');
+        if ($stores->isEmpty()) {
+            return back()->with('error', 'No stores selected for export.');
+        }
 
         return Excel::download(
-            new class($stores) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($stores) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $stores;
-                public function __construct($stores) { $this->stores = $stores; }
+
+                public function __construct($stores)
+                {
+                    $this->stores = $stores;
+                }
+
                 public function collection()
                 {
                     return $this->stores->map(fn ($store) => [
@@ -196,6 +212,7 @@ class StoreController extends Controller
                         'Created Date' => optional($store->created_at)->format('d M Y'),
                     ]);
                 }
+
                 public function headings(): array
                 {
                     return ['ID', 'Name', 'Code', 'Phone', 'Email', 'Address', 'Created Date'];
@@ -212,6 +229,7 @@ class StoreController extends Controller
     {
         // NOTE: Uses 'stores.store-single' view
         $pdf = Pdf::loadView('stores.store-single', compact('store'))->setPaper('a4', 'portrait');
+
         return $pdf->download("store_{$store->id}.pdf");
     }
 
@@ -221,9 +239,14 @@ class StoreController extends Controller
     public function exportSingleExcel(Store $store)
     {
         return Excel::download(
-            new class($store) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($store) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $store;
-                public function __construct($store) { $this->store = $store; }
+
+                public function __construct($store)
+                {
+                    $this->store = $store;
+                }
 
                 public function collection()
                 {
@@ -260,7 +283,7 @@ class StoreController extends Controller
      */
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setCellValue('A1', 'name');
         // 🟢 ADDED: New column header for 'type'
@@ -274,6 +297,7 @@ class StoreController extends Controller
         }
         $writer = new Xlsx($spreadsheet);
         $filename = 'stores_template.xlsx';
+
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');
         }, $filename);

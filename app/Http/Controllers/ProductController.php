@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Unit;
-use Inertia\Inertia;
 use App\Models\Brand;
-use App\Models\Product;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\Supplier;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
+use App\Models\Unit;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -38,11 +39,11 @@ class ProductController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('products.name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%")
-                  ->orWhere('barcode', 'like', "%{$search}%")
-                  ->orWhereHas('category', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('brand', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('supplier', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhereHas('category', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('brand', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -51,14 +52,12 @@ class ProductController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('products.created_at', '>=', $start);
-            }
-            elseif (!$start && $end) {
+            } elseif (! $start && $end) {
                 $query->where('products.created_at', '<=', $end);
-            }
-            elseif ($start && $end) {
-                 $query->whereBetween('products.created_at', [$start, $end]);
+            } elseif ($start && $end) {
+                $query->whereBetween('products.created_at', [$start, $end]);
             }
         }
 
@@ -123,7 +122,7 @@ class ProductController extends Controller
 
         return Inertia::render('products/index', [
             'products' => $products,
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
             'lookupData' => compact('categories', 'brands', 'units', 'suppliers'),
@@ -180,7 +179,7 @@ class ProductController extends Controller
         if ($files && is_array($files)) {
             foreach ($files as $file) {
                 // Check if $file is a valid uploaded file object before storing
-                if ($file && $file->isValid()) {
+                if ($file->isValid()) {
                     $multiImagePaths[] = $file->store('products/multi', 'public');
                 }
             }
@@ -188,14 +187,14 @@ class ProductController extends Controller
         $validated['multi_images'] = $multiImagePaths;
 
         // 4. SKU Generation (Unchanged)
-        $tempSku = 'TEMP-' . Str::uuid()->toString();
+        $tempSku = 'TEMP-'.Str::uuid()->toString();
         $validated['sku'] = $tempSku;
 
         $product = Product::create($validated);
 
         $productId = $product->id;
-        $paddedId = str_pad($productId, 6, '0', STR_PAD_LEFT);
-        $finalSku = 'P-' . $paddedId;
+        $paddedId = str_pad((string) $productId, 6, '0', STR_PAD_LEFT);
+        $finalSku = 'P-'.$paddedId;
         $product->update(['sku' => $finalSku]);
 
         return redirect()
@@ -279,7 +278,7 @@ class ProductController extends Controller
         $original = $product->multi_images ?? [];
 
         foreach ($original as $existing) {
-            if (!in_array($existing, $finalMulti)) {
+            if (! in_array($existing, $finalMulti)) {
                 if (Storage::disk('public')->exists($existing)) {
                     Storage::disk('public')->delete($existing);
                 }
@@ -357,10 +356,12 @@ class ProductController extends Controller
                 $deletedCount++;
             }
             DB::commit();
-            return back()->with('success', $deletedCount . ' product(s) deleted successfully.');
+
+            return back()->with('success', $deletedCount.' product(s) deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to delete products: ' . $e->getMessage());
+
+            return back()->with('error', 'Failed to delete products: '.$e->getMessage());
         }
     }
 
@@ -376,7 +377,7 @@ class ProductController extends Controller
         $company = \App\Models\CompanySetting::where('is_default', true)->first();
 
         // Fallback to Store context
-        $store = auth()->user()->store ?? \App\Models\Store::first();
+        $store = Auth::user()->store ?? \App\Models\Store::first();
 
         $pdf = Pdf::loadView('products.product-single', compact('product', 'company', 'store'))
             ->setPaper('a4', 'portrait');
@@ -392,9 +393,14 @@ class ProductController extends Controller
         $product->load(['category', 'brand', 'unit', 'supplier']);
 
         return Excel::download(
-            new class($product) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($product) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $product;
-                public function __construct($product) { $this->product = $product; }
+
+                public function __construct($product)
+                {
+                    $this->product = $product;
+                }
 
                 public function collection()
                 {
@@ -425,7 +431,7 @@ class ProductController extends Controller
      */
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
 
         // 1. Fetch Data
         $products = Product::whereIn('id', $ids)
@@ -440,7 +446,7 @@ class ProductController extends Controller
         $company = \App\Models\CompanySetting::where('is_default', true)->first();
 
         // Fallback to Store context if no company profile
-        $store = auth()->user()->store ?? \App\Models\Store::first();
+        $store = Auth::user()->store ?? \App\Models\Store::first();
 
         // 3. Generate PDF
         $pdf = Pdf::loadView('products.products-bulk-pdf', compact('products', 'company', 'store'))
@@ -454,7 +460,7 @@ class ProductController extends Controller
      */
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $products = Product::whereIn('id', $ids)->with(['category', 'brand', 'unit', 'supplier'])->get();
 
         if ($products->isEmpty()) {
@@ -462,9 +468,14 @@ class ProductController extends Controller
         }
 
         return Excel::download(
-            new class($products) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($products) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $products;
-                public function __construct($products) { $this->products = $products; }
+
+                public function __construct($products)
+                {
+                    $this->products = $products;
+                }
 
                 public function collection()
                 {
@@ -498,7 +509,7 @@ class ProductController extends Controller
      */
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // 🟢 HEADERS: Organized logically (Name -> Prices -> Relations -> Details)
@@ -550,13 +561,9 @@ class ProductController extends Controller
      */
     // app/Http/Controllers/ProductController.php
 
-
-
-/**
- * Handle bulk import of products.
- */
-
-
+    /**
+     * Handle bulk import of products.
+     */
     public function import(Request $request)
     {
         $request->validate([
@@ -569,44 +576,44 @@ class ProductController extends Controller
 
         // 1. Cache Lookups
         $categories = \App\Models\Category::all()->keyBy(fn ($c) => \Illuminate\Support\Str::lower($c->name));
-        $brands     = \App\Models\Brand::all()->keyBy(fn ($b) => \Illuminate\Support\Str::lower($b->name));
-        $units      = \App\Models\Unit::all()->keyBy(fn ($u) => \Illuminate\Support\Str::lower($u->name));
-        $suppliers  = \App\Models\Supplier::all()->keyBy(fn ($s) => \Illuminate\Support\Str::lower($s->name));
+        $brands = \App\Models\Brand::all()->keyBy(fn ($b) => \Illuminate\Support\Str::lower($b->name));
+        $units = \App\Models\Unit::all()->keyBy(fn ($u) => \Illuminate\Support\Str::lower($u->name));
+        $suppliers = \App\Models\Supplier::all()->keyBy(fn ($s) => \Illuminate\Support\Str::lower($s->name));
 
         // 🟢 2. AUTO-CREATE DEFAULTS (Fixed)
 
         // A. Category ("General")
-        if (!$categories->has('general')) {
+        if (! $categories->has('general')) {
             $genCat = \App\Models\Category::create([
                 'name' => 'General',
                 'slug' => 'general',
-                'description' => 'Default Category'
+                'description' => 'Default Category',
             ]);
             $categories->put('general', $genCat);
         }
 
         // B. Brand ("General")
-        if (!$brands->has('general')) {
+        if (! $brands->has('general')) {
             $genBrand = \App\Models\Brand::create([
                 'name' => 'General',
                 'slug' => 'general',
-                'description' => 'Default Brand'
+                'description' => 'Default Brand',
             ]);
             $brands->put('general', $genBrand);
         }
 
         // C. Unit ("Pieces")
-        if (!$units->has('pieces')) {
+        if (! $units->has('pieces')) {
             $pcsUnit = \App\Models\Unit::create([
                 'name' => 'Pieces',
                 'slug' => 'pieces',
-                'short_name' => 'Pcs'
+                'short_name' => 'Pcs',
             ]);
             $units->put('pieces', $pcsUnit);
         }
 
         // D. Supplier ("General")
-        if (!$suppliers->has('general')) {
+        if (! $suppliers->has('general')) {
             $genSup = \App\Models\Supplier::create([
                 'name' => 'General',
                 'slug' => 'general', // 🟢 ADDED THIS TO FIX THE ERROR
@@ -619,15 +626,23 @@ class ProductController extends Controller
 
         // 3. Set Fallback IDs (Guaranteed to exist now)
         $defaultCategory = $categories->get('general')->id;
-        $defaultBrand    = $brands->get('general')->id;
+        $defaultBrand = $brands->get('general')->id;
         $defaultSupplier = $suppliers->get('general')->id;
-        $defaultUnit     = $units->get('pieces')->id;
+        $defaultUnit = $units->get('pieces')->id;
 
         DB::beginTransaction();
         try {
-            \Maatwebsite\Excel\Facades\Excel::import(new class($categories, $brands, $units, $suppliers, $errors) implements \Maatwebsite\Excel\Concerns\ToCollection {
+            \Maatwebsite\Excel\Facades\Excel::import(new class($categories, $brands, $units, $suppliers, $errors) implements \Maatwebsite\Excel\Concerns\ToCollection
+            {
+                private $categories;
 
-                private $categories; private $brands; private $units; private $suppliers; private $errors;
+                private $brands;
+
+                private $units;
+
+                private $suppliers;
+
+                private $errors;
 
                 public function __construct($categories, $brands, $units, $suppliers, &$errors)
                 {
@@ -648,18 +663,20 @@ class ProductController extends Controller
                     foreach ($rows->skip(1) as $rowIndex => $row) {
                         // 1. Parse Data
                         $originalName = trim($row[0] ?? '');
-                        if (empty($originalName)) continue;
+                        if (empty($originalName)) {
+                            continue;
+                        }
 
                         $data = [
-                            'retail_price'      => $row[1] ?? 0,
-                            'buying_price'      => $row[2] ?? 0,
-                            'wholesale_price'   => $row[3] ?? 0,
-                            'special_price'     => $row[4] ?? 0,
-                            'category_name'     => trim($row[5] ?? ''),
-                            'brand_name'        => trim($row[6] ?? ''),
-                            'supplier_name'     => trim($row[7] ?? ''),
-                            'unit_name'         => trim($row[8] ?? ''),
-                            'description'       => trim($row[9] ?? ''),
+                            'retail_price' => $row[1] ?? 0,
+                            'buying_price' => $row[2] ?? 0,
+                            'wholesale_price' => $row[3] ?? 0,
+                            'special_price' => $row[4] ?? 0,
+                            'category_name' => trim($row[5] ?? ''),
+                            'brand_name' => trim($row[6] ?? ''),
+                            'supplier_name' => trim($row[7] ?? ''),
+                            'unit_name' => trim($row[8] ?? ''),
+                            'description' => trim($row[9] ?? ''),
                         ];
 
                         $rowNum = $rowIndex + 1;
@@ -667,9 +684,9 @@ class ProductController extends Controller
 
                         // 2. Smart Lookup & Create
                         $categoryId = $this->getIdOrCreate($this->categories, \App\Models\Category::class, $data['category_name'], $defaultCategory);
-                        $brandId    = $this->getIdOrCreate($this->brands, \App\Models\Brand::class, $data['brand_name'], $defaultBrand);
+                        $brandId = $this->getIdOrCreate($this->brands, \App\Models\Brand::class, $data['brand_name'], $defaultBrand);
 
-                        $unitId     = $this->lookupId($this->units, $data['unit_name']) ?? $defaultUnit;
+                        $unitId = $this->lookupId($this->units, $data['unit_name']) ?? $defaultUnit;
                         $supplierId = $this->lookupId($this->suppliers, $data['supplier_name']) ?? $defaultSupplier;
 
                         // 3. Duplicate Handling
@@ -686,36 +703,36 @@ class ProductController extends Controller
                         // 4. Create Product
                         try {
                             $product = \App\Models\Product::create([
-                                'name'              => $name,
-                                'slug'              => $slug,
-                                'barcode'           => null,
-                                'category_id'       => $categoryId,
-                                'brand_id'          => $brandId,
-                                'unit_id'           => $unitId,
-                                'supplier_id'       => $supplierId,
-                                'retail_price'      => max(0, (float) $data['retail_price']),
-                                'buying_price'      => max(0, (float) $data['buying_price']),
-                                'special_price'     => max(0, (float) $data['special_price']),
-                                'wholesale_price'   => max(0, (float) $data['wholesale_price']),
-                                'discount'          => 0,
-                                'weight'            => 0,
-                                'description'       => $data['description'] ?: 'Not provided',
-                                'colors'            => [],
-                                'is_active'         => true,
-                                'is_purchasable'    => true,
+                                'name' => $name,
+                                'slug' => $slug,
+                                'barcode' => null,
+                                'category_id' => $categoryId,
+                                'brand_id' => $brandId,
+                                'unit_id' => $unitId,
+                                'supplier_id' => $supplierId,
+                                'retail_price' => max(0, (float) $data['retail_price']),
+                                'buying_price' => max(0, (float) $data['buying_price']),
+                                'special_price' => max(0, (float) $data['special_price']),
+                                'wholesale_price' => max(0, (float) $data['wholesale_price']),
+                                'discount' => 0,
+                                'weight' => 0,
+                                'description' => $data['description'] ?: 'Not provided',
+                                'colors' => [],
+                                'is_active' => true,
+                                'is_purchasable' => true,
                             ]);
 
-                            $paddedId = str_pad($product->id, 6, '0', STR_PAD_LEFT);
-                            $product->update(['sku' => 'P-' . $paddedId]);
+                            $paddedId = str_pad((string) $product->id, 6, '0', STR_PAD_LEFT);
+                            $product->update(['sku' => 'P-'.$paddedId]);
 
                             $GLOBALS['imported_count']++;
 
                         } catch (\Exception $e) {
-                            $rowErrors[] = "Database Error: " . \Illuminate\Support\Str::limit($e->getMessage(), 100);
-                            Log::error("Product Import DB Error on row {$rowNum}: " . $e->getMessage());
+                            $rowErrors[] = 'Database Error: '.\Illuminate\Support\Str::limit($e->getMessage(), 100);
+                            Log::error("Product Import DB Error on row {$rowNum}: ".$e->getMessage());
                         }
 
-                        if (!empty($rowErrors)) {
+                        if (! empty($rowErrors)) {
                             $this->errors[$rowNum] = $rowErrors;
                         }
                     }
@@ -723,49 +740,59 @@ class ProductController extends Controller
 
                 private function lookupId($collection, $name)
                 {
-                    if (empty($name)) return null;
+                    if (empty($name)) {
+                        return null;
+                    }
+
                     return $collection->get(\Illuminate\Support\Str::lower($name))?->id;
                 }
 
                 private function getIdOrCreate($collection, $modelClass, $name, $defaultId)
                 {
-                    if (empty($name)) return $defaultId;
+                    if (empty($name)) {
+                        return $defaultId;
+                    }
                     $key = \Illuminate\Support\Str::lower($name);
                     $existing = $collection->get($key);
-                    if ($existing) return $existing->id;
+                    if ($existing) {
+                        return $existing->id;
+                    }
 
                     try {
                         $newItem = $modelClass::create([
                             'name' => $name,
-                            'slug' => \Illuminate\Support\Str::slug($name) . '-' . uniqid(),
+                            'slug' => \Illuminate\Support\Str::slug($name).'-'.uniqid(),
                             'description' => 'Auto-created during Product Import',
                             'created_at' => now(),
                         ]);
                         $collection->put($key, $newItem);
+
                         return $newItem->id;
                     } catch (\Exception $e) {
                         return $defaultId;
                     }
                 }
-
             }, $file);
 
             $imported = $GLOBALS['imported_count'];
             unset($GLOBALS['imported_count']);
 
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 DB::commit();
-                $errorSummary = "Imported {$imported} products. Failed on " . count($errors) . " rows.";
-                return back()->with('error', $errorSummary . " Check logs.");
+                $errorSummary = "Imported {$imported} products. Failed on ".count($errors).' rows.';
+
+                return back()->with('error', $errorSummary.' Check logs.');
             }
 
             \Illuminate\Support\Facades\DB::commit();
+
             return back()->with('success', "{$imported} product(s) imported successfully.");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Critical Product Import Error: " . $e->getMessage());
-            return back()->with('error', 'Critical error during import: ' . $e->getMessage());
+            Log::error('Critical Product Import Error: '.$e->getMessage());
+
+            return back()->with('error', 'Critical error during import: '.$e->getMessage());
         }
     }
 }

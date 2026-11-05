@@ -1,5 +1,3 @@
-
-
 // Re-export interface for consistency
 export interface FieldGroup {
     header: string;

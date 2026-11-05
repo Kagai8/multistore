@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaymentToCustomer;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PaymentToCustomerController extends Controller
@@ -23,19 +23,23 @@ class PaymentToCustomerController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('type', 'like', "%{$search}%")
-                  ->orWhere('method', 'like', "%{$search}%")
-                  ->orWhereHas('customer', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('method', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
         if ($dateFrom || $dateTo) {
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
-            if ($start && $end) $query->whereBetween('payment_date', [$start, $end]);
-            elseif ($start) $query->whereDate('payment_date', '>=', $start);
-            elseif ($end) $query->whereDate('payment_date', '<=', $end);
+            if ($start && $end) {
+                $query->whereBetween('payment_date', [$start, $end]);
+            } elseif ($start) {
+                $query->whereDate('payment_date', '>=', $start);
+            } elseif ($end) {
+                $query->whereDate('payment_date', '<=', $end);
+            }
         }
 
         // 🟢 STATS
@@ -50,8 +54,13 @@ class PaymentToCustomerController extends Controller
 
         $transform = function (PaymentToCustomer $payment) {
             $sourceLabel = 'Direct';
-            if ($payment->invoice_id) $sourceLabel = "Inv #{$payment->invoice->invoice_number}";
-            elseif ($payment->pos_sale_id) $sourceLabel = "POS #{$payment->pos_sale->receipt_number}";
+            if ($payment->invoice_id) {
+                $sourceLabel = "Inv #{$payment->invoice->invoice_number}";
+            } elseif ($payment->pos_sale_id) {
+                // The relation is `posSale()`; `pos_sale` is not an attribute, so the
+                // old access read null and threw on POS-linked payments.
+                $sourceLabel = 'POS #'.($payment->posSale->receipt_number ?? $payment->pos_sale_id);
+            }
 
             return [
                 'id' => $payment->id,
@@ -106,27 +115,40 @@ class PaymentToCustomerController extends Controller
 
     public function exportExcel(PaymentToCustomer $payment)
     {
-        return Excel::download(new class($payment) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        return Excel::download(new class($payment) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $p;
-            public function __construct($p) { $this->p = $p; }
-            public function collection() {
+
+            public function __construct($p)
+            {
+                $this->p = $p;
+            }
+
+            public function collection()
+            {
                 return collect([[
                     $this->p->payment_date->format('Y-m-d'),
                     $this->p->type,
                     $this->p->customer->name ?? 'Walk-in',
                     $this->p->amount,
                     $this->p->method,
-                    $this->p->notes
+                    $this->p->notes,
                 ]]);
             }
-            public function headings(): array { return ['Date', 'Type', 'Customer', 'Amount', 'Method', 'Notes']; }
+
+            public function headings(): array
+            {
+                return ['Date', 'Type', 'Customer', 'Amount', 'Method', 'Notes'];
+            }
         }, "Voucher_{$payment->id}.xlsx");
     }
 
     public function bulkExportPDF($ids)
     {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records selected.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records selected.');
+        }
 
         $payments = PaymentToCustomer::whereIn('id', $idArray)
             ->with(['customer', 'store', 'user'])
@@ -142,17 +164,26 @@ class PaymentToCustomerController extends Controller
     public function bulkExportExcel($ids)
     {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records selected.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records selected.');
+        }
 
         $payments = PaymentToCustomer::whereIn('id', $idArray)
             ->with(['customer', 'store', 'user'])
             ->latest()
             ->get();
 
-        return Excel::download(new class($payments) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($payments) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $payments;
-            public function __construct($payments) { $this->payments = $payments; }
-            public function collection() {
+
+            public function __construct($payments)
+            {
+                $this->payments = $payments;
+            }
+
+            public function collection()
+            {
                 return $this->payments->map(fn ($p) => [
                     $p->payment_date->format('Y-m-d'),
                     ucfirst($p->type),
@@ -161,10 +192,14 @@ class PaymentToCustomerController extends Controller
                     (float) $p->amount,
                     ucfirst($p->method),
                     $p->user->name ?? 'System',
-                    $p->notes
+                    $p->notes,
                 ]);
             }
-            public function headings(): array { return ['Date', 'Type', 'Store', 'Paid To', 'Amount', 'Method', 'Approved By', 'Notes']; }
+
+            public function headings(): array
+            {
+                return ['Date', 'Type', 'Store', 'Paid To', 'Amount', 'Method', 'Approved By', 'Notes'];
+            }
         }, 'Outgoing_Payments_Register.xlsx');
     }
 }

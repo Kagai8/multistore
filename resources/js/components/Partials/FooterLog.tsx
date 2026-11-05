@@ -1,4 +1,3 @@
-import React from 'react';
 import { History, Printer } from 'lucide-react';
 
 export default function FooterLog() {
@@ -9,17 +8,25 @@ export default function FooterLog() {
     ];
 
     return (
-        <div className="h-8 bg-slate-900 text-slate-400 flex items-center px-4 text-xs select-none">
-            <div className="flex items-center gap-2 mr-6 text-slate-500 font-bold">
+        <div className="flex h-8 items-center bg-slate-900 px-4 text-xs text-slate-400 select-none">
+            <div className="mr-6 flex items-center gap-2 font-bold text-slate-500">
                 <History size={14} /> RECENT:
             </div>
 
             <div className="flex items-center gap-4">
                 {recent.map((tx) => (
-                    <button key={tx.id} className="flex items-center gap-2 hover:text-white transition-colors">
-                        <span className="font-mono text-orange-500">{tx.id}</span>
+                    <button
+                        key={tx.id}
+                        className="flex items-center gap-2 transition-colors hover:text-white"
+                    >
+                        <span className="font-mono text-orange-500">
+                            {tx.id}
+                        </span>
                         <span>KSh {tx.amount}</span>
-                        <Printer size={12} className="opacity-0 group-hover:opacity-100" />
+                        <Printer
+                            size={12}
+                            className="opacity-0 group-hover:opacity-100"
+                        />
                     </button>
                 ))}
             </div>

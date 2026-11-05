@@ -2,29 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sale;
-use Inertia\Inertia;
-use App\Models\Stock;
-use App\Models\Payment;
-use App\Models\PosSale;
-use App\Models\Product;
-use App\Models\Category;
-use App\Models\Customer;
-use App\Models\SaleItem;
-use App\Models\PosSession;
-use App\Models\PosSaleItem;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\CompanySetting;
-use App\Models\CardTransaction;
-use App\Models\StockAdjustment;
 use App\Models\AdjustmentReason;
+use App\Models\CardTransaction;
+use App\Models\Category;
+use App\Models\CompanySetting;
+use App\Models\Customer;
+use App\Models\CustomerDebt;
 use App\Models\ManualTransaction;
+use App\Models\Payment;
 use App\Models\PaymentToCustomer;
+use App\Models\PosSale;
+use App\Models\PosSaleItem;
+use App\Models\PosSession;
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\Stock;
+use App\Models\StockAdjustment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use App\Models\CustomerDebt; // 🟢 ADDED MISSING IMPORT
+use Illuminate\Support\Str;
+use Inertia\Inertia; // 🟢 ADDED MISSING IMPORT
 
 class PosController extends Controller
 {
@@ -37,13 +37,15 @@ class PosController extends Controller
 
         $categories = Category::select('id', 'name')->orderBy('name')->get();
 
-        $products = Product::with(['category', 'stocks' => function($q) {
-                $q->where('store_id', Auth::user()->store_id);
-            }])
+        $products = Product::with(['category', 'stocks' => function ($q) {
+            $q->where('store_id', Auth::user()->store_id);
+        }])
             ->select('id', 'category_id', 'name', 'sku', 'retail_price', 'wholesale_price', 'special_price', 'main_image')
             ->get()
-            ->map(function($product) {
-                $stock = $product->stocks->first()?->current_stock ?? 0;
+            ->map(function (Product $product) {
+                $firstStock = $product->stocks->first();
+                $stock = $firstStock ? $firstStock->current_stock : 0;
+
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
@@ -53,22 +55,23 @@ class PosController extends Controller
                     'special_price' => (float) $product->special_price,
                     'stock' => (int) $stock,
                     'category_id' => $product->category_id,
-                    'main_image' => $product->main_image ? asset('storage/' . $product->main_image) : null,
+                    'main_image' => $product->main_image ? asset('storage/'.$product->main_image) : null,
                     'initials' => strtoupper(substr($product->name, 0, 2)),
                     'color' => $this->getProductColor($product->id),
                 ];
             });
 
         $customers = Customer::select('id', 'name', 'number', 'credit_limit', 'loyalty_points')
-            ->withSum(['debts' => function($q) {
+            ->withSum(['debts' => function ($q) {
                 $q->where('status', 'active');
             }], 'balance')
             ->orderBy('name')
             ->get()
-            ->map(function($c) {
+            ->map(function ($c) {
                 $limit = $c->credit_limit ?? 0;
                 $debt = $c->debts_sum_balance ?? 0;
                 $available = max(0, $limit - $debt);
+
                 return [
                     'id' => $c->id,
                     'name' => $c->name,
@@ -84,23 +87,33 @@ class PosController extends Controller
             ->where('status', 'parked')
             ->with([
                 'customer:id,name',
-                'items.product.stocks'
+                'items.product.stocks',
             ])
             ->latest()
             ->get();
 
         $walkInCustomer = Customer::where('name', 'Walk-In Customer')->first();
-        if (!$walkInCustomer) {
+        if (! $walkInCustomer) {
             $walkInCustomer = Customer::create([
-                'name' => 'Walk-In Customer', 'number' => '000000000', 'credit_limit' => 0, 'store_id' => Auth::user()->store_id
+                'name' => 'Walk-In Customer', 'number' => '000000000', 'credit_limit' => 0, 'store_id' => Auth::user()->store_id,
             ]);
-            $walkInCustomer->available_credit = 0;
-            $walkInCustomer->phone = '000000000';
+            $walkInDebt = 0;
         } else {
-             $debt = $walkInCustomer->debts()->where('status', 'active')->sum('balance');
-             $walkInCustomer->available_credit = max(0, ($walkInCustomer->credit_limit ?? 0) - $debt);
-             $walkInCustomer->phone = $walkInCustomer->number;
+            $walkInDebt = $walkInCustomer->debts()->where('status', 'active')->sum('balance');
         }
+
+        $walkInLimit = (float) ($walkInCustomer->credit_limit ?? 0);
+
+        // Same shape as the $customers entries above so the POS can swap between them.
+        $defaultCustomer = [
+            'id' => $walkInCustomer->id,
+            'name' => $walkInCustomer->name,
+            'phone' => $walkInCustomer->number,
+            'credit_limit' => $walkInLimit,
+            'current_debt' => (float) $walkInDebt,
+            'available_credit' => max(0, $walkInLimit - (float) $walkInDebt),
+            'loyalty_points' => $walkInCustomer->loyalty_points ?? 0,
+        ];
 
         $company = CompanySetting::where('is_default', true)->first() ?? CompanySetting::first();
 
@@ -109,7 +122,7 @@ class PosController extends Controller
             'categories' => $categories,
             'customers' => $customers,
             'activeSession' => $activeSession,
-            'defaultCustomer' => $walkInCustomer,
+            'defaultCustomer' => $defaultCustomer,
             'parkedSales' => $parkedSales,
             'company' => $company,
         ]);
@@ -144,14 +157,14 @@ class PosController extends Controller
                 $subTotal += ($item['price'] * $item['qty']);
             }
 
-            $tendered = !empty($validated['payments']) ? collect($validated['payments'])->sum('amount') : 0;
+            $tendered = ! empty($validated['payments']) ? collect($validated['payments'])->sum('amount') : 0;
 
             $sale = PosSale::create([
                 'store_id' => $user->store_id,
                 'user_id' => $user->id,
                 'customer_id' => $validated['customer_id'],
                 'pos_session_id' => $session->id,
-                'receipt_number' => 'RCP-' . strtoupper(Str::random(8)),
+                'receipt_number' => 'RCP-'.strtoupper(Str::random(8)),
                 'total_amount' => $subTotal,
                 'status' => $validated['status'],
                 'tendered_amount' => $tendered,
@@ -203,8 +216,8 @@ class PosController extends Controller
             if ($validated['status'] === 'completed') {
                 $this->notifyStore(
                     $user->store_id,
-                    "New POS Sale",
-                    "Receipt #{$sale->receipt_number} generated by {$user->name} (" . number_format($sale->total_amount) . ")",
+                    'New POS Sale',
+                    "Receipt #{$sale->receipt_number} generated by {$user->name} (".number_format($sale->total_amount).')',
                     route('sales.index') // 👈 Links to your Sales History list
                 );
             }
@@ -215,20 +228,21 @@ class PosController extends Controller
                     'id' => $sale->id,
                     'number' => $sale->receipt_number,
                     'change' => $sale->change_amount,
-                    'customer' => $sale->customer->name
-                ] : null
+                    'customer' => $sale->customer->name,
+                ] : null,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("POS Error: " . $e->getMessage());
-            return back()->with('error', 'Error: ' . $e->getMessage());
+            Log::error('POS Error: '.$e->getMessage());
+
+            return back()->with('error', 'Error: '.$e->getMessage());
         }
     }
 
     private function processPayments(PosSale $sale, array $paymentsData)
     {
-        $groupId = 'POS-' . strtoupper(Str::random(8));
+        $groupId = 'POS-'.strtoupper(Str::random(8));
         $totalTendered = 0;
 
         foreach ($paymentsData as $line) {
@@ -250,7 +264,7 @@ class PosController extends Controller
                     'balance' => $amount, // Start fully unpaid
                     'status' => 'active',
                     'due_date' => now()->addDays(30), // Default credit term (can be customized)
-                    'notes' => 'POS Credit Sale'
+                    'notes' => 'POS Credit Sale',
                 ]);
 
                 // We SKIP creating a "Payment" record because no money was received yet.
@@ -262,11 +276,11 @@ class PosController extends Controller
             if (in_array($method, ['cash', 'mpesa'])) {
                 $category = ($method === 'mpesa') ? 'mpesa_manual' : 'cash';
                 $childModel = ManualTransaction::create([
-                    'method_category' => $category, 'reference_no' => $ref, 'amount_tendered' => $amount, 'notes' => "POS Sale"
+                    'method_category' => $category, 'reference_no' => $ref, 'amount_tendered' => $amount, 'notes' => 'POS Sale',
                 ]);
             } elseif ($method === 'card') {
                 $childModel = CardTransaction::create([
-                    'card_type' => 'visa', 'auth_code' => $ref, 'last_four' => null
+                    'card_type' => 'visa', 'auth_code' => $ref, 'last_four' => null,
                 ]);
             }
 
@@ -284,7 +298,7 @@ class PosController extends Controller
             PaymentToCustomer::create([
                 'store_id' => $sale->store_id, 'user_id' => $sale->user_id, 'customer_id' => $sale->customer_id,
                 'pos_sale_id' => $sale->id, 'amount' => $change, 'type' => 'change', 'method' => 'cash',
-                'notes' => "Change for POS Receipt #{$sale->receipt_number}", 'payment_date' => now()
+                'notes' => "Change for POS Receipt #{$sale->receipt_number}", 'payment_date' => now(),
             ]);
             $sale->update(['change_amount' => $change]);
         }
@@ -293,10 +307,12 @@ class PosController extends Controller
     private function getProductColor($id)
     {
         $colors = ['bg-red-100 text-red-600', 'bg-orange-100 text-orange-600', 'bg-amber-100 text-amber-600', 'bg-green-100 text-green-600', 'bg-emerald-100 text-emerald-600', 'bg-teal-100 text-teal-600', 'bg-cyan-100 text-cyan-600', 'bg-sky-100 text-sky-600', 'bg-blue-100 text-blue-600', 'bg-indigo-100 text-indigo-600', 'bg-violet-100 text-violet-600', 'bg-purple-100 text-purple-600', 'bg-fuchsia-100 text-fuchsia-600', 'bg-pink-100 text-pink-600', 'bg-rose-100 text-rose-600'];
+
         return $colors[$id % count($colors)];
     }
 
-    public function openSession(Request $request) {
+    public function openSession(Request $request)
+    {
         $validated = $request->validate(['opening_cash' => 'required|numeric|min:0']);
         $user = Auth::user();
 
@@ -309,14 +325,14 @@ class PosController extends Controller
             'user_id' => $user->id,
             'start_time' => now(),
             'opening_cash' => $validated['opening_cash'],
-            'status' => 'open'
+            'status' => 'open',
         ]);
 
         // 🟢 NOTIFY STORE (Shift Started)
         $this->notifyStore(
             $user->store_id,
-            "Register Opened",
-            "{$user->name} opened a new shift. Opening Float: " . number_format($validated['opening_cash']),
+            'Register Opened',
+            "{$user->name} opened a new shift. Opening Float: ".number_format($validated['opening_cash']),
             null // No specific link needed, or link to POS
         );
 
@@ -327,7 +343,7 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'closing_cash' => 'required|numeric|min:0',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
         ]);
 
         $user = Auth::user();
@@ -338,16 +354,16 @@ class PosController extends Controller
             ->where('status', 'open')
             ->first();
 
-        if (!$session) {
+        if (! $session) {
             return back()->with('error', 'No open session found to close.');
         }
 
         // Calculate expected cash
         $cashSales = $session->sales()
             ->where('status', 'completed')
-            ->with(['payments' => fn($q) => $q->where('method', 'cash')])
+            ->with(['payments' => fn ($q) => $q->where('method', 'cash')])
             ->get()
-            ->sum(fn($sale) => $sale->payments->sum('amount') - $sale->change_amount);
+            ->sum(fn ($sale) => $sale->payments->sum('amount') - $sale->change_amount);
 
         $expectedCash = $session->opening_cash + $cashSales;
         $difference = $validated['closing_cash'] - $expectedCash;
@@ -357,17 +373,17 @@ class PosController extends Controller
             'closing_cash' => $validated['closing_cash'],
             'cash_difference' => $difference,
             'status' => 'closed',
-            'notes' => $validated['notes']
+            'notes' => $validated['notes'] ?? null,
         ]);
 
         // 🟢 NOTIFY STORE (Shift Ended - Important for Managers)
         // We include the difference so managers spot theft/errors immediately
-        $diffString = $difference > 0 ? "+".number_format($difference) : number_format($difference);
+        $diffString = $difference > 0 ? '+'.number_format($difference) : number_format($difference);
 
         $this->notifyStore(
             $user->store_id,
-            "Register Closed",
-            "{$user->name} closed shift. Count: " . number_format($validated['closing_cash']) . ". Diff: {$diffString}",
+            'Register Closed',
+            "{$user->name} closed shift. Count: ".number_format($validated['closing_cash']).". Diff: {$diffString}",
             route('sales.index') // Link to sales to review performance
         );
 

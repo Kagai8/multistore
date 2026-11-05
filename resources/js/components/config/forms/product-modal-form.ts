@@ -1,5 +1,5 @@
 // resources/js/config/forms/product-modal-form.ts
-import { CirclePlus } from "lucide-react";
+import { CirclePlus } from 'lucide-react';
 
 // 🟢 Re-export the new FieldGroup interface for use in the component
 export interface FieldGroup {
@@ -9,7 +9,19 @@ export interface FieldGroup {
         key: string;
         name: string;
         label: string;
-        type: 'text' | 'number' | 'email' | 'password' | 'textarea' | 'file' | 'multi-file' | 'single-select' | 'multi-select' | 'checkbox' | 'tag-input' | 'hidden';
+        type:
+            | 'text'
+            | 'number'
+            | 'email'
+            | 'password'
+            | 'textarea'
+            | 'file'
+            | 'multi-file'
+            | 'single-select'
+            | 'multi-select'
+            | 'checkbox'
+            | 'tag-input'
+            | 'hidden';
         placeholder?: string;
         autocomplete?: string;
         tabIndex?: number;
@@ -23,15 +35,16 @@ export interface FieldGroup {
     columns: number;
 }
 
-
 export const ProductModalFormConfig = {
     moduleTitle: 'Manage Products',
     title: 'Create New Product',
-    description: 'Provide core details, relationships, pricing, and media for the product.',
+    description:
+        'Provide core details, relationships, pricing, and media for the product.',
     addButton: {
         id: 'add-product',
         label: 'Add Product',
-        className: 'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
+        className:
+            'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
         icon: CirclePlus,
         type: 'button',
         variant: 'default',
@@ -274,7 +287,6 @@ export const ProductModalFormConfig = {
                 },
             ],
         },
-
     ] as FieldGroup[], // Assertion for TypeScript
 
     buttons: [

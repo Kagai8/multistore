@@ -2,22 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role; // Our custom Role model (which extends SpatieRole)
-use Inertia\Inertia;
-use App\Models\Permission;
-use Illuminate\Support\Str;
+use App\Models\Permission; // Our custom Role model (which extends SpatieRole)
+use App\Models\Role;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request; // Use base Request for filtering
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Carbon\Carbon;
-
 // Exports
-use Barryvdh\DomPDF\Facade\Pdf;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 
 class RoleController extends Controller
 {
@@ -36,8 +34,8 @@ class RoleController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('label', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -46,7 +44,7 @@ class RoleController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
             if ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
 
@@ -94,16 +92,23 @@ class RoleController extends Controller
         return Inertia::render('roles/index', [
             'roles' => $roles,
             'permissionsGrouped' => $permissionsGrouped, // Pass this to the frontend
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
     }
 
-    public function create() { /* Unused */ }
-    public function show(string $id) { /* Unused */ }
-    public function edit(string $id) { /* Unused */ }
+    public function create()
+    { /* Unused */
+    }
 
+    public function show(string $id)
+    { /* Unused */
+    }
+
+    public function edit(string $id)
+    { /* Unused */
+    }
 
     /**
      * Store a newly created resource in storage.
@@ -118,7 +123,7 @@ class RoleController extends Controller
         Log::info('--- ROLE CREATE: START ---', ['input' => $request->all()]);
 
         // Merge logic to handle 'permissions_ids' vs 'permissions'
-        if (!$request->has('permissions') && $request->has('permissions_ids')) {
+        if (! $request->has('permissions') && $request->has('permissions_ids')) {
             Log::info('ROLE CREATE: Merging permissions_ids into permissions key.');
             $request->merge(['permissions' => $request->input('permissions_ids')]);
         }
@@ -136,7 +141,7 @@ class RoleController extends Controller
             $role = Role::create([
                 'label' => $validated['label'],
                 'name' => Str::slug($validated['label']),
-                'description' => $validated['description'],
+                'description' => $validated['description'] ?? null,
                 'guard_name' => 'web',
                 'is_active' => $validated['is_active'],
                 'all_store_access' => $validated['all_store_access'] ?? false,
@@ -158,22 +163,24 @@ class RoleController extends Controller
             Log::info('ROLE CREATE: Permissions prepared for sync', [
                 'role_id' => $role->id,
                 'count' => count($permissionsToSync),
-                'permissions_list' => $permissionsToSync
+                'permissions_list' => $permissionsToSync,
             ]);
 
             // Sync
             $role->syncPermissions($permissionsToSync);
 
             // 🔍 LOG 3: Verification
-            Log::info('ROLE CREATE: Success. Current database permissions count: ' . $role->permissions()->count());
+            Log::info('ROLE CREATE: Success. Current database permissions count: '.$role->permissions()->count());
 
             DB::commit();
+
             return redirect()->route('roles.index')->with('success', 'Role created successfully with Permissions');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("ROLE CREATE: FAILED", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return redirect()->back()->with('error', 'Unable to create role. ' . $e->getMessage());
+            Log::error('ROLE CREATE: FAILED', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return redirect()->back()->with('error', 'Unable to create role. '.$e->getMessage());
         }
     }
 
@@ -186,7 +193,7 @@ class RoleController extends Controller
         Log::info("--- ROLE UPDATE: START (Role ID: {$role->id}) ---", ['input' => $request->all()]);
 
         // Merge logic
-        if (!$request->has('permissions') && $request->has('permissions_ids')) {
+        if (! $request->has('permissions') && $request->has('permissions_ids')) {
             Log::info('ROLE UPDATE: Merging permissions_ids into permissions key.');
             $request->merge(['permissions' => $request->input('permissions_ids')]);
         }
@@ -203,8 +210,9 @@ class RoleController extends Controller
         ]);
 
         // Security Check
-        if ($role->name === 'super-administrator' && !($validated['all_store_access'] ?? false)) {
+        if ($role->name === 'super-administrator' && ! ($validated['all_store_access'] ?? false)) {
             Log::warning('ROLE UPDATE: Blocked attempt to revoke super-admin access.');
+
             return redirect()->back()->with('error', 'The Super Administrator role must retain All Store Access.');
         }
 
@@ -212,7 +220,7 @@ class RoleController extends Controller
         try {
             $role->label = $validated['label'];
             $role->name = Str::slug($validated['label']);
-            $role->description = $validated['description'];
+            $role->description = $validated['description'] ?? null;
             $role->is_active = $validated['is_active'];
             $role->all_store_access = $validated['all_store_access'] ?? false;
             $role->save();
@@ -232,7 +240,7 @@ class RoleController extends Controller
             Log::info('ROLE UPDATE: Permissions prepared for sync', [
                 'role_id' => $role->id,
                 'count' => count($permissionsToSync),
-                'permissions_list' => $permissionsToSync
+                'permissions_list' => $permissionsToSync,
             ]);
 
             // Sync
@@ -240,15 +248,17 @@ class RoleController extends Controller
 
             // 🔍 LOG 3: Verification
             // Force refresh of relationship to get accurate count
-            Log::info('ROLE UPDATE: Success. Current database permissions count: ' . $role->refresh()->permissions()->count());
+            Log::info('ROLE UPDATE: Success. Current database permissions count: '.$role->refresh()->permissions()->count());
 
             DB::commit();
+
             return redirect()->route('roles.index')->with('success', 'Role updated successfully with Permissions');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("ROLE UPDATE: FAILED", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return redirect()->back()->with('error', 'Unable to update role. ' . $e->getMessage());
+            Log::error('ROLE UPDATE: FAILED', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return redirect()->back()->with('error', 'Unable to update role. '.$e->getMessage());
         }
     }
 
@@ -260,17 +270,19 @@ class RoleController extends Controller
         $role = Role::findOrFail($id);
 
         if ($role->users()->count() > 0) {
-             return back()->with('error', 'Cannot delete role: It is currently assigned to one or more users.');
+            return back()->with('error', 'Cannot delete role: It is currently assigned to one or more users.');
         }
 
         DB::beginTransaction();
         try {
             $role->delete();
             DB::commit();
+
             return redirect()->back()->with('success', 'Role deleted successfully');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Role Deletion Error: " . $e->getMessage());
+            Log::error('Role Deletion Error: '.$e->getMessage());
+
             return back()->with('error', 'Failed to delete role due to a system error.');
         }
     }
@@ -289,18 +301,20 @@ class RoleController extends Controller
 
         // Prevent deletion if any role is assigned to a user
         if ($roles->filter(fn ($r) => $r->users()->count() > 0)->count() > 0) {
-            return back()->with('error', "Cannot delete selected role(s): One or more are assigned to users.");
+            return back()->with('error', 'Cannot delete selected role(s): One or more are assigned to users.');
         }
 
         DB::beginTransaction();
         try {
             $deletedCount = Role::whereIn('id', $ids)->delete();
             DB::commit();
-            return back()->with('success', $deletedCount . ' role(s) deleted successfully.');
+
+            return back()->with('success', $deletedCount.' role(s) deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Bulk Role Deletion Error: " . $e->getMessage());
-            return back()->with('error', 'Failed to delete roles: ' . $e->getMessage());
+            Log::error('Bulk Role Deletion Error: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to delete roles: '.$e->getMessage());
         }
     }
 
@@ -310,12 +324,47 @@ class RoleController extends Controller
     {
         $pdf = Pdf::loadView('roles.role-single', compact('role'))
             ->setPaper('a4', 'portrait');
+
         return $pdf->download("role_{$role->id}.pdf");
+    }
+
+    public function exportSingleExcel(Role $role)
+    {
+        return Excel::download(
+            new class($role) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $role;
+
+                public function __construct($role)
+                {
+                    $this->role = $role;
+                }
+
+                public function collection()
+                {
+                    return collect([[
+                        'ID' => $this->role->id,
+                        'Name' => $this->role->name,
+                        'Label' => $this->role->label,
+                        'Description' => $this->role->description,
+                        'All Store Access' => $this->role->all_store_access ? 'Yes' : 'No',
+                        'Is Active' => $this->role->is_active ? 'Yes' : 'No',
+                        'Created Date' => optional($this->role->created_at)->format('d M Y'),
+                    ]]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Label', 'Description', 'All Store Access', 'Is Active', 'Created Date'];
+                }
+            },
+            "role_{$role->id}.xlsx"
+        );
     }
 
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $roles = Role::whereIn('id', $ids)->get();
 
         if ($roles->isEmpty()) {
@@ -330,7 +379,7 @@ class RoleController extends Controller
 
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $roles = Role::whereIn('id', $ids)->get();
 
         if ($roles->isEmpty()) {
@@ -338,9 +387,14 @@ class RoleController extends Controller
         }
 
         return Excel::download(
-            new class($roles) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($roles) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $roles;
-                public function __construct($roles) { $this->roles = $roles; }
+
+                public function __construct($roles)
+                {
+                    $this->roles = $roles;
+                }
 
                 public function collection()
                 {
@@ -367,7 +421,7 @@ class RoleController extends Controller
 
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headers
@@ -397,20 +451,46 @@ class RoleController extends Controller
         ]);
 
         $file = $request->file('file');
-        // Simple file parsing logic (using similar structure as PermissionController)
-        $rows = (new \App\Services\ImportService())->parseFile($file);
+        $extension = $file->getClientOriginalExtension();
+        $rows = [];
+
+        // Parse locally rather than through a service class that was never created.
+        if ($extension === 'csv' || $extension === 'txt') {
+            if (($handle = fopen($file->getRealPath(), 'r')) !== false) {
+                $header = array_map('strtolower', fgetcsv($handle, 1000, ','));
+                while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+                    if (count($header) === count($data)) {
+                        $rows[] = array_combine($header, $data);
+                    }
+                }
+                fclose($handle);
+            }
+        } else {
+            $sheets = Excel::toArray(new \stdClass, $file);
+            $rows = $sheets[0] ?? [];
+            if (! empty($rows)) {
+                $header = array_map('strtolower', $rows[0]);
+                unset($rows[0]);
+                $rows = array_map(fn ($r) => count($header) === count($r) ? array_combine($header, $r) : null, $rows);
+                $rows = array_filter($rows);
+            }
+        }
 
         $imported = 0;
 
         foreach ($rows as $row) {
             $label = trim($row['label'] ?? '');
-            if (empty($label)) continue;
+            if (empty($label)) {
+                continue;
+            }
 
             $name = Str::slug($label);
 
             // Check if a role with the same name (slug) already exists
             $exists = Role::where('name', $name)->exists();
-            if ($exists) continue;
+            if ($exists) {
+                continue;
+            }
 
             Role::create([
                 'label' => $label,

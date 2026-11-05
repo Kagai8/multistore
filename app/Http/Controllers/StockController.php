@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
+use App\Models\AdjustmentReason;
+use App\Models\Product;
 use App\Models\Stock;
 use App\Models\Store;
-use App\Models\Product;
-use Illuminate\Http\Request;
-use App\Models\StockAdjustment;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Models\AdjustmentReason;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StockController extends Controller
@@ -21,130 +19,130 @@ class StockController extends Controller
      * Display a listing of the resource (The Inventory Report).
      */
     public function index(Request $request)
-{
-    // 1. Filtering Parameters
-    $search = $request->input('search');
-    $perPage = (int) ($request->input('perPage', 10));
-    $dateFrom = $request->input('dateFrom');
-    $dateTo = $request->input('dateTo');
+    {
+        // 1. Filtering Parameters
+        $search = $request->input('search');
+        $perPage = (int) ($request->input('perPage', 10));
+        $dateFrom = $request->input('dateFrom');
+        $dateTo = $request->input('dateTo');
 
-    // 2. Base Query with Relationships
-    // Stocks are loaded with their related product and store to display names/SKUs.
-    $query = Stock::with(['product', 'store']);
+        // 2. Base Query with Relationships
+        // Stocks are loaded with their related product and store to display names/SKUs.
+        $query = Stock::with(['product', 'store']);
 
-    // 3. Apply Search Filter
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            // Search by Product name or SKU
-            $q->orWhereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%")
-                                                 ->orWhere('sku', 'like', "%{$search}%"));
-            // Search by Store name or code
-            $q->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%")
-                                               ->orWhere('code', 'like', "%{$search}%"));
-        });
-    }
-
-    // 🟢 NEW: Calculate KPI Stats
-    $totalStockValue = \App\Models\Stock::join('products', 'stocks.product_id', '=', 'products.id')
-        ->sum(DB::raw('stocks.current_stock * products.buying_price'));
-
-    $lowStockCount = \App\Models\Stock::whereColumn('current_stock', '<=', 'reorder_level')
-        ->where('reorder_level', '>', 0)
-        ->count();
-
-    $outOfStockCount = \App\Models\Stock::where('current_stock', 0)->count();
-
-    $stats = [
-        'total_value' => $totalStockValue,
-        'low_stock' => $lowStockCount,
-        'out_of_stock' => $outOfStockCount,
-    ];
-
-    // 4. Apply Date Range Filter (Filter by the Stock record's last update time)
-    if ($dateFrom || $dateTo) {
-        // Ensure Carbon is imported if it's not already
-        $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
-        $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
-
-        if ($start && $end) {
-             $query->whereBetween('stocks.updated_at', [$start, $end]);
-        } elseif ($start) {
-            $query->where('stocks.updated_at', '>=', $start);
-        } elseif ($end) {
-            $query->where('stocks.updated_at', '<=', $end);
+        // 3. Apply Search Filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                // Search by Product name or SKU
+                $q->orWhereHas('product', fn ($sq) => $sq->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%"));
+                // Search by Store name or code
+                $q->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%"));
+            });
         }
-    }
 
-    // 🛑 FIX: Fetch all necessary lookup data for the Stock Correction modal
-    $stores = Store::all(['id', 'name']);
-    // Fetch products, combining name and SKU for better search/selection in the frontend
-    $products = Product::all(['id', 'name', 'sku'])->map(function ($product) {
-        $product->name = "{$product->name} ({$product->sku})"; // Format: Product Name (SKU)
-        return $product;
-    });
-    $adjustmentReasons = AdjustmentReason::all(['id', 'name']);
+        // 🟢 NEW: Calculate KPI Stats
+        $totalStockValue = \App\Models\Stock::join('products', 'stocks.product_id', '=', 'products.id')
+            ->sum(DB::raw('stocks.current_stock * products.buying_price'));
 
+        $lowStockCount = \App\Models\Stock::whereColumn('current_stock', '<=', 'reorder_level')
+            ->where('reorder_level', '>', 0)
+            ->count();
 
-    // 5. Counts
-    $totalCount = Stock::count();
-    $filteredCount = $query->count();
+        $outOfStockCount = \App\Models\Stock::where('current_stock', 0)->count();
 
-    // 6. Transformation Logic
-    $transform = function (Stock $stock) {
-        // Check if stock is below the reorder level to flag it
-        $needsReorder = $stock->reorder_level > 0 && $stock->current_stock <= $stock->reorder_level;
-
-        return [
-            'id' => $stock->id,
-            'product_id' => $stock->product_id,
-            'store_id' => $stock->store_id,
-            'current_stock' => $stock->current_stock,
-            'reorder_level' => $stock->reorder_level,
-            'reorder_quantity' => $stock->reorder_quantity,
-            'needs_reorder' => $needsReorder,
-
-            // Relationships for display in the ComplexTable
-            'product' => [
-                'id' => $stock->product->id,
-                'name' => $stock->product->name,
-                'sku' => $stock->product->sku,
-            ],
-            'store' => [
-                'id' => $stock->store->id,
-                'name' => $stock->store->name,
-                'code' => $stock->store->code,
-            ],
-            'updated_at' => optional($stock->updated_at)->format('d M Y H:i'),
+        $stats = [
+            'total_value' => $totalStockValue,
+            'low_stock' => $lowStockCount,
+            'out_of_stock' => $outOfStockCount,
         ];
-    };
 
-    // 7. Pagination
-    if ($perPage === -1) {
-        $all = $query->latest('updated_at')->get()->map($transform);
-        $stocks = [
-            'data' => $all,
-            'total' => $filteredCount,
-            'per_page' => $perPage,
-            'from' => $all->count() ? 1 : 0,
-            'to' => $all->count(),
-            'links' => [],
-        ];
-    } else {
-        $paginator = $query->latest('updated_at')->paginate($perPage)->withQueryString();
-        $paginator->getCollection()->transform($transform);
-        $stocks = $paginator;
+        // 4. Apply Date Range Filter (Filter by the Stock record's last update time)
+        if ($dateFrom || $dateTo) {
+            // Ensure Carbon is imported if it's not already
+            $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
+            $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
+
+            if ($start && $end) {
+                $query->whereBetween('stocks.updated_at', [$start, $end]);
+            } elseif ($start) {
+                $query->where('stocks.updated_at', '>=', $start);
+            } elseif ($end) {
+                $query->where('stocks.updated_at', '<=', $end);
+            }
+        }
+
+        // 🛑 FIX: Fetch all necessary lookup data for the Stock Correction modal
+        $stores = Store::all(['id', 'name']);
+        // Fetch products, combining name and SKU for better search/selection in the frontend
+        $products = Product::all(['id', 'name', 'sku'])->map(function ($product) {
+            $product->name = "{$product->name} ({$product->sku})"; // Format: Product Name (SKU)
+
+            return $product;
+        });
+        $adjustmentReasons = AdjustmentReason::all(['id', 'name']);
+
+        // 5. Counts
+        $totalCount = Stock::count();
+        $filteredCount = $query->count();
+
+        // 6. Transformation Logic
+        $transform = function (Stock $stock) {
+            // Check if stock is below the reorder level to flag it
+            $needsReorder = $stock->reorder_level > 0 && $stock->current_stock <= $stock->reorder_level;
+
+            return [
+                'id' => $stock->id,
+                'product_id' => $stock->product_id,
+                'store_id' => $stock->store_id,
+                'current_stock' => $stock->current_stock,
+                'reorder_level' => $stock->reorder_level,
+                'reorder_quantity' => $stock->reorder_quantity,
+                'needs_reorder' => $needsReorder,
+
+                // Relationships for display in the ComplexTable
+                'product' => [
+                    'id' => $stock->product->id,
+                    'name' => $stock->product->name,
+                    'sku' => $stock->product->sku,
+                ],
+                'store' => [
+                    'id' => $stock->store->id,
+                    'name' => $stock->store->name,
+                    'code' => $stock->store->code,
+                ],
+                'updated_at' => optional($stock->updated_at)->format('d M Y H:i'),
+            ];
+        };
+
+        // 7. Pagination
+        if ($perPage === -1) {
+            $all = $query->latest('updated_at')->get()->map($transform);
+            $stocks = [
+                'data' => $all,
+                'total' => $filteredCount,
+                'per_page' => $perPage,
+                'from' => $all->count() ? 1 : 0,
+                'to' => $all->count(),
+                'links' => [],
+            ];
+        } else {
+            $paginator = $query->latest('updated_at')->paginate($perPage)->withQueryString();
+            $paginator->getCollection()->transform($transform);
+            $stocks = $paginator;
+        }
+
+        // 8. Render Inertia Page
+        return Inertia::render('stocks/index', [
+            'stocks' => $stocks,
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
+            'totalCount' => $totalCount,
+            'filteredCount' => $filteredCount,
+            'lookupData' => compact('stores', 'products', 'adjustmentReasons'),
+            'stats' => $stats,
+        ]);
     }
-
-    // 8. Render Inertia Page
-    return Inertia::render('stocks/index', [
-        'stocks' => $stocks,
-        'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
-        'totalCount' => $totalCount,
-        'filteredCount' => $filteredCount,
-        'lookupData' => compact('stores', 'products', 'adjustmentReasons'),
-        'stats' => $stats,
-    ]);
-}
 
     /**
      * Update the Reorder Policy for a specific Stock record.
@@ -173,14 +171,11 @@ class StockController extends Controller
      * destroy() and bulkDelete() are omitted intentionally.
      */
 
-
     // --- Export Methods (Mimicking ProductController) ---
 
     /**
      * Handle single PDF export.
      */
-
-
     public function exportSinglePdf(Stock $stock)
     {
         $stock->load(['product', 'store']);
@@ -199,9 +194,14 @@ class StockController extends Controller
         $stock->load(['product', 'store']);
 
         return Excel::download(
-            new class($stock) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($stock) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $stock;
-                public function __construct($stock) { $this->stock = $stock; }
+
+                public function __construct($stock)
+                {
+                    $this->stock = $stock;
+                }
 
                 public function collection()
                 {
@@ -239,7 +239,7 @@ class StockController extends Controller
         // 🟢 FIX: Retrieve IDs from the query string request
         $ids = $request->input('ids');
 
-        if (!$ids) {
+        if (! $ids) {
             return back()->with('error', 'No inventory records selected.');
         }
 
@@ -268,7 +268,7 @@ class StockController extends Controller
         // 🟢 FIX: Retrieve IDs from the query string request
         $ids = $request->input('ids');
 
-        if (!$ids) {
+        if (! $ids) {
             return back()->with('error', 'No inventory records selected.');
         }
 
@@ -283,9 +283,14 @@ class StockController extends Controller
         }
 
         return Excel::download(
-            new class($stocks) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($stocks) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $stocks;
-                public function __construct($stocks) { $this->stocks = $stocks; }
+
+                public function __construct($stocks)
+                {
+                    $this->stocks = $stocks;
+                }
 
                 public function collection()
                 {

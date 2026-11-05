@@ -1,56 +1,108 @@
-import { CirclePlus } from "lucide-react";
+import { CirclePlus } from 'lucide-react';
 
 // 🛑 STEP 1: Define the complete list of modules manually (as requested)
 const ALL_MODULES = [
     // Core Admin
-    {label: 'Users', value: 'users', key: 'users'},
-    {label: 'Roles', value: 'roles', key: 'roles'},
-    {label: 'Permissions', value: 'permissions', key: 'permissions'},
+    { label: 'Users', value: 'users', key: 'users' },
+    { label: 'Roles', value: 'roles', key: 'roles' },
+    { label: 'Permissions', value: 'permissions', key: 'permissions' },
 
     // Inventory Management Goal Modules
-    {label: 'Stores', value: 'stores', key: 'stores'},
-    {label: 'Customers', value: 'customers', key: 'customers'},
-    {label: 'Suppliers', value: 'suppliers', key: 'suppliers'},
-    {label: 'Products', value: 'products', key: 'products'},
-    {label: 'Categories', value: 'categories', key: 'categories'},
-    {label: 'Brands', value: 'brands', key: 'brands'},
-    {label: 'Units', value: 'units', key: 'units'},
-    {label: 'Stocks', value: 'stocks', key: 'stocks'},
-    {label: 'New Stock Entries', value: 'new-stock', key: 'new-stock'},
-    {label: 'Stock Adjustments', value: 'stock-adjustments', key: 'stock-adjustments'},
-    {label: 'Adjustment Reasons', value: 'adjustment-reasons', key: 'adjustment-reasons'},
-    {label: 'Stock Transfers', value: 'stock-transfers', key: 'stock-transfers'},
-    {label: 'Stock Transfer Items', value: 'transfer-items', key: 'transfer-items'},
-    {label: 'Invoices', value: 'invoices', key: 'invoices'},
-    {label: 'Invoice Items', value: 'invoice-items', key: 'invoice-items'},
-    {label: 'Store Payment Settings', value: 'store-payment-settings', key: 'store-payment-settings'},
-    {label: 'Debts', value: 'debts', key: 'debts'},
-    {label: 'Quotations', value: 'quotations', key: 'quotations'},
-    {label: 'Quotation Items', value: 'quotation-items', key: 'quotation-items'},
-    {label: 'Sales', value: 'sales', key: 'sales'},
-    {label: 'Payments', value: 'payments', key: 'payments'},
-    {label: 'Payments to Customer', value: 'payments-to-customer', key: 'payments-to-customer'},
-    {label: 'Sale Items', value: 'sale-items', key: 'sale-items'},
-    {label: 'POS Terminal', value: 'pos', key: 'pos'},
-    {label: 'Debts & Credits Reports', value: 'debts-reports', key: 'debts-reports'},
-    {label: 'Company Settings', value: 'company-settings', key: 'company-settings'},
-    {label: 'Master Settings', value: 'master-settings', key: 'master-settings'},
-    {label: 'POS Reports', value: 'pos-reports', key: 'pos-reports'},
-    {label: 'Purchase Orders', value: 'purchase-orders', key: 'purchase-orders'},
-    {label: 'Purchase Order Items', value: 'purchase-order-items', key: 'purchase-order-items'},
-    {label: 'Reports & Analytics', value: 'reports-analytics', key: 'reports-analytics'},
-
+    { label: 'Stores', value: 'stores', key: 'stores' },
+    { label: 'Customers', value: 'customers', key: 'customers' },
+    { label: 'Suppliers', value: 'suppliers', key: 'suppliers' },
+    { label: 'Products', value: 'products', key: 'products' },
+    { label: 'Categories', value: 'categories', key: 'categories' },
+    { label: 'Brands', value: 'brands', key: 'brands' },
+    { label: 'Units', value: 'units', key: 'units' },
+    { label: 'Stocks', value: 'stocks', key: 'stocks' },
+    { label: 'New Stock Entries', value: 'new-stock', key: 'new-stock' },
+    {
+        label: 'Stock Adjustments',
+        value: 'stock-adjustments',
+        key: 'stock-adjustments',
+    },
+    {
+        label: 'Adjustment Reasons',
+        value: 'adjustment-reasons',
+        key: 'adjustment-reasons',
+    },
+    {
+        label: 'Stock Transfers',
+        value: 'stock-transfers',
+        key: 'stock-transfers',
+    },
+    {
+        label: 'Stock Transfer Items',
+        value: 'transfer-items',
+        key: 'transfer-items',
+    },
+    { label: 'Invoices', value: 'invoices', key: 'invoices' },
+    { label: 'Invoice Items', value: 'invoice-items', key: 'invoice-items' },
+    {
+        label: 'Store Payment Settings',
+        value: 'store-payment-settings',
+        key: 'store-payment-settings',
+    },
+    { label: 'Debts', value: 'debts', key: 'debts' },
+    { label: 'Quotations', value: 'quotations', key: 'quotations' },
+    {
+        label: 'Quotation Items',
+        value: 'quotation-items',
+        key: 'quotation-items',
+    },
+    { label: 'Sales', value: 'sales', key: 'sales' },
+    { label: 'Payments', value: 'payments', key: 'payments' },
+    {
+        label: 'Payments to Customer',
+        value: 'payments-to-customer',
+        key: 'payments-to-customer',
+    },
+    { label: 'Sale Items', value: 'sale-items', key: 'sale-items' },
+    { label: 'POS Terminal', value: 'pos', key: 'pos' },
+    {
+        label: 'Debts & Credits Reports',
+        value: 'debts-reports',
+        key: 'debts-reports',
+    },
+    {
+        label: 'Company Settings',
+        value: 'company-settings',
+        key: 'company-settings',
+    },
+    {
+        label: 'Master Settings',
+        value: 'master-settings',
+        key: 'master-settings',
+    },
+    { label: 'POS Reports', value: 'pos-reports', key: 'pos-reports' },
+    {
+        label: 'Purchase Orders',
+        value: 'purchase-orders',
+        key: 'purchase-orders',
+    },
+    {
+        label: 'Purchase Order Items',
+        value: 'purchase-order-items',
+        key: 'purchase-order-items',
+    },
+    {
+        label: 'Reports & Analytics',
+        value: 'reports-analytics',
+        key: 'reports-analytics',
+    },
 ];
-
 
 export const PermissionModalFormConfig = {
     moduleTitle: 'Manage Permissions',
     title: 'Create Permission',
-    description: 'Define a new permission by linking it to a module and giving it a label.',
+    description:
+        'Define a new permission by linking it to a module and giving it a label.',
     addButton: {
         id: 'add-permission',
         label: 'Add Permission',
-        className: 'bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer flex items-center gap-2',
+        className:
+            'bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer flex items-center gap-2',
         icon: CirclePlus,
         type: 'button',
         variant: 'default',
@@ -67,7 +119,7 @@ export const PermissionModalFormConfig = {
             tabIndex: 1,
             autoFocus: true,
             // 🛑 STEP 2: Use the complete, hardcoded options list
-            options: ALL_MODULES.map(m => ({ id: m.value, name: m.label })),
+            options: ALL_MODULES.map((m) => ({ id: m.value, name: m.label })),
         },
         {
             id: 'permission-label',
@@ -102,17 +154,17 @@ export const PermissionModalFormConfig = {
     buttons: [
         {
             key: 'cancel',
-            type:'button',
+            type: 'button',
             label: 'Cancel',
             variant: 'ghost',
             className: 'cursor-pointer',
         },
         {
             key: 'submit',
-            type:'submit',
-            label:'Save Permission',
+            type: 'submit',
+            label: 'Save Permission',
             variant: 'default',
             className: 'cursor-pointer bg-orange-600 hover:bg-orange-700',
-        }
-    ]
-}
+        },
+    ],
+};

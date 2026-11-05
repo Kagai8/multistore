@@ -40,7 +40,7 @@ class StorePaymentSettingController extends Controller
             });
 
         return Inertia::render('payment-settings/index', [
-            'settings' => $settings
+            'settings' => $settings,
         ]);
     }
 
@@ -63,7 +63,7 @@ class StorePaymentSettingController extends Controller
             'consumer_key' => 'required|string',
             'consumer_secret' => 'required|string',
             'passkey' => 'required|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         // 🟢 JSON PACKING
@@ -78,9 +78,9 @@ class StorePaymentSettingController extends Controller
             'provider' => $validated['provider'],
             'type' => $validated['type'],
             'business_number' => $validated['business_number'],
-            'account_number' => $validated['account_number'],
+            'account_number' => $validated['account_number'] ?? null,
             'credentials' => $credentials, // Laravel casts this to JSON automatically
-            'is_active' => $validated['is_active'],
+            'is_active' => $validated['is_active'] ?? true,
         ]);
 
         return back()->with('success', 'Payment setting saved successfully.');
@@ -106,7 +106,7 @@ class StorePaymentSettingController extends Controller
             'consumer_key' => 'required|string',
             'consumer_secret' => 'required|string',
             'passkey' => 'nullable|string', // Nullable on update in case they don't want to change it
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         // Merge new passkey only if provided, otherwise keep old
@@ -114,16 +114,16 @@ class StorePaymentSettingController extends Controller
         $newCreds = [
             'consumer_key' => $validated['consumer_key'],
             'consumer_secret' => $validated['consumer_secret'],
-            'passkey' => $validated['passkey'] ? $validated['passkey'] : ($currentCreds['passkey'] ?? ''),
+            'passkey' => ($validated['passkey'] ?? null) ? $validated['passkey'] : ($currentCreds['passkey'] ?? ''),
         ];
 
         $setting->update([
             'provider' => $validated['provider'],
             'type' => $validated['type'],
             'business_number' => $validated['business_number'],
-            'account_number' => $validated['account_number'],
+            'account_number' => $validated['account_number'] ?? null,
             'credentials' => $newCreds,
-            'is_active' => $validated['is_active'],
+            'is_active' => $validated['is_active'] ?? $setting->is_active,
         ]);
 
         return back()->with('success', 'Payment setting updated.');
@@ -133,6 +133,7 @@ class StorePaymentSettingController extends Controller
     {
         $user = Auth::user();
         StorePaymentSetting::where('store_id', $user->store_id)->where('id', $id)->delete();
+
         return back()->with('success', 'Configuration deleted.');
     }
 }

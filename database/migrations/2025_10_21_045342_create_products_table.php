@@ -42,8 +42,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->boolean('is_purchasable')->default(true);
 
-            
-
             // Add indices for performance on frequently queried fields
             $table->index(['name']);
             $table->index(['category_id', 'brand_id', 'supplier_id']);

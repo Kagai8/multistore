@@ -1,45 +1,44 @@
 <?php
 
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\AdjustmentReasonController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 // Controllers
-use App\Http\Controllers\PosController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CompanySettingController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DebtController;
+use App\Http\Controllers\FinancialReportController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MpesaController;
+use App\Http\Controllers\NewStockEntryController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentToCustomerController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PosController;
+use App\Http\Controllers\PosSessionController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseOrderItemController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleItemController;
+use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\StockAdjustmentRequestController;
+use App\Http\Controllers\StockController;
+use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\StockTransferItemController;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StorePaymentSettingController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\BrandController;
-use App\Http\Controllers\MpesaController;
-use App\Http\Controllers\StockController;
-use App\Http\Controllers\StoreController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\SaleItemController;
-use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\QuotationController;
-use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\PosSessionController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\NewStockEntryController;
-use App\Http\Controllers\PurchaseOrderController;
-use App\Http\Controllers\StockTransferController;
-use App\Http\Controllers\CompanySettingController;
-use App\Http\Controllers\StockAdjustmentController;
-use App\Http\Controllers\AdjustmentReasonController;
-use App\Http\Controllers\PaymentToCustomerController;
-use App\Http\Controllers\PurchaseOrderItemController;
-use App\Http\Controllers\StockTransferItemController;
-use App\Http\Controllers\StorePaymentSettingController;
-use App\Http\Controllers\StockAdjustmentRequestController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\ValuationReportController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -81,7 +80,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/brands/bulk-export-excel', [BrandController::class, 'bulkExportExcel'])->name('brands.bulk-export-excel');
         Route::get('/brands/{brand}/export-pdf', [BrandController::class, 'exportSinglePdf'])->name('brands.export.pdf.single');
         Route::get('/brands/{brand}/export-excel', [BrandController::class, 'exportSingleExcel'])->name('brands.export.excel.single');
-        Route::resource('brands', BrandController::class);
+        // The UI edits brands in a modal; there is no separate edit screen.
+        Route::resource('brands', BrandController::class)->except(['edit']);
     });
 
     // --- CATEGORIES ---
@@ -117,7 +117,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/products/bulk-export-excel', [ProductController::class, 'bulkExportExcel'])->name('products.bulk-export-excel');
         Route::get('/products/{product}/export-pdf', [ProductController::class, 'exportSinglePdf'])->name('products.export.pdf.single');
         Route::get('/products/{product}/export-excel', [ProductController::class, 'exportSingleExcel'])->name('products.export.excel.single');
-        Route::resource('products', ProductController::class);
+        // The UI edits products in a modal; there is no separate create/show/edit screen.
+        Route::resource('products', ProductController::class)->except(['create', 'show', 'edit']);
     });
 
     // --- STORES ---
@@ -129,7 +130,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/stores/bulk-export-excel', [StoreController::class, 'bulkExportExcel'])->name('stores.bulk-export-excel');
         Route::get('/stores/{store}/export-pdf', [StoreController::class, 'exportSinglePdf'])->name('stores.export.pdf.single');
         Route::get('/stores/{store}/export-excel', [StoreController::class, 'exportSingleExcel'])->name('stores.export.excel.single');
-        Route::resource('stores', StoreController::class);
+        // The UI edits stores in a modal; there is no separate create/show/edit screen.
+        Route::resource('stores', StoreController::class)->except(['create', 'show', 'edit']);
     });
 
     // --- SUPPLIERS ---
@@ -141,7 +143,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/suppliers/bulk-export-excel', [SupplierController::class, 'bulkExportExcel'])->name('suppliers.bulk-export-excel');
         Route::get('/suppliers/{supplier}/export-pdf', [SupplierController::class, 'exportSinglePdf'])->name('suppliers.export.pdf.single');
         Route::get('/suppliers/{supplier}/export-excel', [SupplierController::class, 'exportSingleExcel'])->name('suppliers.export.excel.single');
-        Route::resource('suppliers', SupplierController::class);
+        // The UI edits suppliers in a modal; there is no separate create/edit screen.
+        Route::resource('suppliers', SupplierController::class)->except(['create', 'edit']);
     });
 
     // --- CUSTOMERS ---
@@ -153,9 +156,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/customers/bulk-export-excel', [CustomerController::class, 'bulkExportExcel'])->name('customers.bulk-export-excel');
         Route::get('/customers/{customer}/export-pdf', [CustomerController::class, 'exportSinglePdf'])->name('customers.export.pdf.single');
         Route::get('/customers/{customer}/export-excel', [CustomerController::class, 'exportSingleExcel'])->name('customers.export.excel.single');
-        Route::resource('customers', CustomerController::class);
+        // The UI edits customers in a modal; there is no separate create/show/edit screen.
+        Route::resource('customers', CustomerController::class)->except(['create', 'show', 'edit']);
     });
-
 
     // =========================================================================
     // 2. INVENTORY MANAGEMENT
@@ -163,15 +166,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // --- GENERAL STOCK ---
     Route::middleware(['permission:access-general-stock'])->group(function () {
-        Route::post('/inventory/stock/adjust', [StockController::class, 'adjustStoreStock'])->name('inventory.stock.adjust');
-        Route::get('/stocks/download-template', [StockController::class, 'downloadTemplate'])->name('stocks.download-template');
-        Route::post('/stocks/import', [StockController::class, 'import'])->name('stocks.import');
-        Route::post('/stocks/bulk-delete', [StockController::class, 'bulkDelete'])->name('stocks.bulk-delete');
         Route::get('stocks/bulk-export/pdf', [StockController::class, 'bulkExportPDF'])->name('stocks.bulk-export.pdf');
         Route::get('stocks/bulk-export/excel', [StockController::class, 'bulkExportExcel'])->name('stocks.bulk-export.excel');
         Route::get('/stocks/{stock}/export-pdf', [StockController::class, 'exportSinglePdf'])->name('stocks.export.pdf.single');
         Route::get('/stocks/{stock}/export-excel', [StockController::class, 'exportSingleExcel'])->name('stocks.export.excel.single');
-        Route::resource('stocks', StockController::class);
+        // Stocks are created by goods-in entries and adjusted via stock-adjustments,
+        // never edited directly, so only the listing and the reorder thresholds exist.
+        Route::resource('stocks', StockController::class)->only(['index', 'update']);
     });
 
     // --- NEW STOCK ENTRIES ---
@@ -197,7 +198,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('stock-transfers/bulk-delete', [StockTransferController::class, 'bulkDelete'])->name('stock-transfers.bulk-delete');
         Route::get('stock-transfers/bulk-export/pdf/{ids}', [StockTransferController::class, 'bulkExportPDF'])->name('stock-transfers.bulk-export.pdf');
         Route::get('stock-transfers/bulk-export/excel/{ids}', [StockTransferController::class, 'bulkExportExcel'])->name('stock-transfers.bulk-export.excel');
-        Route::resource('stock-transfers', StockTransferController::class);
+        // Transfers are created from a modal, so no separate create/show/edit screens.
+        Route::resource('stock-transfers', StockTransferController::class)->except(['create', 'show', 'edit']);
     });
 
     // --- STOCK TRANSFER ITEMS (Reporting) ---
@@ -224,14 +226,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // --- ADJUSTMENT REASONS ---
     Route::middleware(['permission:access-adjustment-reasons'])->group(function () {
-        Route::get('/adjustmentreasons/download-template', [AdjustmentReasonController::class, 'downloadTemplate'])->name('adjustmentreasons.download-template');
-        Route::post('/adjustmentreasons/import', [AdjustmentReasonController::class, 'import'])->name('adjustmentreasons.import');
         Route::post('/adjustmentreasons/bulk-delete', [AdjustmentReasonController::class, 'bulkDelete'])->name('adjustmentreasons.bulk-delete');
         Route::get('/adjustmentreasons/bulk-export-pdf', [AdjustmentReasonController::class, 'bulkExportPDF'])->name('adjustmentreasons.bulk-export-pdf');
         Route::get('/adjustmentreasons/bulk-export-excel', [AdjustmentReasonController::class, 'bulkExportExcel'])->name('adjustmentreasons.bulk-export-excel');
         Route::get('/adjustmentreasons/{adjustmentreason}/export-pdf', [AdjustmentReasonController::class, 'exportSinglePdf'])->name('adjustmentreasons.export.pdf.single');
         Route::get('/adjustmentreasons/{adjustmentreason}/export-excel', [AdjustmentReasonController::class, 'exportSingleExcel'])->name('adjustmentreasons.export.excel.single');
-        Route::resource('adjustmentreasons', AdjustmentReasonController::class);
+        // Reasons are managed from a modal, so no separate create/show/edit screens.
+        Route::resource('adjustmentreasons', AdjustmentReasonController::class)->except(['create', 'show', 'edit']);
     });
 
     // --- STOCK ADJUSTMENT LOGS ---
@@ -243,7 +244,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('stock-adjustments/{adjustment}/pdf', 'exportSinglePdf')->name('stock-adjustments.exportSinglePdf');
         Route::get('stock-adjustments/{adjustment}/excel', 'exportSingleExcel')->name('stock-adjustments.exportSingleExcel');
     });
-
 
     // =========================================================================
     // 3. SALES & FINANCE
@@ -265,7 +265,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('pos-sessions/export-excel/{posSession}', [PosSessionController::class, 'exportExcel'])->name('pos-sessions.export.excel');
         Route::get('pos-sessions/bulk-export-pdf/{ids}', [PosSessionController::class, 'bulkExportPDF'])->name('pos-sessions.bulk-export.pdf');
         Route::get('pos-sessions/bulk-export-excel/{ids}', [PosSessionController::class, 'bulkExportExcel'])->name('pos-sessions.bulk-export.excel');
-        Route::resource('pos-sessions', PosSessionController::class)->only(['index', 'show']);
+        Route::resource('pos-sessions', PosSessionController::class)->only(['index']);
     });
 
     // --- QUOTATIONS ---
@@ -317,7 +317,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('payments/{payment}/export/excel', [PaymentController::class, 'exportExcel'])->name('payments.export.excel');
         Route::get('payments/bulk-export/pdf/{ids}', [PaymentController::class, 'bulkExportPDF'])->name('payments.bulk-export.pdf');
         Route::get('payments/bulk-export/excel/{ids}', [PaymentController::class, 'bulkExportExcel'])->name('payments.bulk-export.excel');
-        Route::resource('payments', PaymentController::class)->only(['index', 'show']);
+        Route::resource('payments', PaymentController::class)->only(['index']);
     });
 
     // --- PAYMENTS TO CUSTOMERS (Outgoing) ---
@@ -326,7 +326,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('payments-to-customers/{payment}/export/excel', [PaymentToCustomerController::class, 'exportExcel'])->name('payments-to-customers.export.excel');
         Route::get('payments-to-customers/bulk-export/pdf/{ids}', [PaymentToCustomerController::class, 'bulkExportPDF'])->name('payments-to-customers.bulk-export.pdf');
         Route::get('payments-to-customers/bulk-export/excel/{ids}', [PaymentToCustomerController::class, 'bulkExportExcel'])->name('payments-to-customers.bulk-export.excel');
-        Route::resource('payments-to-customers', PaymentToCustomerController::class)->only(['index', 'show']);
+        Route::resource('payments-to-customers', PaymentToCustomerController::class)->only(['index']);
     });
 
     // --- DEBTS & DEBTORS ---
@@ -338,7 +338,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{customer}', [DebtController::class, 'show'])->name('show');
         Route::get('/{customer}/statement', [DebtController::class, 'exportStatementPdf'])->name('export.statement');
     });
-
 
     // =========================================================================
     // 📦 PURCHASE ORDERS (Procurement)
@@ -360,7 +359,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('purchase-orders/bulk-export/excel/{ids}', [PurchaseOrderController::class, 'bulkExportExcel'])->name('purchase-orders.bulk-export.excel');
 
         // Standard Resource
-        Route::resource('purchase-orders', PurchaseOrderController::class);
+        Route::resource('purchase-orders', PurchaseOrderController::class)->except(['create', 'show', 'edit']);
     });
 
     // --- PURCHASE ORDER ITEMS ---
@@ -369,7 +368,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/bulk-export/pdf', [PurchaseOrderItemController::class, 'bulkExportPDF'])->name('bulk-export.pdf');
         Route::get('/bulk-export/excel', [PurchaseOrderItemController::class, 'bulkExportExcel'])->name('bulk-export.excel');
     });
-
 
     // =========================================================================
     // 4. ACCESS CONTROL (User Management)
@@ -384,7 +382,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/bulk-export-excel', [UserController::class, 'bulkExportExcel'])->name('users.bulk-export-excel');
         Route::get('/users/{user}/export-pdf', [UserController::class, 'exportSinglePdf'])->name('users.export.pdf.single');
         Route::get('/users/{user}/export-excel', [UserController::class, 'exportSingleExcel'])->name('users.export.excel.single');
-        Route::resource('users', UserController::class);
+        // The UI edits users in a modal; there is no separate create/show/edit screen.
+        Route::resource('users', UserController::class)->except(['create', 'show', 'edit']);
     });
 
     // --- ROLES ---
@@ -403,18 +402,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['permission:access-permissions'])->controller(PermissionController::class)->prefix('permissions')->name('permissions.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/', 'store')->name('store');
-        Route::get('/{permission}', 'show')->name('show');
         Route::put('/{permission}', 'update')->name('update');
         Route::delete('/{permission}', 'destroy')->name('destroy');
         Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
         Route::post('/import', 'import')->name('import');
         Route::get('/download-template', 'downloadTemplate')->name('download-template');
-        Route::get('/export/pdf/{permission}', 'exportPdfSingle')->name('export.pdf.single');
+        Route::get('/export/pdf/{permission}', 'exportSinglePdf')->name('export.pdf.single');
         Route::get('/export/excel/{permission}', 'exportExcelSingle')->name('export.excel.single');
         Route::get('/bulk-export/pdf', 'bulkExportPdf')->name('bulk-export-pdf');
         Route::get('/bulk-export/excel', 'bulkExportExcel')->name('bulk-export-excel');
     });
-
 
     // =========================================================================
     // 5. SETTINGS & UTILITIES
@@ -426,7 +423,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // --- COMPANY SETTINGS ---
     Route::middleware(['permission:access-company-settings'])->group(function () {
-        Route::resource('company-settings', CompanySettingController::class);
+        // Company settings are edited inline on one screen; no create/show/edit pages.
+        Route::resource('company-settings', CompanySettingController::class)->except(['create', 'show', 'edit']);
         Route::post('company-settings/{company_setting}/set-default', [CompanySettingController::class, 'setDefault'])->name('company-settings.set-default');
     });
 
@@ -438,18 +436,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/settings/payments/{id}', [StorePaymentSettingController::class, 'destroy'])->name('payment-settings.destroy');
     });
 
-
-
     // =========================================================================
     // 5. BI & ANALYTICS (Move this to the bottom to avoid prefix inheritance)
     // =========================================================================
     Route::middleware(['permission:access-valuation-reports'])->group(function () {
         Route::get('/valuation-reports', [ValuationReportController::class, 'index'])->name('valuation-reports.index');
-        Route::get('/valuation-reports/export/pdf', [ValuationReportController::class, 'exportPdf'])->name('valuation-reports.export.pdf');
-        Route::get('/valuation-reports/export/excel', [ValuationReportController::class, 'exportExcel'])->name('valuation-reports.export.excel');
+        Route::get('/inventory/valuation-reports/export/{format}', [ValuationReportController::class, 'export'])
+            ->name('valuation-reports.export');
     });
 
+    // Financial Intelligence & Reports
+    Route::middleware(['permission:access-financial-reports'])->group(function () {
+        Route::get('/financial-reports', [FinancialReportController::class, 'index'])
+            ->name('financial-reports.index');
 
+        Route::get('/finance/financial-reports/export/{format}', [FinancialReportController::class, 'export'])
+            ->name('financial-reports.export');
+    });
 
 });
 

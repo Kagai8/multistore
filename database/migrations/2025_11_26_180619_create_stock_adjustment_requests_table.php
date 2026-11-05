@@ -27,8 +27,8 @@ return new class extends Migration
             // --- Workflow and Audit Fields ---
             // Status: draft, pending_approval, approved, rejected
             $table->enum('status', ['draft', 'pending_approval', 'approved', 'rejected'])
-                  ->default('pending_approval')
-                  ->index();
+                ->default('pending_approval')
+                ->index();
 
             // Who created the request
             $table->foreignId('requested_by_id')->constrained('users');

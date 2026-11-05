@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
+use App\Models\CardTransaction;
 use App\Models\Customer;
 use App\Models\CustomerDebt;
 use App\Models\DebtRepayment;
+use App\Models\ManualTransaction;
 use App\Models\Payment;
 use App\Models\PaymentToCustomer;
-use App\Models\ManualTransaction;
-use App\Models\CardTransaction;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class DebtController extends Controller
@@ -34,7 +34,7 @@ class DebtController extends Controller
         $totalOutstanding = \App\Models\CustomerDebt::where('status', 'active')->sum('balance');
 
         // Count unique customers who actually owe money
-        $debtorsCount = \App\Models\Customer::whereHas('debts', function($q) {
+        $debtorsCount = \App\Models\Customer::whereHas('debts', function ($q) {
             $q->where('status', 'active')->where('balance', '>', 0);
         })->count();
 
@@ -49,18 +49,18 @@ class DebtController extends Controller
         // 🟢 END STATS
 
         $query = \App\Models\Customer::query()
-            ->withSum(['debts as total_debt' => function($q) {
+            ->withSum(['debts as total_debt' => function ($q) {
                 $q->where('status', 'active');
             }], 'balance')
-            ->whereHas('debts', function($q) {
+            ->whereHas('debts', function ($q) {
                 $q->where('status', 'active')
-                  ->where('balance', '>', 0);
+                    ->where('balance', '>', 0);
             });
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%"); // Assuming 'phone' or 'number'
+                    ->orWhere('phone', 'like', "%{$search}%"); // Assuming 'phone' or 'number'
             });
         }
 
@@ -69,11 +69,11 @@ class DebtController extends Controller
         $totalCount = \App\Models\Customer::count();
         $filteredCount = $query->count();
 
-        $debtors = $query->paginate($perPage)->withQueryString()->through(function ($customer) {
+        $debtors = $query->paginate($perPage)->withQueryString()->through(function (Customer $customer) {
             return [
                 'id' => $customer->id,
                 'name' => $customer->name,
-                'phone' => $customer->phone ?? 'N/A',
+                'phone' => $customer->number ?? 'N/A',
                 'credit_limit' => $customer->credit_limit,
                 'total_debt' => $customer->total_debt ?? 0,
                 'usage_percent' => $customer->credit_limit > 0
@@ -101,7 +101,7 @@ class DebtController extends Controller
             ->with('source')
             ->orderBy('due_date', 'asc')
             ->get()
-            ->map(function ($debt) {
+            ->map(function (CustomerDebt $debt) {
                 return [
                     'id' => $debt->id,
                     'date' => $debt->created_at->format('Y-m-d'),
@@ -119,9 +119,9 @@ class DebtController extends Controller
                 'name' => $customer->name,
                 'phone' => $customer->number,
                 'credit_limit' => $customer->credit_limit,
-                'total_debt' => $debts->sum('balance')
+                'total_debt' => $debts->sum('balance'),
             ],
-            'debts' => $debts
+            'debts' => $debts,
         ]);
     }
 
@@ -130,7 +130,7 @@ class DebtController extends Controller
      */
     public function store(Request $request)
     {
-        Log::info("DebtRepayment: Request received", $request->all());
+        Log::info('DebtRepayment: Request received', $request->all());
 
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
@@ -139,10 +139,10 @@ class DebtController extends Controller
             'method' => 'required|string',
             'transaction_ref' => 'nullable|string',
             'selected_debt_ids' => 'nullable|array',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string',
         ]);
 
-        Log::info("DebtRepayment: Validation passed.");
+        Log::info('DebtRepayment: Validation passed.');
 
         DB::beginTransaction();
         try {
@@ -150,42 +150,44 @@ class DebtController extends Controller
             $amountPaid = $validated['amount'];
 
             // 1. Create Container
-            Log::info("DebtRepayment: Creating DebtRepayment record...");
+            Log::info('DebtRepayment: Creating DebtRepayment record...');
             $repayment = DebtRepayment::create([
                 'store_id' => $user->store_id,
                 'user_id' => $user->id,
                 'customer_id' => $validated['customer_id'],
-                'receipt_number' => 'RPY-' . strtoupper(Str::random(8)),
+                'receipt_number' => 'RPY-'.strtoupper(Str::random(8)),
                 'amount_paid' => $amountPaid,
                 'payment_date' => $validated['payment_date'],
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
             ]);
-            Log::info("DebtRepayment: Created ID: " . $repayment->id);
+            Log::info('DebtRepayment: Created ID: '.$repayment->id);
 
             // 2. Log Incoming Money
-            Log::info("DebtRepayment: Creating Payment Transaction...");
+            Log::info('DebtRepayment: Creating Payment Transaction...');
             $this->createPaymentRecord($repayment, $validated);
 
             // 3. Allocation Logic
             $remainingMoney = $amountPaid;
 
-            Log::info("DebtRepayment: Fetching Debts to pay. Strategy: " . (!empty($validated['selected_debt_ids']) ? "Selected IDs" : "FIFO"));
+            Log::info('DebtRepayment: Fetching Debts to pay. Strategy: '.(! empty($validated['selected_debt_ids']) ? 'Selected IDs' : 'FIFO'));
 
             $query = CustomerDebt::where('customer_id', $validated['customer_id'])
                 ->where('status', 'active')
                 ->where('balance', '>', 0);
 
-            if (!empty($validated['selected_debt_ids'])) {
+            if (! empty($validated['selected_debt_ids'])) {
                 $query->whereIn('id', $validated['selected_debt_ids']);
             } else {
                 $query->orderBy('due_date', 'asc');
             }
 
             $targets = $query->get();
-            Log::info("DebtRepayment: Found " . $targets->count() . " target debts.");
+            Log::info('DebtRepayment: Found '.$targets->count().' target debts.');
 
             foreach ($targets as $debt) {
-                if ($remainingMoney <= 0) break;
+                if ($remainingMoney <= 0) {
+                    break;
+                }
 
                 $paymentForThisDebt = min($remainingMoney, $debt->balance);
                 Log::info("DebtRepayment: Paying Debt ID {$debt->id}. Bal: {$debt->balance}. Paying: {$paymentForThisDebt}");
@@ -202,7 +204,7 @@ class DebtController extends Controller
 
             // 4. Handle Overpayment (Change)
             if ($remainingMoney > 0) {
-                Log::info("DebtRepayment: Overpayment detected. Creating Change record for: " . $remainingMoney);
+                Log::info('DebtRepayment: Overpayment detected. Creating Change record for: '.$remainingMoney);
                 PaymentToCustomer::create([
                     'store_id' => $user->store_id,
                     'user_id' => $user->id,
@@ -216,51 +218,53 @@ class DebtController extends Controller
             }
 
             DB::commit();
-            Log::info("DebtRepayment: Transaction Committed Successfully.");
+            Log::info('DebtRepayment: Transaction Committed Successfully.');
             // 🟢 NOTIFY STORE (Debt Cleared/Paid)
             $customerName = \App\Models\Customer::find($validated['customer_id'])->name ?? 'Customer';
 
             $this->notifyStore(
                 $user->store_id,
-                "Debt Repayment Received",
-                "{$customerName} paid " . number_format($validated['amount']) . " towards their debt.",
+                'Debt Repayment Received',
+                "{$customerName} paid ".number_format($validated['amount']).' towards their debt.',
                 route('debts.show', $validated['customer_id']) // Link to the customer statement
             );
 
             $msg = $remainingMoney > 0
-                ? 'Repayment Recorded. Change Due: ' . number_format($remainingMoney, 2)
+                ? 'Repayment Recorded. Change Due: '.number_format($remainingMoney, 2)
                 : 'Repayment Recorded Successfully.';
 
             return back()->with('success', $msg);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Debt Repayment CRITICAL FAILURE: " . $e->getMessage());
+            Log::error('Debt Repayment CRITICAL FAILURE: '.$e->getMessage());
             Log::error($e->getTraceAsString());
 
-            return back()->with('error', 'System Error: ' . $e->getMessage());
+            return back()->with('error', 'System Error: '.$e->getMessage());
         }
     }
 
     private function createPaymentRecord(DebtRepayment $repayment, $data)
     {
-        $groupId = 'GRP-' . strtoupper(Str::random(8));
+        $groupId = 'GRP-'.strtoupper(Str::random(8));
         $method = $data['method'];
         $childModel = null;
 
         if (in_array($method, ['cash', 'mpesa', 'bank_transfer'])) {
-            $cat = match($method) { 'mpesa' => 'mpesa_manual', 'bank_transfer' => 'bank_transfer', default => 'cash' };
+            $cat = match ($method) {
+                'mpesa' => 'mpesa_manual', 'bank_transfer' => 'bank_transfer', default => 'cash'
+            };
             $childModel = ManualTransaction::create([
                 'method_category' => $cat,
                 'reference_no' => $data['transaction_ref'] ?? null,
                 'amount_tendered' => $data['amount'],
-                'notes' => "Debt Repayment"
+                'notes' => 'Debt Repayment',
             ]);
         } elseif ($method === 'card') {
             $childModel = CardTransaction::create([
                 'card_type' => 'visa',
                 'auth_code' => $data['transaction_ref'] ?? null,
-                'last_four' => null
+                'last_four' => null,
             ]);
         }
 
@@ -283,10 +287,12 @@ class DebtController extends Controller
 
     // --- EXPORTS ---
 
-   public function exportDebtorsPdf($ids)
+    public function exportDebtorsPdf($ids)
     {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records selected.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records selected.');
+        }
 
         // 1. Context
         $company = \App\Models\CompanySetting::where('is_default', true)->first();
@@ -295,8 +301,8 @@ class DebtController extends Controller
         // 2. Data with Eager Loading
         $debtors = \App\Models\Customer::whereIn('id', $idArray)
             ->with('store:id,name') // 🟢 LOAD STORE RELATIONSHIP
-            ->withSum(['debts' => fn($q) => $q->where('status', 'active')], 'balance')
-            ->whereHas('debts', function($q) {
+            ->withSum(['debts' => fn ($q) => $q->where('status', 'active')], 'balance')
+            ->whereHas('debts', function ($q) {
                 $q->where('status', 'active')->where('balance', '>', 0);
             })
             ->get()
@@ -329,17 +335,24 @@ class DebtController extends Controller
         }
 
         $debtors = \App\Models\Customer::whereIn('id', $idArray) // <--- FILTER HERE
-            ->withSum(['debts' => fn($q) => $q->where('status', 'active')], 'balance')
-            ->whereHas('debts', function($q) {
+            ->withSum(['debts' => fn ($q) => $q->where('status', 'active')], 'balance')
+            ->whereHas('debts', function ($q) {
                 $q->where('status', 'active')->where('balance', '>', 0);
             })
             ->get()
             ->sortByDesc('debts_sum_balance');
 
-        return Excel::download(new class($debtors) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($debtors) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $debtors;
-            public function __construct($debtors) { $this->debtors = $debtors; }
-            public function collection() {
+
+            public function __construct($debtors)
+            {
+                $this->debtors = $debtors;
+            }
+
+            public function collection()
+            {
                 return $this->debtors->map(fn ($c) => [
                     $c->name,
                     $c->phone ?? $c->number ?? '-',
@@ -347,11 +360,15 @@ class DebtController extends Controller
                     (float) $c->credit_limit,
                     (float) $c->debts_sum_balance,
                     $c->credit_limit > 0
-                        ? round(($c->debts_sum_balance / $c->credit_limit) * 100, 1) . '%'
-                        : 'N/A'
+                        ? round(($c->debts_sum_balance / $c->credit_limit) * 100, 1).'%'
+                        : 'N/A',
                 ]);
             }
-            public function headings(): array { return ['Customer Name', 'Phone', 'Store/Group', 'Credit Limit', 'Total Outstanding', 'Limit Usage']; }
+
+            public function headings(): array
+            {
+                return ['Customer Name', 'Phone', 'Store/Group', 'Credit Limit', 'Total Outstanding', 'Limit Usage'];
+            }
         }, 'Debtors_List.xlsx');
     }
 
@@ -377,7 +394,7 @@ class DebtController extends Controller
         $summary = [
             'invoiced' => $totalInvoiced,
             'paid' => $totalInvoiced - $totalDue, // Derived paid amount
-            'due' => $totalDue
+            'due' => $totalDue,
         ];
 
         $pdf = Pdf::loadView('debts.statement-pdf', compact('customer', 'debts', 'store', 'summary'))
@@ -385,6 +402,4 @@ class DebtController extends Controller
 
         return $pdf->download("Statement_{$customer->name}_{{ now()->format('Ymd') }}.pdf");
     }
-
-
 }

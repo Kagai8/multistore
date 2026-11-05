@@ -7,7 +7,8 @@ export const RoleModalFormConfig = {
     addButton: {
         id: 'add-role',
         label: 'Add Role',
-        className: 'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
+        className:
+            'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
         icon: CirclePlus,
         type: 'button',
         variant: 'default',
@@ -28,7 +29,6 @@ export const RoleModalFormConfig = {
             tabIndex: 1,
             autoFocus: true,
             colSpan: 1, // Half width
-            
         },
         {
             id: 'role-name',
@@ -53,7 +53,6 @@ export const RoleModalFormConfig = {
             tabIndex: 3,
             colSpan: 2, // Full width (span 2 columns)
             // 🛑 SECURITY: Prevent disabling the Super Admin role
-
         },
         // 🟢 NEW: All Store Access Checkbox
         {
@@ -62,7 +61,8 @@ export const RoleModalFormConfig = {
             name: 'all_store_access',
             label: 'All Store Access (Bypass Scope)?',
             type: 'checkbox',
-            placeholder: 'Grants access to data across all stores (e.g., Accountant, General Manager).',
+            placeholder:
+                'Grants access to data across all stores (e.g., Accountant, General Manager).',
             tabIndex: 5, // Adjust tab index
             colSpan: 2, // Full width
             // 🛑 SECURITY: The Super Admin role MUST always have all store access, and this field should be disabled for them to prevent accidental removal.
@@ -92,7 +92,6 @@ export const RoleModalFormConfig = {
             optionsSource: 'permissionsGrouped',
             colSpan: 2, // Full width for the checkboxes layout
             tabIndex: 5,
-
         },
     ],
 

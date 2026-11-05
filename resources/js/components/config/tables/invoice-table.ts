@@ -1,19 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
+    Ban,
+    CheckCircle,
+    DollarSign,
     Eye,
     FileSpreadsheet,
     FileText,
-    Pencil,
+    Pencil, // 🟢 New Icon for Refund
+    Printer,
+    RotateCcw,
     Trash2,
-    CheckCircle,
-    Ban,
-    DollarSign,
-    RotateCcw, // 🟢 New Icon for Refund
-    Printer
-} from "lucide-react";
+} from 'lucide-react';
 
 export const InvoiceTableConfig = {
-    moduleName: "Invoices",
+    moduleName: 'Invoices',
 
     columns: [
         // Core Identity
@@ -21,13 +21,13 @@ export const InvoiceTableConfig = {
             label: 'ID',
             key: 'id',
             className: 'p-4 border text-center font-mono w-16 text-gray-500',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Invoice #',
             key: 'invoice_number',
             className: 'p-4 border font-bold text-gray-800',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Date',
@@ -41,14 +41,14 @@ export const InvoiceTableConfig = {
             label: 'Customer',
             key: 'customer_name',
             className: 'p-4 border font-medium',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Store',
             key: 'store_name',
             className: 'p-4 border text-sm text-gray-600',
             defaultHidden: true,
-            sortable: true
+            sortable: true,
         },
 
         // Financials
@@ -57,14 +57,14 @@ export const InvoiceTableConfig = {
             key: 'total_amount',
             type: 'currency',
             className: 'p-4 border text-right font-semibold',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Balance Due',
             key: 'balance_due',
             type: 'currency',
             className: 'p-4 border text-right font-bold text-red-600',
-            sortable: true
+            sortable: true,
         },
 
         // Status Flags
@@ -72,13 +72,13 @@ export const InvoiceTableConfig = {
             label: 'Status',
             key: 'status', // draft, posted, void, refunded
             type: 'tag-status',
-            className: 'p-4 border text-center font-bold w-24'
+            className: 'p-4 border text-center font-bold w-24',
         },
         {
             label: 'Payment',
             key: 'payment_status', // paid, unpaid, partial
             type: 'tag-status',
-            className: 'p-4 border text-center font-bold w-24'
+            className: 'p-4 border text-center font-bold w-24',
         },
 
         // Actions
@@ -87,7 +87,7 @@ export const InvoiceTableConfig = {
             key: 'actions',
             isAction: true,
             isMandatory: true,
-            className: 'p-4 border text-center w-48'
+            className: 'p-4 border text-center w-48',
         },
     ],
 
@@ -96,7 +96,8 @@ export const InvoiceTableConfig = {
         {
             label: 'View',
             icon: Eye,
-            className: 'flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
+            className:
+                'flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
             permission: 'view-invoice',
         },
 
@@ -104,7 +105,8 @@ export const InvoiceTableConfig = {
         {
             label: 'Post Invoice',
             icon: CheckCircle,
-            className: 'flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
+            className:
+                'flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
             permission: 'post-invoice',
             conditionKey: 'status',
             conditionValue: 'draft',
@@ -116,7 +118,8 @@ export const InvoiceTableConfig = {
             label: 'Edit',
             icon: Pencil,
             permission: 'edit-invoice',
-            className: 'flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             conditionKey: 'status',
             conditionValue: 'draft',
         },
@@ -126,7 +129,8 @@ export const InvoiceTableConfig = {
             label: 'Void',
             icon: Ban,
             permission: 'void-invoice',
-            className: 'flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             conditionKey: 'status',
             conditionValue: 'posted',
             tooltip: 'Void this invoice.',
@@ -137,7 +141,8 @@ export const InvoiceTableConfig = {
             label: 'Delete',
             icon: Trash2,
             permission: 'delete-invoice',
-            className: 'flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             conditionKey: 'status',
             conditionValue: 'draft',
         },
@@ -147,8 +152,10 @@ export const InvoiceTableConfig = {
             label: 'Add Payment',
             icon: DollarSign,
             permission: 'create-payment',
-            className: 'flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
-            condition: (row: any) => row.status === 'posted' && row.payment_status !== 'paid',
+            className:
+                'flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            condition: (row: any) =>
+                row.status === 'posted' && row.payment_status !== 'paid',
             tooltip: 'Record a payment.',
         },
 
@@ -158,15 +165,20 @@ export const InvoiceTableConfig = {
             label: 'Refund',
             icon: RotateCcw,
             permission: 'refund-invoice', // Ensure permission exists
-            className: 'flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
-            condition: (row: any) => row.status === 'posted' && (row.payment_status === 'paid' || row.payment_status === 'partial'),
+            className:
+                'flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            condition: (row: any) =>
+                row.status === 'posted' &&
+                (row.payment_status === 'paid' ||
+                    row.payment_status === 'partial'),
             tooltip: 'Issue a refund to the customer.',
         },
         {
             label: 'Print Receipt',
             icon: Printer,
             permission: 'view-invoice', // Basic view permission is usually enough
-            className: 'flex items-center gap-1 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             condition: (row: any) => row.status !== 'draft', // Drafts don't have receipts
             tooltip: 'Print official payment receipt for customer.',
         },

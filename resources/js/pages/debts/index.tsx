@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 
 import { DebtTableConfig } from '@/components/config/tables/debt-table';
 
 import ComplexTable from '@/components/complex-table';
 import { CustomToast, toast } from '@/components/custom-toast';
-import { Input } from '@/components/ui/input';
+import { DebtPaymentModal } from '@/components/Partials/DebtPaymentModal';
+import { SuccessModal } from '@/components/success-modal';
 import { Button } from '@/components/ui/button';
-import { X, Wallet, Users, TrendingUp, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import Pagination from '@/components/ui/pagination';
 import { type BreadcrumbItem } from '@/types';
-import { SuccessModal } from '@/components/success-modal';
-import { DebtPaymentModal } from '@/components/Partials/DebtPaymentModal';
+import { AlertCircle, TrendingUp, Users, Wallet, X } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Finance', href: '/finance' },
@@ -59,23 +59,37 @@ const StatCard = ({ title, value, icon: Icon, colorClass, subText }: any) => (
         <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">{title}</span>
             <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>
-                <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
+                <Icon
+                    size={20}
+                    className={colorClass.replace('bg-', 'text-')}
+                />
             </div>
         </div>
         <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
-        {subText && <span className="text-xs text-gray-400 mt-1">{subText}</span>}
+        {subText && (
+            <span className="mt-1 text-xs text-gray-400">{subText}</span>
+        )}
     </div>
 );
 
-export default function Index({ debtors, filters, totalCount, filteredCount, stats }: IndexProps) {
-    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+export default function Index({
+    debtors,
+    filters,
+    totalCount,
+    filteredCount,
+    stats,
+}: IndexProps) {
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string };
+    }>().props;
 
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedDebtor, setSelectedDebtor] = useState<Debtor | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successModalMessage, setSuccessModalMessage] = useState('');
 
-    const filterForm = useForm({
+    // Explicit shape so `any`-typed filters don't make FormDataKeys recurse infinitely.
+    const filterForm = useForm<{ search: string; perPage: string }>({
         search: filters.search || '',
         perPage: filters.perPage || '10',
     });
@@ -112,15 +126,24 @@ export default function Index({ debtors, filters, totalCount, filteredCount, sta
         filterForm.setData('search', value);
         const query = {
             ...(value && { search: value }),
-            ...(filterForm.data.perPage && { perPage: filterForm.data.perPage }),
+            ...(filterForm.data.perPage && {
+                perPage: filterForm.data.perPage,
+            }),
         };
-        router.get(route('debts.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('debts.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleReset = () => {
         filterForm.setData('search', '');
         filterForm.setData('perPage', '10');
-        router.get(route('debts.index'), {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            route('debts.index'),
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     const handlePerPageChange = (value: string) => {
@@ -129,7 +152,10 @@ export default function Index({ debtors, filters, totalCount, filteredCount, sta
             ...(filterForm.data.search && { search: filterForm.data.search }),
             ...(value && { perPage: value }),
         };
-        router.get(route('debts.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('debts.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleQuickRepayment = () => {
@@ -140,16 +166,26 @@ export default function Index({ debtors, filters, totalCount, filteredCount, sta
     // 🟢 Update these handlers
     const handleBulkExportPDF = (ids: number[]) => {
         if (!ids.length) return toast.error('No items selected');
-        window.open(route('debts.export.pdf.bulk', { ids: ids.join(',') }), '_blank');
+        window.open(
+            route('debts.export.pdf.bulk', { ids: ids.join(',') }),
+            '_blank',
+        );
     };
 
     const handleBulkExportExcel = (ids: number[]) => {
         if (!ids.length) return toast.error('No items selected');
-        window.open(route('debts.export.excel.bulk', { ids: ids.join(',') }), '_blank');
+        window.open(
+            route('debts.export.excel.bulk', { ids: ids.join(',') }),
+            '_blank',
+        );
     };
 
     // Helper
-    const formatCurrency = (val: number) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(val);
+    const formatCurrency = (val: number) =>
+        new Intl.NumberFormat('en-KE', {
+            style: 'currency',
+            currency: 'KES',
+        }).format(val);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -165,18 +201,18 @@ export default function Index({ debtors, filters, totalCount, filteredCount, sta
             />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h2 className="text-xl font-semibold text-gray-800 relative pb-2 before:absolute before:bottom-0 before:left-0 before:w-15 before:h-0.5 before:bg-orange-600 before:rounded-full flex items-center gap-2">
-                    <Wallet size={26} className="text-orange-600 mr-1" />
+                <h2 className="relative flex items-center gap-2 pb-2 text-xl font-semibold text-gray-800 before:absolute before:bottom-0 before:left-0 before:h-0.5 before:w-15 before:rounded-full before:bg-orange-600">
+                    <Wallet size={26} className="mr-1 text-orange-600" />
                     Accounts Receivable
                 </h2>
 
                 {/* 🟢 DESCRIPTION */}
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="mb-2 text-sm text-gray-600">
                     Manage outstanding customer balances and record repayments.
                 </p>
 
                 {/* 🟢 STATS GRID */}
-                <div className="grid gap-4 md:grid-cols-3 mb-2">
+                <div className="mb-2 grid gap-4 md:grid-cols-3">
                     <StatCard
                         title="Total Outstanding"
                         value={formatCurrency(stats?.total_outstanding || 0)}
@@ -212,7 +248,7 @@ export default function Index({ debtors, filters, totalCount, filteredCount, sta
                         {filterForm.data.search && (
                             <button
                                 onClick={handleReset}
-                                className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                                className="absolute top-2.5 right-2 text-gray-400 hover:text-gray-600"
                             >
                                 <X size={20} />
                             </button>

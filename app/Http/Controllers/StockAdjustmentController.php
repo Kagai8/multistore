@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
 use App\Models\Stock;
 use App\Models\StockAdjustment;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth;
-use Barryvdh\DomPDF\Facade\Pdf; // Import PDF
+use Inertia\Inertia; // Import PDF
 use Maatwebsite\Excel\Facades\Excel; // Import Excel
 
 class StockAdjustmentController extends Controller
@@ -47,10 +47,10 @@ class StockAdjustmentController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('adjustmentReason', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                $q->whereHas('product', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('adjustmentReason', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -77,7 +77,6 @@ class StockAdjustmentController extends Controller
             'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo', 'type']),
         ]);
     }
-
 
     /**
      * Creates a new StockAdjustment record and updates the Stock level atomically.
@@ -110,8 +109,9 @@ class StockAdjustmentController extends Controller
             } elseif ($validated['type'] === 'out') {
                 // Safeguard against negative stock
                 if ($oldStock < $adjustmentQuantity) {
-                     DB::rollBack();
-                     return back()->with('error', 'Adjustment OUT quantity (' . $adjustmentQuantity . ') exceeds current stock (' . $oldStock . '). Transaction aborted.')->withInput();
+                    DB::rollBack();
+
+                    return back()->with('error', 'Adjustment OUT quantity ('.$adjustmentQuantity.') exceeds current stock ('.$oldStock.'). Transaction aborted.')->withInput();
                 }
                 $newStock = $oldStock - $adjustmentQuantity;
             }
@@ -126,7 +126,7 @@ class StockAdjustmentController extends Controller
                 'quantity' => $adjustmentQuantity,
                 'old_stock' => $oldStock,
                 'new_stock' => $newStock,
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             // 6. Update the Stock Model
@@ -144,7 +144,8 @@ class StockAdjustmentController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Stock adjustment failed due to a database error: ' . $e->getMessage())->withInput();
+
+            return back()->with('error', 'Stock adjustment failed due to a database error: '.$e->getMessage())->withInput();
         }
     }
 
@@ -173,9 +174,14 @@ class StockAdjustmentController extends Controller
         $adjustment->load(['product', 'store', 'user', 'adjustmentReason']);
 
         return Excel::download(
-            new class($adjustment) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($adjustment) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $adjustment;
-                public function __construct($adjustment) { $this->adjustment = $adjustment; }
+
+                public function __construct($adjustment)
+                {
+                    $this->adjustment = $adjustment;
+                }
 
                 public function collection()
                 {
@@ -208,7 +214,7 @@ class StockAdjustmentController extends Controller
      */
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $adjustments = StockAdjustment::whereIn('id', $ids)->with(['product', 'store', 'user', 'adjustmentReason'])->get();
 
         if ($adjustments->isEmpty()) {
@@ -226,7 +232,7 @@ class StockAdjustmentController extends Controller
      */
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $adjustments = StockAdjustment::whereIn('id', $ids)->with(['product', 'store', 'user', 'adjustmentReason'])->get();
 
         if ($adjustments->isEmpty()) {
@@ -234,9 +240,14 @@ class StockAdjustmentController extends Controller
         }
 
         return Excel::download(
-            new class($adjustments) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($adjustments) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $adjustments;
-                public function __construct($adjustments) { $this->adjustments = $adjustments; }
+
+                public function __construct($adjustments)
+                {
+                    $this->adjustments = $adjustments;
+                }
 
                 public function collection()
                 {

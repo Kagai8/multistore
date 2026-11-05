@@ -1,25 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { route } from 'ziggy-js';
-import { useEffect, useState, useCallback } from 'react';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
+import { route } from 'ziggy-js';
 
 // 🟢 Config Imports
-import { QuotationTableConfig } from '@/components/config/tables/quotation-table';
 import { QuotationFormConfig } from '@/components/config/forms/quotation-modal-form';
+import { QuotationTableConfig } from '@/components/config/tables/quotation-table';
 import { InvoiceItemEditor } from '@/components/InvoiceItemEditor';
 
 // Components
-import FinanceModalForm from '@/components/finance-modal-form';
 import ComplexTable from '@/components/complex-table';
 import { CustomToast, toast } from '@/components/custom-toast';
-import { Input } from '@/components/ui/input';
+import FinanceModalForm from '@/components/finance-modal-form';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 // 🟢 ADDED ICONS: CheckCircle (for Accepted)
-import { X, FileText, ArrowRightCircle, FileEdit, Percent, CheckCircle } from 'lucide-react';
+import { SuccessModal } from '@/components/success-modal';
 import Pagination from '@/components/ui/pagination';
 import { type BreadcrumbItem } from '@/types';
-import { SuccessModal } from '@/components/success-modal';
+import {
+    ArrowRightCircle,
+    CheckCircle,
+    FileEdit,
+    FileText,
+    Percent,
+    X,
+} from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Sales', href: '/sales' },
@@ -95,7 +102,7 @@ interface FilterProps {
     dateTo?: string | null;
 }
 
-interface LookupData {
+type LookupData = {
     customers: Array<{ id: number; name: string }>;
     products: Array<{
         id: number;
@@ -103,10 +110,10 @@ interface LookupData {
         sku: string;
         retail_price: number;
         wholesale_price: number;
-        special_price: number
+        special_price: number;
     }>;
     productStocks: Record<string, Record<string, number>>;
-}
+};
 
 // 🟢 Stats Interface
 interface QuoteStats {
@@ -131,18 +138,32 @@ const StatCard = ({ title, value, icon: Icon, colorClass, subText }: any) => (
         <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">{title}</span>
             <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>
-                <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
+                <Icon
+                    size={20}
+                    className={colorClass.replace('bg-', 'text-')}
+                />
             </div>
         </div>
         <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
-        {subText && <span className="text-xs text-gray-400 mt-1">{subText}</span>}
+        {subText && (
+            <span className="mt-1 text-xs text-gray-400">{subText}</span>
+        )}
     </div>
 );
 
-export default function Index({ quotations, filters, totalCount, filteredCount, lookupData, stats }: IndexProps) {
+export default function Index({
+    quotations,
+    filters,
+    totalCount,
+    filteredCount,
+    lookupData,
+    stats,
+}: IndexProps) {
     const { inventoryConfig } = usePage<PagePropsWithConfig>().props;
     const currentUserContext = inventoryConfig?.userContext || null;
-    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string };
+    }>().props;
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -158,7 +179,8 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
     // --- STATE ---
     const [modalOpen, setModalOpen] = useState(false);
     const [mode, setMode] = useState<'create' | 'view' | 'edit'>('create');
-    const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+    const [selectedQuotation, setSelectedQuotation] =
+        useState<Quotation | null>(null);
 
     // Modals
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -168,7 +190,9 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
     const [quoteToDelete, setQuoteToDelete] = useState<Quotation | null>(null);
 
     const [showConvertModal, setShowConvertModal] = useState(false);
-    const [quoteToConvert, setQuoteToConvert] = useState<Quotation | null>(null);
+    const [quoteToConvert, setQuoteToConvert] = useState<Quotation | null>(
+        null,
+    );
 
     const form = useForm<QuotationForm>(initialFormData);
 
@@ -193,13 +217,16 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
         form.setData(key as keyof QuotationForm, value);
     };
 
-    const handleItemUpdate = useCallback((newItems: any[], newGrandTotal: number) => {
-        form.setData((previousData) => ({
-            ...previousData,
-            items: newItems,
-            total_amount: newGrandTotal,
-        }));
-    }, [form]);
+    const handleItemUpdate = useCallback(
+        (newItems: any[], newGrandTotal: number) => {
+            form.setData((previousData) => ({
+                ...previousData,
+                items: newItems,
+                total_amount: newGrandTotal,
+            }));
+        },
+        [form],
+    );
 
     const handleOpenEditViewModal = (m: 'view' | 'edit', quote: Quotation) => {
         setMode(m);
@@ -211,11 +238,11 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
             quotation_date: quote.quotation_date,
             valid_until: quote.valid_until || '',
             notes: quote.notes || '',
-            items: quote.items.map(item => ({
+            items: quote.items.map((item) => ({
                 product_id: item.product_id,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
-                price_category: item.price_category
+                price_category: item.price_category,
             })),
             total_amount: quote.total_amount,
             ['user_name' as any]: quote.user_name,
@@ -236,18 +263,19 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (form.data.items.length === 0) return toast.error("Quotation must contain at least one item.");
+        if (form.data.items.length === 0)
+            return toast.error('Quotation must contain at least one item.');
 
-        if (mode === "edit" && selectedQuotation) {
-            form.put(route("quotations.update", selectedQuotation.id), {
+        if (mode === 'edit' && selectedQuotation) {
+            form.put(route('quotations.update', selectedQuotation.id), {
                 onSuccess: () => closeModal(),
-                onError: (errors) => toast.error("Failed to update Quotation"),
+                onError: () => toast.error('Failed to update Quotation'),
             });
         } else {
-            form.post(route("quotations.store"), {
+            form.post(route('quotations.store'), {
                 forceFormData: true,
                 onSuccess: () => closeModal(),
-                onError: (errors) => toast.error("Failed to create Quotation"),
+                onError: () => toast.error('Failed to create Quotation'),
             });
         }
     };
@@ -260,17 +288,31 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
                 setShowConvertModal(true);
                 break;
             case 'Mark Sent':
-                router.post(route('quotations.mark-sent', quote.id), {}, {
-                    onSuccess: () => router.reload({ preserveState: true }),
-                    onError: (e: any) => toast.error(e.message || 'Failed.'),
-                });
+                router.post(
+                    route('quotations.mark-sent', quote.id),
+                    {},
+                    {
+                        onSuccess: () => router.reload(),
+                        onError: (e: any) =>
+                            toast.error(e.message || 'Failed.'),
+                    },
+                );
                 break;
             case 'Reject':
-                if (confirm('Are you sure you want to mark this quote as rejected?')) {
-                    router.post(route('quotations.mark-rejected', quote.id), {}, {
-                        onSuccess: () => router.reload({ preserveState: true }),
-                        onError: (e: any) => toast.error(e.message || 'Failed.'),
-                    });
+                if (
+                    confirm(
+                        'Are you sure you want to mark this quote as rejected?',
+                    )
+                ) {
+                    router.post(
+                        route('quotations.mark-rejected', quote.id),
+                        {},
+                        {
+                            onSuccess: () => router.reload(),
+                            onError: (e: any) =>
+                                toast.error(e.message || 'Failed.'),
+                        },
+                    );
                 }
                 break;
             case 'Export PDF':
@@ -283,13 +325,18 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
 
     const confirmConvert = () => {
         if (!quoteToConvert) return;
-        router.post(route('quotations.convert', quoteToConvert.id), {}, {
-            onSuccess: () => {
-                setShowConvertModal(false);
-                setQuoteToConvert(null);
+        router.post(
+            route('quotations.convert', quoteToConvert.id),
+            {},
+            {
+                onSuccess: () => {
+                    setShowConvertModal(false);
+                    setQuoteToConvert(null);
+                },
+                onError: (e: any) =>
+                    toast.error(e.message || 'Conversion failed.'),
             },
-            onError: (e: any) => toast.error(e.message || 'Conversion failed.'),
-        });
+        );
     };
 
     const handleDelete = (quote: Quotation) => {
@@ -311,7 +358,8 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
         });
     };
 
-    const handleExportPDF = (quote: Quotation) => window.open(route('quotations.export.pdf', quote.id), '_blank');
+    const handleExportPDF = (quote: Quotation) =>
+        window.open(route('quotations.export.pdf', quote.id), '_blank');
     const handleBulkExportPDF = (ids: number[]) => {
         if (!ids.length) return toast.error('No items selected');
         const url = route('quotations.bulk-export.pdf', { ids: ids.join(',') });
@@ -319,7 +367,9 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
     };
     const handleBulkExportExcel = (ids: number[]) => {
         if (!ids.length) return toast.error('No items selected');
-        const url = route('quotations.bulk-export.excel', { ids: ids.join(',') });
+        const url = route('quotations.bulk-export.excel', {
+            ids: ids.join(','),
+        });
         window.open(url, '_blank');
     };
 
@@ -328,9 +378,14 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
         filterForm.setData('search', value);
         const query = {
             ...(value && { search: value }),
-            ...(filterForm.data.perPage && { perPage: filterForm.data.perPage }),
+            ...(filterForm.data.perPage && {
+                perPage: filterForm.data.perPage,
+            }),
         };
-        router.get(route('quotations.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('quotations.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleReset = () => {
@@ -338,7 +393,11 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
         filterForm.setData('perPage', '10');
         filterForm.setData('dateFrom', null);
         filterForm.setData('dateTo', null);
-        router.get(route('quotations.index'), {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            route('quotations.index'),
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     const handlePerPageChange = (value: string) => {
@@ -347,23 +406,37 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
             ...(filterForm.data.search && { search: filterForm.data.search }),
             ...(value && { perPage: value }),
         };
-        router.get(route('quotations.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('quotations.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
-    const handleDateFilterChange = (dateFrom: string | null, dateTo: string | null) => {
+    const handleDateFilterChange = (
+        dateFrom: string | null,
+        dateTo: string | null,
+    ) => {
         filterForm.setData('dateFrom', dateFrom);
         filterForm.setData('dateTo', dateTo);
         const query = {
             ...(filterForm.data.search && { search: filterForm.data.search }),
-            ...(filterForm.data.perPage && { perPage: filterForm.data.perPage }),
+            ...(filterForm.data.perPage && {
+                perPage: filterForm.data.perPage,
+            }),
             ...(dateFrom && { dateFrom: dateFrom }),
             ...(dateTo && { dateTo: dateTo }),
         };
-        router.get(route('quotations.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('quotations.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(value);
+        return new Intl.NumberFormat('en-KE', {
+            style: 'currency',
+            currency: 'KES',
+        }).format(value);
     };
 
     return (
@@ -380,18 +453,18 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
             />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h2 className="text-xl font-semibold text-gray-800 relative pb-2 before:absolute before:bottom-0 before:left-0 before:w-15 before:h-0.5 before:bg-orange-600 before:rounded-full flex items-center gap-2">
-                    <FileText size={26} className="text-orange-600 mr-1" />
+                <h2 className="relative flex items-center gap-2 pb-2 text-xl font-semibold text-gray-800 before:absolute before:bottom-0 before:left-0 before:h-0.5 before:w-15 before:rounded-full before:bg-orange-600">
+                    <FileText size={26} className="mr-1 text-orange-600" />
                     Quotation Hub
                 </h2>
 
                 {/* 🟢 DESCRIPTION MOVED HERE (Above Stats) */}
-                <p className="text-sm text-gray-600 max-w-2xxl mb-2">
+                <p className="max-w-2xxl mb-2 text-sm text-gray-600">
                     Create sales proposals and convert them to invoices.
                 </p>
 
                 {/* 🟢 STAT TABS GRID */}
-                <div className="grid gap-4 md:grid-cols-3 mb-2">
+                <div className="mb-2 grid gap-4 md:grid-cols-3">
                     <StatCard
                         title="Draft Proposals"
                         value={stats?.draft_count || 0}
@@ -424,13 +497,26 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
                         placeholder="Search Quote # or Customer..."
                         name="search"
                     />
-                    <Button onClick={handleReset} className="h-10 cursor-pointer bg-orange-600 hover:bg-orange-500">
+                    <Button
+                        onClick={handleReset}
+                        className="h-10 cursor-pointer bg-orange-600 hover:bg-orange-500"
+                    >
                         <X size={20} />
                     </Button>
                     <div className="ml-auto">
                         <FinanceModalForm
-                            key={selectedQuotation ? `quote-edit-${selectedQuotation.id}` : 'quote-create'}
-                            title={mode === 'view' ? 'View Quotation' : mode === 'edit' ? 'Edit Draft Quotation' : QuotationFormConfig.title}
+                            key={
+                                selectedQuotation
+                                    ? `quote-edit-${selectedQuotation.id}`
+                                    : 'quote-create'
+                            }
+                            title={
+                                mode === 'view'
+                                    ? 'View Quotation'
+                                    : mode === 'edit'
+                                      ? 'Edit Draft Quotation'
+                                      : QuotationFormConfig.title
+                            }
                             description={QuotationFormConfig.description}
                             fields={QuotationFormConfig.fields}
                             buttons={QuotationFormConfig.buttons}
@@ -441,7 +527,11 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
                             errors={form.errors}
                             open={modalOpen}
                             onOpenChange={(open: boolean) => {
-                                if (open && mode !== 'edit' && mode !== 'view') {
+                                if (
+                                    open &&
+                                    mode !== 'edit' &&
+                                    mode !== 'view'
+                                ) {
                                     setMode('create');
                                     form.reset();
                                 }
@@ -454,15 +544,17 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
                             addButton={QuotationFormConfig.addButton}
                             childrenPosition={0}
                         >
-                            <div className="space-y-3 p-4 border rounded-lg shadow-sm">
-                                <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-orange-600 dark:text-orange-400">
+                            <div className="space-y-3 rounded-lg border p-4 shadow-sm">
+                                <h3 className="mb-3 border-b pb-2 text-lg font-semibold text-orange-600 dark:text-orange-400">
                                     Quotation Items
                                 </h3>
                                 <InvoiceItemEditor
                                     data={form.data.items}
                                     onUpdate={handleItemUpdate}
                                     products={lookupData.products}
-                                    currentStoreId={currentUserContext?.store_id || null}
+                                    currentStoreId={
+                                        currentUserContext?.store_id || null
+                                    }
                                     mode={mode}
                                     productStocks={lookupData.productStocks}
                                 />
@@ -503,18 +595,28 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
             {/* DELETE MODAL */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md">
-                        <h2 className="text-lg font-semibold text-gray-800">Confirm Deletion</h2>
+                    <div className="w-[90%] max-w-md rounded-xl bg-white p-6 shadow-lg">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                            Confirm Deletion
+                        </h2>
                         <p className="mt-2 text-sm text-gray-600">
                             Are you sure you want to delete Quote{' '}
-                            <span className="font-semibold text-gray-800">{quoteToDelete?.quotation_number}</span>?
-                            This action cannot be undone.
+                            <span className="font-semibold text-gray-800">
+                                {quoteToDelete?.quotation_number}
+                            </span>
+                            ? This action cannot be undone.
                         </p>
                         <div className="mt-6 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowDeleteModal(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>
+                            <Button
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                onClick={confirmDelete}
+                            >
                                 Delete
                             </Button>
                         </div>
@@ -525,26 +627,41 @@ export default function Index({ quotations, filters, totalCount, filteredCount, 
             {/* CONVERT MODAL */}
             {showConvertModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md border-l-4 border-emerald-500">
-                        <div className="flex items-center gap-3 mb-2">
-                             <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
+                    <div className="w-[90%] max-w-md rounded-xl border-l-4 border-emerald-500 bg-white p-6 shadow-lg">
+                        <div className="mb-2 flex items-center gap-3">
+                            <div className="rounded-full bg-emerald-100 p-2 text-emerald-600">
                                 <ArrowRightCircle size={24} />
-                             </div>
-                             <h2 className="text-lg font-semibold text-gray-800">Confirm Conversion</h2>
+                            </div>
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Confirm Conversion
+                            </h2>
                         </div>
                         <p className="mt-2 text-sm text-gray-600">
-                            Convert Quote <span className="font-semibold text-gray-800">{quoteToConvert?.quotation_number}</span> to a Draft Invoice?
+                            Convert Quote{' '}
+                            <span className="font-semibold text-gray-800">
+                                {quoteToConvert?.quotation_number}
+                            </span>{' '}
+                            to a Draft Invoice?
                         </p>
-                        <ul className="mt-3 text-sm text-gray-500 list-disc list-inside space-y-1">
+                        <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-gray-500">
                             <li>A new Invoice will be created.</li>
-                            <li>This Quote will be marked as <strong>Accepted</strong>.</li>
+                            <li>
+                                This Quote will be marked as{' '}
+                                <strong>Accepted</strong>.
+                            </li>
                             <li>You can then edit/post the invoice.</li>
                         </ul>
                         <div className="mt-6 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setShowConvertModal(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowConvertModal(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmConvert}>
+                            <Button
+                                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                onClick={confirmConvert}
+                            >
                                 Yes, Convert
                             </Button>
                         </div>

@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\PosSession;
 use App\Models\CompanySetting;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use App\Models\PosSession;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PosSessionController extends Controller
@@ -26,18 +25,22 @@ class PosSessionController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
         if ($dateFrom || $dateTo) {
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
-            if ($start && $end) $query->whereBetween('start_time', [$start, $end]);
-            elseif ($start) $query->whereDate('start_time', '>=', $start);
-            elseif ($end) $query->whereDate('start_time', '<=', $end);
+            if ($start && $end) {
+                $query->whereBetween('start_time', [$start, $end]);
+            } elseif ($start) {
+                $query->whereDate('start_time', '>=', $start);
+            } elseif ($end) {
+                $query->whereDate('start_time', '<=', $end);
+            }
         }
 
         // 🟢 STATS
@@ -74,7 +77,7 @@ class PosSessionController extends Controller
                 'per_page' => $perPage,
                 'from' => $all->count() ? 1 : 0,
                 'to' => $all->count(),
-                'links' => []
+                'links' => [],
             ];
         } else {
             $paginator = $query->latest('start_time')->paginate($perPage)->withQueryString();
@@ -93,7 +96,8 @@ class PosSessionController extends Controller
 
     // --- EXPORTS ---
 
-    public function exportPdf(PosSession $posSession) {
+    public function exportPdf(PosSession $posSession)
+    {
         $posSession->load(['user', 'store', 'sales.payments']);
         $company = CompanySetting::first();
 
@@ -104,10 +108,15 @@ class PosSessionController extends Controller
         foreach ($sales as $sale) {
             foreach ($sale->payments as $p) {
                 $m = $p->method;
-                if (isset($paymentBreakdown[$m])) $paymentBreakdown[$m] += $p->amount;
-                else $paymentBreakdown['other'] += $p->amount;
+                if (isset($paymentBreakdown[$m])) {
+                    $paymentBreakdown[$m] += $p->amount;
+                } else {
+                    $paymentBreakdown['other'] += $p->amount;
+                }
             }
-            if ($sale->change_amount > 0) $paymentBreakdown['cash'] -= $sale->change_amount;
+            if ($sale->change_amount > 0) {
+                $paymentBreakdown['cash'] -= $sale->change_amount;
+            }
         }
         $expectedCash = $posSession->opening_cash + $paymentBreakdown['cash'];
 
@@ -117,11 +126,19 @@ class PosSessionController extends Controller
         return $pdf->download("Z-Report_Session_{$posSession->id}.pdf");
     }
 
-    public function exportExcel(PosSession $posSession) {
-        return Excel::download(new class($posSession) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+    public function exportExcel(PosSession $posSession)
+    {
+        return Excel::download(new class($posSession) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $s;
-            public function __construct($s) { $this->s = $s; }
-            public function collection() {
+
+            public function __construct($s)
+            {
+                $this->s = $s;
+            }
+
+            public function collection()
+            {
                 return collect([[
                     $this->s->id,
                     $this->s->user->name,
@@ -131,16 +148,23 @@ class PosSessionController extends Controller
                     $this->s->opening_cash,
                     $this->s->closing_cash,
                     $this->s->cash_difference,
-                    ucfirst($this->s->status)
+                    ucfirst($this->s->status),
                 ]]);
             }
-            public function headings(): array { return ['ID', 'Cashier', 'Store', 'Start', 'End', 'Opening', 'Closing', 'Difference', 'Status']; }
+
+            public function headings(): array
+            {
+                return ['ID', 'Cashier', 'Store', 'Start', 'End', 'Opening', 'Closing', 'Difference', 'Status'];
+            }
         }, "Session_{$posSession->id}.xlsx");
     }
 
-    public function bulkExportPDF($ids) {
+    public function bulkExportPDF($ids)
+    {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records.');
+        }
 
         $sessions = PosSession::whereIn('id', $idArray)
             ->with(['user', 'store'])
@@ -150,22 +174,33 @@ class PosSessionController extends Controller
         $company = CompanySetting::first();
 
         $pdf = Pdf::loadView('pos-sessions.bulk-pdf', compact('sessions', 'company'))->setPaper('a4', 'landscape');
+
         return $pdf->download('Sessions_Audit_Log.pdf');
     }
 
-    public function bulkExportExcel($ids) {
+    public function bulkExportExcel($ids)
+    {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records.');
+        }
 
         $sessions = PosSession::whereIn('id', $idArray)
             ->with(['user', 'store'])
             ->latest('start_time')
             ->get();
 
-        return Excel::download(new class($sessions) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($sessions) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $sessions;
-            public function __construct($sessions) { $this->sessions = $sessions; }
-            public function collection() {
+
+            public function __construct($sessions)
+            {
+                $this->sessions = $sessions;
+            }
+
+            public function collection()
+            {
                 return $this->sessions->map(fn ($s) => [
                     $s->id,
                     $s->user->name ?? 'Unknown',
@@ -175,10 +210,14 @@ class PosSessionController extends Controller
                     $s->opening_cash,
                     $s->closing_cash,
                     $s->cash_difference,
-                    ucfirst($s->status)
+                    ucfirst($s->status),
                 ]);
             }
-            public function headings(): array { return ['ID', 'Cashier', 'Store', 'Opened At', 'Closed At', 'Opening Float', 'Closing Count', 'Difference', 'Status']; }
+
+            public function headings(): array
+            {
+                return ['ID', 'Cashier', 'Store', 'Opened At', 'Closed At', 'Opening Float', 'Closing Count', 'Difference', 'Status'];
+            }
         }, 'Sessions_Register.xlsx');
     }
 }

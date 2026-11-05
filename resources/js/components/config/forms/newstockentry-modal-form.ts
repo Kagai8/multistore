@@ -1,15 +1,17 @@
 // resources/js/config/forms/new-stock-entry-modal-form.ts
-import { CirclePlus } from "lucide-react";
-import { FieldGroup } from "./product-modal-form"; // Use the same FieldGroup interface
+import { CirclePlus } from 'lucide-react';
+import { FieldGroup } from './product-modal-form'; // Use the same FieldGroup interface
 
 export const NewStockEntryModalFormConfig = {
     moduleTitle: 'Manage New Stock Receipts',
     title: 'Record New Stock Receipt',
-    description: 'Log the arrival of stock from a supplier into the designated warehouse.',
+    description:
+        'Log the arrival of stock from a supplier into the designated warehouse.',
     addButton: {
         id: 'add-new-stock-entry',
         label: 'Record New Receipt',
-        className: 'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
+        className:
+            'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
         icon: CirclePlus,
         type: 'button',
         variant: 'default',
@@ -46,7 +48,6 @@ export const NewStockEntryModalFormConfig = {
                     placeholder: 'Select Warehouse',
                     tabIndex: 2,
                     colSpan: 1,
-
                 },
             ],
         },
@@ -90,7 +91,6 @@ export const NewStockEntryModalFormConfig = {
                 },
             ],
         },
-
     ] as FieldGroup[],
 
     buttons: [

@@ -1,12 +1,7 @@
-
-import {
-    Eye,
-    FileText,
-    Wallet,
-} from "lucide-react";
+import { Eye, FileText, Wallet } from 'lucide-react';
 
 export const DebtTableConfig = {
-    moduleName: "Debtors List",
+    moduleName: 'Debtors List',
 
     columns: [
         // Identity
@@ -19,7 +14,7 @@ export const DebtTableConfig = {
         {
             label: 'Phone',
             key: 'phone',
-            className: 'p-4 border text-center font-mono text-gray-600'
+            className: 'p-4 border text-center font-mono text-gray-600',
         },
 
         // Financials
@@ -27,7 +22,7 @@ export const DebtTableConfig = {
             label: 'Total Outstanding',
             key: 'total_debt',
             type: 'currency',
-            className: 'p-4 border text-right font-black text-red-600 text-lg'
+            className: 'p-4 border text-right font-black text-red-600 text-lg',
         },
         {
             label: 'Credit Limit',
@@ -53,7 +48,7 @@ export const DebtTableConfig = {
             key: 'actions',
             isAction: true,
             isMandatory: true,
-            className: 'p-4 border text-center w-48'
+            className: 'p-4 border text-center w-48',
         },
     ],
 
@@ -62,7 +57,8 @@ export const DebtTableConfig = {
         {
             label: 'View Statement',
             icon: Eye,
-            className: 'flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
+            className:
+                'flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
             permission: 'view-debt-statement', // Ensure permission exists
         },
 
@@ -70,7 +66,8 @@ export const DebtTableConfig = {
         {
             label: 'Record Payment',
             icon: Wallet,
-            className: 'flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             permission: 'create-debt-repayment',
             tooltip: 'Record a lump sum payment.',
         },
@@ -81,8 +78,8 @@ export const DebtTableConfig = {
             icon: FileText,
             permission: 'export-debt-statement',
             tooltip: 'Export the debt statement as a PDF document.',
-            className: 'flex items-center gap-1 bg-teal-800 hover:bg-teal-900 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-teal-800 hover:bg-teal-900 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
         },
-
     ],
 };

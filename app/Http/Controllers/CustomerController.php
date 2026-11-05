@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
 use App\Models\Customer;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
@@ -26,8 +26,8 @@ class CustomerController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('number', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('number', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -36,7 +36,7 @@ class CustomerController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
             if ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             } elseif ($start) {
                 $query->where('created_at', '>=', $start);
             } elseif ($end) {
@@ -69,7 +69,7 @@ class CustomerController extends Controller
 
         return Inertia::render('customers/index', [
             'customers' => $customers,
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -115,6 +115,7 @@ class CustomerController extends Controller
     public function destroy(Customer $customer)
     {
         $customer->delete();
+
         return redirect()->back()->with('success', 'Customer deleted successfully');
     }
 
@@ -124,6 +125,7 @@ class CustomerController extends Controller
     {
         // NOTE: You'll need to create 'customers.customer-single' view
         $pdf = Pdf::loadView('customers.customer-single', compact('customer'))->setPaper('a4', 'portrait');
+
         return $pdf->download("customer_{$customer->id}.pdf");
     }
 
@@ -133,9 +135,14 @@ class CustomerController extends Controller
     public function exportSingleExcel(Customer $customer)
     {
         return Excel::download(
-            new class($customer) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($customer) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $customer;
-                public function __construct($customer) { $this->customer = $customer; }
+
+                public function __construct($customer)
+                {
+                    $this->customer = $customer;
+                }
 
                 public function collection()
                 {
@@ -168,9 +175,12 @@ class CustomerController extends Controller
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids', []);
-        if (empty($ids)) return back()->with('error', 'No customers selected.');
+        if (empty($ids)) {
+            return back()->with('error', 'No customers selected.');
+        }
         Customer::whereIn('id', $ids)->delete();
-        return back()->with('success', count($ids) . ' customer(s) deleted successfully.');
+
+        return back()->with('success', count($ids).' customer(s) deleted successfully.');
     }
 
     /**
@@ -178,12 +188,15 @@ class CustomerController extends Controller
      */
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $customers = Customer::whereIn('id', $ids)->get();
-        if ($customers->isEmpty()) return back()->with('error', 'No customers selected for export.');
+        if ($customers->isEmpty()) {
+            return back()->with('error', 'No customers selected for export.');
+        }
 
         // NOTE: You'll need to create 'customers.customer-bulk-pdf' view
         $pdf = Pdf::loadView('customers.customer-bulk-pdf', compact('customers'))->setPaper('a4', 'portrait');
+
         return $pdf->download('customers_export.pdf');
     }
 
@@ -192,14 +205,22 @@ class CustomerController extends Controller
      */
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $customers = Customer::whereIn('id', $ids)->get();
-        if ($customers->isEmpty()) return back()->with('error', 'No customers selected for export.');
+        if ($customers->isEmpty()) {
+            return back()->with('error', 'No customers selected for export.');
+        }
 
         return Excel::download(
-            new class($customers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($customers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $customers;
-                public function __construct($customers) { $this->customers = $customers; }
+
+                public function __construct($customers)
+                {
+                    $this->customers = $customers;
+                }
+
                 public function collection()
                 {
                     return $this->customers->map(fn ($customer) => [
@@ -211,6 +232,7 @@ class CustomerController extends Controller
                         'Created Date' => optional($customer->created_at)->format('d M Y'),
                     ]);
                 }
+
                 public function headings(): array
                 {
                     return ['ID', 'Name', 'Number', 'Email', 'Credit Limit', 'Created Date'];
@@ -229,7 +251,7 @@ class CustomerController extends Controller
      */
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setCellValue('A1', 'name');
         $sheet->setCellValue('B1', 'number');
@@ -241,6 +263,7 @@ class CustomerController extends Controller
         }
         $writer = new Xlsx($spreadsheet);
         $filename = 'customers_template.xlsx';
+
         return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');
         }, $filename);
@@ -249,7 +272,7 @@ class CustomerController extends Controller
     /**
      * Import Customers (Excel or CSV).
      */
-   public function import(Request $request)
+    public function import(Request $request)
     {
         $request->validate(['file' => 'required|mimes:xlsx,csv,txt|max:4096']);
 
@@ -259,7 +282,7 @@ class CustomerController extends Controller
 
         try {
             // Use Excel package to read both XLSX and CSV
-            $sheets = Excel::toArray([], $file);
+            $sheets = Excel::toArray(new \stdClass, $file);
             $rows = $sheets[0] ?? [];
 
             if (empty($rows)) {
@@ -271,19 +294,22 @@ class CustomerController extends Controller
             unset($rows[0]); // Remove header row from data
 
             // Check if mandatory fields (name) are present
-            if (!in_array('name', $header)) {
+            if (! in_array('name', $header)) {
                 return back()->with('error', 'The file must contain a "name" column.');
             }
 
-            $rows = array_map(function($row) use ($header) {
-                if (count($header) !== count($row)) return [];
+            $rows = array_map(function ($row) use ($header) {
+                if (count($header) !== count($row)) {
+                    return [];
+                }
+
                 // Combine header with row data
                 return array_combine($header, array_map('trim', $row));
             }, $rows);
 
         } catch (\Exception $e) {
             // Handle file reading errors
-            return back()->with('error', 'Error reading the file: ' . $e->getMessage());
+            return back()->with('error', 'Error reading the file: '.$e->getMessage());
         }
 
         $imported = 0;
@@ -291,7 +317,9 @@ class CustomerController extends Controller
 
         foreach ($rows as $index => $row) {
             // Skip empty rows created by failed array_combine due to mismatched columns
-            if (empty($row) || empty($row['name'])) continue;
+            if (empty($row) || empty($row['name'])) {
+                continue;
+            }
 
             $name = $row['name'];
             $email = $row['email'] ?? null;
@@ -303,13 +331,15 @@ class CustomerController extends Controller
                 // 1. Check for existing customer by name
                 $existingByName = Customer::where('name', $name)->first();
                 if ($existingByName) {
-                    $errors[] = "Row " . ($index + 2) . ": Customer with name '{$name}' already exists.";
+                    $errors[] = 'Row '.($index + 2).": Customer with name '{$name}' already exists.";
+
                     continue;
                 }
 
                 // 2. Check for existing customer by email (if provided)
                 if ($email && Customer::where('email', $email)->exists()) {
-                    $errors[] = "Row " . ($index + 2) . ": Customer with email '{$email}' already exists.";
+                    $errors[] = 'Row '.($index + 2).": Customer with email '{$email}' already exists.";
+
                     continue;
                 }
 
@@ -324,17 +354,18 @@ class CustomerController extends Controller
 
                 $imported++;
             } catch (\Exception $e) {
-                $errors[] = "Row " . ($index + 2) . ": Failed to create customer ({$e->getMessage()}).";
+                $errors[] = 'Row '.($index + 2).": Failed to create customer ({$e->getMessage()}).";
             }
         }
 
         // --- Final Response ---
         $message = "{$imported} customer(s) imported successfully.";
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             // If there are errors, return them with the success message
             $errorDetail = implode("\n- ", array_slice($errors, 0, 5)); // Show up to 5 errors
-            $message .= " However, " . count($errors) . " row(s) failed to import. Examples:\n- " . $errorDetail;
+            $message .= ' However, '.count($errors)." row(s) failed to import. Examples:\n- ".$errorDetail;
+
             return back()->with('flash.warning', $message);
         }
 

@@ -1,53 +1,53 @@
-import {
-    FileSpreadsheet,
-    FileText,
-} from "lucide-react";
+import { FileSpreadsheet, FileText } from 'lucide-react';
 
 export const SaleItemTableConfig = {
-    moduleName: "Item Sales",
+    moduleName: 'Item Sales',
 
     columns: [
         {
             label: 'Date',
             key: 'created_at',
             type: 'date-time',
-            className: 'p-4 border text-center whitespace-nowrap text-xs text-gray-500'
+            className:
+                'p-4 border text-center whitespace-nowrap text-xs text-gray-500',
         },
         {
             label: 'Product',
             key: 'product_name',
-            className: 'p-4 border font-bold text-gray-800'
+            className: 'p-4 border font-bold text-gray-800',
         },
         {
             label: 'Price Type',
             key: 'price_category',
-            className: 'p-4 border text-center text-xs font-semibold uppercase text-blue-600'
+            className:
+                'p-4 border text-center text-xs font-semibold uppercase text-blue-600',
         },
         {
             label: 'Qty',
             key: 'quantity',
-            className: 'p-4 border text-center font-bold'
+            className: 'p-4 border text-center font-bold',
         },
         {
             label: 'Total',
             key: 'total_price',
             type: 'currency',
-            className: 'p-4 border text-right font-mono font-bold text-emerald-700'
+            className:
+                'p-4 border text-right font-mono font-bold text-emerald-700',
         },
         {
             label: 'Ref',
             key: 'reference_no',
-            className: 'p-4 border text-center font-mono text-xs'
+            className: 'p-4 border text-center font-mono text-xs',
         },
         {
             label: 'Store',
             key: 'store_name',
-            className: 'p-4 border text-sm text-gray-600'
+            className: 'p-4 border text-sm text-gray-600',
         },
         {
             label: 'Source',
             key: 'source_type',
-            className: 'p-4 border text-center text-xs'
+            className: 'p-4 border text-center text-xs',
         },
 
         // Actions
@@ -56,7 +56,7 @@ export const SaleItemTableConfig = {
             key: 'actions',
             isAction: true,
             isMandatory: true,
-            className: 'p-4 border text-center w-24'
+            className: 'p-4 border text-center w-24',
         },
     ],
 

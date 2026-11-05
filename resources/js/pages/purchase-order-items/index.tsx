@@ -1,21 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { route } from 'ziggy-js';
-import { useEffect } from 'react';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
 import ComplexTable from '@/components/complex-table';
-import { CustomToast, toast } from '@/components/custom-toast';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { X, ClipboardList, FileText, Truck, CheckCircle } from 'lucide-react';
-import Pagination from '@/components/ui/pagination';
-import { type BreadcrumbItem } from '@/types';
 import { PurchaseOrderItemTableConfig } from '@/components/config/tables/purchase-order-items-table';
+import { CustomToast, toast } from '@/components/custom-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import Pagination from '@/components/ui/pagination';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { CheckCircle, ClipboardList, FileText, Truck, X } from 'lucide-react';
+import { useEffect } from 'react';
+import { route } from 'ziggy-js';
 
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Inventory', href: '/inventory' },
-  { title: 'Procurement', href: '/purchase-orders' },
-  { title: 'Item Report', href: '/purchase-order-items' },
+    { title: 'Inventory', href: '/inventory' },
+    { title: 'Procurement', href: '/purchase-orders' },
+    { title: 'Item Report', href: '/purchase-order-items' },
 ];
 
 // Reusing your StatCard component for consistency
@@ -24,18 +24,31 @@ const StatCard = ({ title, value, icon: Icon, colorClass, subText }: any) => (
         <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">{title}</span>
             <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>
-                <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
+                <Icon
+                    size={20}
+                    className={colorClass.replace('bg-', 'text-')}
+                />
             </div>
         </div>
         <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
-        {subText && <span className="text-xs text-gray-400 mt-1">{subText}</span>}
+        {subText && (
+            <span className="mt-1 text-xs text-gray-400">{subText}</span>
+        )}
     </div>
 );
 
 export default function Index({ items, filters, stats }: any) {
-    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string };
+    }>().props;
 
-    const { data: filterData, setData: setFilterData } = useForm({
+    // Explicit shape so `any`-typed props don't make FormDataKeys recurse infinitely.
+    const { data: filterData, setData: setFilterData } = useForm<{
+        search: string;
+        perPage: string;
+        dateFrom: string | null;
+        dateTo: string | null;
+    }>({
         search: filters.search || '',
         perPage: filters.perPage || '10',
         dateFrom: filters.dateFrom || null,
@@ -58,7 +71,10 @@ export default function Index({ items, filters, stats }: any) {
             ...(filterData.dateFrom && { dateFrom: filterData.dateFrom }),
             ...(filterData.dateTo && { dateTo: filterData.dateTo }),
         };
-        router.get(route('purchase-order-items.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('purchase-order-items.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleReset = () => {
@@ -66,17 +82,29 @@ export default function Index({ items, filters, stats }: any) {
         setFilterData('perPage', '10');
         setFilterData('dateFrom', null);
         setFilterData('dateTo', null);
-        router.get(route('purchase-order-items.index'), {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            route('purchase-order-items.index'),
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     const handleBulkExportPDF = (ids: number[]) => {
         if (!ids.length) return toast.error('No items selected');
-        window.open(route('purchase-order-items.bulk-export.pdf') + `?ids=${ids.join(',')}`, '_blank');
+        window.open(
+            route('purchase-order-items.bulk-export.pdf') +
+                `?ids=${ids.join(',')}`,
+            '_blank',
+        );
     };
 
     const handleBulkExportExcel = (ids: number[]) => {
         if (!ids.length) return toast.error('No items selected');
-        window.open(route('purchase-order-items.bulk-export.excel') + `?ids=${ids.join(',')}`, '_blank');
+        window.open(
+            route('purchase-order-items.bulk-export.excel') +
+                `?ids=${ids.join(',')}`,
+            '_blank',
+        );
     };
 
     return (
@@ -85,13 +113,13 @@ export default function Index({ items, filters, stats }: any) {
             <CustomToast />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h2 className="text-xl font-semibold text-gray-800 relative pb-2 before:absolute before:bottom-0 before:left-0 before:w-15 before:h-0.5 before:bg-orange-600 before:rounded-full flex items-center gap-2">
-                    <ClipboardList size={26} className="text-orange-600 mr-1" />
+                <h2 className="relative flex items-center gap-2 pb-2 text-xl font-semibold text-gray-800 before:absolute before:bottom-0 before:left-0 before:h-0.5 before:w-15 before:rounded-full before:bg-orange-600">
+                    <ClipboardList size={26} className="mr-1 text-orange-600" />
                     Purchase Order Line Items
                 </h2>
 
                 {/* 🟢 STAT CARDS (Mirroring Purchase Order Module) */}
-                <div className="grid gap-4 md:grid-cols-3 mb-2">
+                <div className="mb-2 grid gap-4 md:grid-cols-3">
                     <StatCard
                         title="Draft Items"
                         value={stats?.draft_items || 0}
@@ -101,7 +129,10 @@ export default function Index({ items, filters, stats }: any) {
                     />
                     <StatCard
                         title="Pending Arrival (Value)"
-                        value={new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(stats?.pending_value || 0)}
+                        value={new Intl.NumberFormat('en-KE', {
+                            style: 'currency',
+                            currency: 'KES',
+                        }).format(stats?.pending_value || 0)}
                         icon={Truck}
                         colorClass="text-blue-600 bg-blue-100"
                         subText="Total cost of ordered items"
@@ -117,16 +148,21 @@ export default function Index({ items, filters, stats }: any) {
 
                 {/* Filters */}
                 <div className="mb-4 flex w-full flex-wrap items-center gap-2 sm:gap-4">
-                    <div className="flex w-full sm:w-1/2 items-center gap-2">
+                    <div className="flex w-full items-center gap-2 sm:w-1/2">
                         <Input
                             type="text"
                             value={filterData.search}
                             onChange={handleSearchChange}
-                            onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
+                            onKeyDown={(e) =>
+                                e.key === 'Enter' && triggerSearch()
+                            }
                             className="h-10 w-full"
                             placeholder="Search Product, SKU, PO#, or Supplier..."
                         />
-                        <Button onClick={handleReset} className="h-10 shrink-0 cursor-pointer bg-orange-600 hover:bg-orange-500">
+                        <Button
+                            onClick={handleReset}
+                            className="h-10 shrink-0 cursor-pointer bg-orange-600 hover:bg-orange-500"
+                        >
                             <X size={20} />
                         </Button>
                     </div>
@@ -148,7 +184,10 @@ export default function Index({ items, filters, stats }: any) {
                     <Pagination
                         products={items}
                         perPage={filterData.perPage}
-                        onPerPageChange={(val) => { setFilterData('perPage', val); triggerSearch(); }}
+                        onPerPageChange={(val) => {
+                            setFilterData('perPage', val);
+                            triggerSearch();
+                        }}
                         totalCount={items.total}
                         filteredCount={items.total}
                         search={filterData.search}

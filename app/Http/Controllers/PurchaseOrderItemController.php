@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\PurchaseOrderItem;
 use App\Models\CompanySetting;
-use Illuminate\Http\Request;
+use App\Models\PurchaseOrderItem;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PurchaseOrderItemController extends Controller
 {
@@ -29,11 +29,11 @@ class PurchaseOrderItemController extends Controller
         // 🟢 SEARCH (Across Product, PO Number, Supplier, Store)
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"))
-                  ->orWhereHas('purchaseOrder', fn($sq) => $sq->where('po_number', 'like', "%{$search}%")
-                      ->orWhereHas('supplier', fn($ssq) => $ssq->where('name', 'like', "%{$search}%"))
-                      ->orWhereHas('store', fn($ssq) => $ssq->where('name', 'like', "%{$search}%"))
-                  );
+                $q->whereHas('product', fn ($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"))
+                    ->orWhereHas('purchaseOrder', fn ($sq) => $sq->where('po_number', 'like', "%{$search}%")
+                        ->orWhereHas('supplier', fn ($ssq) => $ssq->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('store', fn ($ssq) => $ssq->where('name', 'like', "%{$search}%"))
+                    );
             });
         }
 
@@ -54,13 +54,13 @@ class PurchaseOrderItemController extends Controller
         // 🟢 STATS (Aggregated Item Data)
         $stats = [
             // Count of items in Draft POs
-            'draft_items' => PurchaseOrderItem::whereHas('purchaseOrder', fn($q) => $q->where('status', 'draft'))->count(),
+            'draft_items' => PurchaseOrderItem::whereHas('purchaseOrder', fn ($q) => $q->where('status', 'draft'))->count(),
 
             // Value of items currently On Order
-            'pending_value' => PurchaseOrderItem::whereHas('purchaseOrder', fn($q) => $q->whereIn('status', ['ordered', 'partial']))->sum('total_cost'),
+            'pending_value' => PurchaseOrderItem::whereHas('purchaseOrder', fn ($q) => $q->whereIn('status', ['ordered', 'partial']))->sum('total_cost'),
 
             // Count of items successfully received
-            'received_items' => PurchaseOrderItem::whereHas('purchaseOrder', fn($q) => $q->where('status', 'received'))->count(),
+            'received_items' => PurchaseOrderItem::whereHas('purchaseOrder', fn ($q) => $q->where('status', 'received'))->count(),
         ];
 
         $totalCount = PurchaseOrderItem::count();
@@ -90,7 +90,7 @@ class PurchaseOrderItemController extends Controller
                 'per_page' => $perPage,
                 'from' => 1,
                 'to' => $filteredCount,
-                'links' => []
+                'links' => [],
             ];
         } else {
             $paginator = $query->latest('purchase_orders.order_date')->paginate($perPage)->withQueryString();
@@ -107,8 +107,15 @@ class PurchaseOrderItemController extends Controller
 
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->query('ids', ''));
-        if (empty($ids)) return back()->with('flash.error', 'No items selected');
+        // explode('') yields [''] which is truthy, so empty ids must be filtered out
+        // for the guard below to actually fire.
+        $ids = array_values(array_filter(
+            explode(',', (string) $request->query('ids', '')),
+            fn ($id) => $id !== ''
+        ));
+        if (empty($ids)) {
+            return back()->with('flash.error', 'No items selected');
+        }
 
         $items = PurchaseOrderItem::with(['purchaseOrder.supplier', 'purchaseOrder.store', 'product'])
             ->whereIn('id', $ids)
@@ -122,19 +129,33 @@ class PurchaseOrderItemController extends Controller
 
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->query('ids', ''));
-        if (empty($ids)) return back()->with('flash.error', 'No items selected');
+        // explode('') yields [''] which is truthy, so empty ids must be filtered out
+        // for the guard below to actually fire.
+        $ids = array_values(array_filter(
+            explode(',', (string) $request->query('ids', '')),
+            fn ($id) => $id !== ''
+        ));
+        if (empty($ids)) {
+            return back()->with('flash.error', 'No items selected');
+        }
 
         $items = PurchaseOrderItem::with(['purchaseOrder.supplier', 'purchaseOrder.store', 'product'])
             ->whereIn('id', $ids)
             ->get();
 
         return Excel::download(
-            new class($items) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($items) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $items;
-                public function __construct($items) { $this->items = $items; }
-                public function collection() {
-                    return $this->items->map(fn($item) => [
+
+                public function __construct($items)
+                {
+                    $this->items = $items;
+                }
+
+                public function collection()
+                {
+                    return $this->items->map(fn ($item) => [
                         'Date' => $item->purchaseOrder->order_date->format('Y-m-d'),
                         'PO Number' => $item->purchaseOrder->po_number,
                         'Status' => Str::upper($item->purchaseOrder->status),
@@ -147,7 +168,11 @@ class PurchaseOrderItemController extends Controller
                         'Total Cost' => $item->total_cost,
                     ]);
                 }
-                public function headings(): array { return ['Date', 'PO Number', 'Status', 'Supplier', 'Store', 'Product', 'SKU', 'Qty', 'Unit Cost', 'Total Cost']; }
+
+                public function headings(): array
+                {
+                    return ['Date', 'PO Number', 'Status', 'Supplier', 'Store', 'Product', 'SKU', 'Qty', 'Unit Cost', 'Total Cost'];
+                }
             },
             'PO_Items_Report.xlsx'
         );

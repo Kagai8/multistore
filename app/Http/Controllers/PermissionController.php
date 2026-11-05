@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\Permission; // Our custom model
-use Illuminate\Support\Str;
+use App\Models\Permission;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon; // Our custom model
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 
 class PermissionController extends Controller
 {
@@ -36,8 +35,8 @@ class PermissionController extends Controller
             $query->where(function ($q) use ($search) {
                 // Search by label, name (slug), or module
                 $q->where('label', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%")
-                  ->orWhere('module', 'like', "%{$search}%");
+                    ->orWhere('name', 'like', "%{$search}%")
+                    ->orWhere('module', 'like', "%{$search}%");
             });
         }
 
@@ -51,12 +50,12 @@ class PermissionController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('created_at', '>=', $start);
-            } elseif (!$start && $end) {
+            } elseif (! $start && $end) {
                 $query->where('created_at', '<=', $end);
             } elseif ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
 
@@ -98,13 +97,15 @@ class PermissionController extends Controller
 
         return Inertia::render('permissions/index', [
             'permissions' => $permissions,
-            'filters' => $request->only(['search', 'module', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'module', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
     }
 
-    public function create() { /* Unused */ }
+    public function create()
+    { /* Unused */
+    }
 
     /**
      * Store a newly created resource in storage.
@@ -127,23 +128,17 @@ class PermissionController extends Controller
             return back()->withErrors(['label' => 'Permission with this name already exists.'])->withInput();
         }
 
-
         $permission = Permission::create([
             'module' => $validated['module'],
             'label' => $validated['label'],
             'name' => Str::slug($validated['label']), // Generate slug from label
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'guard_name' => 'web',
             'is_active' => true, // Default to active
         ]);
 
-        if($permission) {
-            return redirect()->route('permissions.index')->with('success', 'Permission created successfully');
-        }
-        return redirect()->back()->with('error', 'Unable to create permission. Please try again');
+        return redirect()->route('permissions.index')->with('success', 'Permission created successfully');
     }
-
-
 
     /**
      * Update the specified resource in storage.
@@ -171,18 +166,15 @@ class PermissionController extends Controller
             return back()->withErrors(['label' => 'Permission with this name already exists.'])->withInput();
         }
 
-        if ($permission) {
-            $permission->module = $validated['module'];
-            $permission->label = $validated['label'];
-            $permission->name = Str::slug($validated['label']);
-            $permission->description = $validated['description'];
-            $permission->is_active = $validated['is_active'];
+        $permission->module = $validated['module'];
+        $permission->label = $validated['label'];
+        $permission->name = Str::slug($validated['label']);
+        $permission->description = $validated['description'] ?? null;
+        $permission->is_active = $validated['is_active'];
 
-            $permission->save();
-            return redirect()->route('permissions.index')->with('success', 'Permission updated successfully');
-        }
+        $permission->save();
 
-        return redirect()->back()->with('error', 'Unable to update permission. Please try again');
+        return redirect()->route('permissions.index')->with('success', 'Permission updated successfully');
     }
 
     /**
@@ -193,17 +185,19 @@ class PermissionController extends Controller
         $permission = Permission::findOrFail($id);
 
         if ($permission->roles()->exists()) {
-             return back()->with('error', 'Cannot delete permission: It is currently assigned to one or more roles.');
+            return back()->with('error', 'Cannot delete permission: It is currently assigned to one or more roles.');
         }
 
         DB::beginTransaction();
         try {
             $permission->delete();
             DB::commit();
+
             return redirect()->back()->with('success', 'Permission deleted successfully');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Permission Deletion Error: " . $e->getMessage());
+            Log::error('Permission Deletion Error: '.$e->getMessage());
+
             return back()->with('error', 'Failed to delete permission due to a system error.');
         }
     }
@@ -222,18 +216,20 @@ class PermissionController extends Controller
 
         // Prevent deletion if any permission is assigned to a role
         if ($permissions->filter(fn ($p) => $p->roles()->exists())->count() > 0) {
-            return back()->with('error', "Cannot delete selected permission(s): One or more are assigned to roles.");
+            return back()->with('error', 'Cannot delete selected permission(s): One or more are assigned to roles.');
         }
 
         DB::beginTransaction();
         try {
             $deletedCount = Permission::whereIn('id', $ids)->delete();
             DB::commit();
-            return back()->with('success', $deletedCount . ' permission(s) deleted successfully.');
+
+            return back()->with('success', $deletedCount.' permission(s) deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Bulk Permission Deletion Error: " . $e->getMessage());
-            return back()->with('error', 'Failed to delete permissions: ' . $e->getMessage());
+            Log::error('Bulk Permission Deletion Error: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to delete permissions: '.$e->getMessage());
         }
     }
 
@@ -249,9 +245,43 @@ class PermissionController extends Controller
         return $pdf->download("permission_{$permission->id}.pdf");
     }
 
+    public function exportExcelSingle(Permission $permission)
+    {
+        return Excel::download(
+            new class($permission) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $permission;
+
+                public function __construct($permission)
+                {
+                    $this->permission = $permission;
+                }
+
+                public function collection()
+                {
+                    return collect([[
+                        'ID' => $this->permission->id,
+                        'Name' => $this->permission->name,
+                        'Label' => $this->permission->label,
+                        'Module' => $this->permission->module,
+                        'Description' => $this->permission->description,
+                        'Is Active' => $this->permission->is_active ? 'Yes' : 'No',
+                        'Created Date' => optional($this->permission->created_at)->format('d M Y'),
+                    ]]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Label', 'Module', 'Description', 'Is Active', 'Created Date'];
+                }
+            },
+            "permission_{$permission->id}.xlsx"
+        );
+    }
+
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $permissions = Permission::whereIn('id', $ids)->get();
 
         if ($permissions->isEmpty()) {
@@ -266,7 +296,7 @@ class PermissionController extends Controller
 
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $permissions = Permission::whereIn('id', $ids)->get();
 
         if ($permissions->isEmpty()) {
@@ -274,9 +304,14 @@ class PermissionController extends Controller
         }
 
         return Excel::download(
-            new class($permissions) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($permissions) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $permissions;
-                public function __construct($permissions) { $this->permissions = $permissions; }
+
+                public function __construct($permissions)
+                {
+                    $this->permissions = $permissions;
+                }
 
                 public function collection()
                 {
@@ -305,7 +340,7 @@ class PermissionController extends Controller
     // 🧾 Download Excel Template
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headers
@@ -355,13 +390,13 @@ class PermissionController extends Controller
             }
         } else {
             // Handle Excel file
-            $sheets = Excel::toArray([], $file);
+            $sheets = Excel::toArray(new \stdClass, $file);
             $rows = $sheets[0] ?? [];
-            if (!empty($rows)) {
-                 $header = array_map('strtolower', $rows[0]);
-                 unset($rows[0]);
-                 $rows = array_map(fn($r) => count($header) === count($r) ? array_combine($header, $r) : null, $rows);
-                 $rows = array_filter($rows);
+            if (! empty($rows)) {
+                $header = array_map('strtolower', $rows[0]);
+                unset($rows[0]);
+                $rows = array_map(fn ($r) => count($header) === count($r) ? array_combine($header, $r) : null, $rows);
+                $rows = array_filter($rows);
             }
         }
 
@@ -371,7 +406,9 @@ class PermissionController extends Controller
             $label = trim($row['label'] ?? '');
             $module = trim($row['module'] ?? '');
 
-            if (empty($label) || empty($module)) continue;
+            if (empty($label) || empty($module)) {
+                continue;
+            }
 
             $name = Str::slug($label);
 

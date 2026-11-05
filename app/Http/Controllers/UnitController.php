@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
 use App\Models\Unit;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -32,8 +31,8 @@ class UnitController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
             });
         }
 
@@ -44,16 +43,16 @@ class UnitController extends Controller
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
             // If only start date is provided, filter from that day onwards
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('created_at', '>=', $start);
             }
             // If only end date is provided, filter up to that day
-            elseif (!$start && $end) {
+            elseif (! $start && $end) {
                 $query->where('created_at', '<=', $end);
             }
             // If both are provided, use whereBetween
             elseif ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
         // END NEW DATE FILTER LOGIC
@@ -102,7 +101,7 @@ class UnitController extends Controller
 
         return Inertia::render('units/index', [
             'units' => $units,
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -161,8 +160,8 @@ class UnitController extends Controller
     public function update(Request $request, Unit $unit)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:units,name,' . $unit->id,
-            'code' => 'required|string|max:255|unique:units,code,' . $unit->id,
+            'name' => 'required|string|max:255|unique:units,name,'.$unit->id,
+            'code' => 'required|string|max:255|unique:units,code,'.$unit->id,
         ]);
 
         // 🟢 FIX: Generate the new slug from the validated name
@@ -182,6 +181,7 @@ class UnitController extends Controller
 
         return redirect()->back()->with('success', 'Unit deleted successfully');
     }
+
     public function exportSinglePdf(Unit $unit)
     {
         $pdf = Pdf::loadView('units.unit-single', compact('unit'))
@@ -191,98 +191,108 @@ class UnitController extends Controller
     }
 
     public function exportSingleExcel(Unit $unit)
-        {
-            return Excel::download(
-                new class($unit) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $unit;
-                    public function __construct($unit) { $this->unit = $unit; }
+    {
+        return Excel::download(
+            new class($unit) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $unit;
 
-                    public function collection()
-                    {
-                        return collect([[
-                            'ID' => $this->unit->id,
-                            'Name' => $this->unit->name,
-                            'Slug' => $this->unit->slug,
-                            'Code' => $this->unit->code,
-                            'Created Date' => $this->unit->created_at->format('d M Y'),
-                        ]]);
-                    }
+                public function __construct($unit)
+                {
+                    $this->unit = $unit;
+                }
 
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Code', 'Created Date'];
-                    }
-                },
-                "unit_{$unit->id}.xlsx"
-            );
-        }
+                public function collection()
+                {
+                    return collect([[
+                        'ID' => $this->unit->id,
+                        'Name' => $this->unit->name,
+                        'Slug' => $this->unit->slug,
+                        'Code' => $this->unit->code,
+                        'Created Date' => $this->unit->created_at->format('d M Y'),
+                    ]]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Code', 'Created Date'];
+                }
+            },
+            "unit_{$unit->id}.xlsx"
+        );
+    }
+
     public function bulkDelete(Request $request)
-        {
-            $ids = $request->input('ids', []);
+    {
+        $ids = $request->input('ids', []);
 
-            if (empty($ids)) {
-                return back()->with('error', 'No units selected.');
-            }
-
-            $deletedCount = Unit::destroy($ids);
-
-
-            return back()->with('success', count($ids) . ' unit(s) deleted successfully.');
+        if (empty($ids)) {
+            return back()->with('error', 'No units selected.');
         }
+
+        $deletedCount = Unit::destroy($ids);
+
+        return back()->with('success', count($ids).' unit(s) deleted successfully.');
+    }
 
     public function bulkExportPDF(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $units = Unit::whereIn('id', $ids)->get();
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $units = Unit::whereIn('id', $ids)->get();
 
-            if ($units->isEmpty()) {
-                return back()->with('error', 'No units selected for export.');
-            }
-
-            $pdf = Pdf::loadView('units.unit-bulk-pdf', compact('units'))
-                ->setPaper('a4', 'portrait');
-
-            return $pdf->download('units_export.pdf');
+        if ($units->isEmpty()) {
+            return back()->with('error', 'No units selected for export.');
         }
+
+        $pdf = Pdf::loadView('units.unit-bulk-pdf', compact('units'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('units_export.pdf');
+    }
 
     public function bulkExportExcel(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $units = Unit::whereIn('id', $ids)->get();
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $units = Unit::whereIn('id', $ids)->get();
 
-            if ($units->isEmpty()) {
-                return back()->with('error', 'No units selected for export.');
-            }
-
-            return Excel::download(
-                new class($units) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $units;
-                    public function __construct($units) { $this->units = $units; }
-
-                    public function collection()
-                    {
-                        return $this->units->map(fn ($unit) => [
-                            'ID' => $unit->id,
-                            'Name' => $unit->name,
-                            'Slug' => $unit->slug,
-                            'Code' => $unit->code,
-                            'Created Date' => optional($unit->created_at)->format('d M Y'),
-                        ]);
-                    }
-
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Code', 'Created Date'];
-                    }
-                },
-                'units_export.xlsx'
-            );
+        if ($units->isEmpty()) {
+            return back()->with('error', 'No units selected for export.');
         }
+
+        return Excel::download(
+            new class($units) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $units;
+
+                public function __construct($units)
+                {
+                    $this->units = $units;
+                }
+
+                public function collection()
+                {
+                    return $this->units->map(fn ($unit) => [
+                        'ID' => $unit->id,
+                        'Name' => $unit->name,
+                        'Slug' => $unit->slug,
+                        'Code' => $unit->code,
+                        'Created Date' => optional($unit->created_at)->format('d M Y'),
+                    ]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Code', 'Created Date'];
+                }
+            },
+            'units_export.xlsx'
+        );
+    }
 
     // 🧾 Download Excel Template
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headers
@@ -329,11 +339,11 @@ class UnitController extends Controller
             }
         } else {
             // Handle Excel file
-            $sheets = Excel::toArray([], $file);
+            $sheets = Excel::toArray(new \stdClass, $file);
             $rows = $sheets[0] ?? [];
             $header = array_map('strtolower', $rows[0]);
             unset($rows[0]);
-            $rows = array_map(fn($r) => array_combine($header, $r), $rows);
+            $rows = array_map(fn ($r) => array_combine($header, $r), $rows);
         }
 
         $imported = 0;
@@ -341,7 +351,9 @@ class UnitController extends Controller
         foreach ($rows as $row) {
             $name = trim($row['name'] ?? '');
             $code = trim($row['code'] ?? '');
-            if (empty($name) || empty($code)) continue;
+            if (empty($name) || empty($code)) {
+                continue;
+            }
 
             $baseSlug = Str::slug($name);
             $slug = $baseSlug;

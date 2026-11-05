@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
+use App\Models\AdjustmentReason;
+use App\Models\CompanySetting;
+use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
-use App\Models\Product;
-use App\Models\Supplier;
-use App\Models\Store;
-use App\Models\CompanySetting;
 use App\Models\Stock;
 use App\Models\StockAdjustment;
-use App\Models\AdjustmentReason;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use App\Models\Store;
+use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PurchaseOrderController extends Controller
@@ -39,16 +38,16 @@ class PurchaseOrderController extends Controller
             'user:id,name',
             'items.product',
             'approvedBy:id,name',
-            'receivedBy:id,name'
+            'receivedBy:id,name',
         ]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('po_number', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhereHas('supplier', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -93,13 +92,13 @@ class PurchaseOrderController extends Controller
                 'approved_by' => $po->approvedBy->name ?? null,
                 'received_by' => $po->receivedBy->name ?? null,
                 'items_count' => $po->items->count(),
-                'items' => $po->items->map(fn($item) => [
+                'items' => $po->items->map(fn ($item) => [
                     'product_id' => $item->product_id,
                     'product_name' => $item->product->name ?? 'Deleted',
                     'sku' => $item->product->sku ?? '-',
                     'qty' => $item->quantity_ordered,
                     'cost' => $item->unit_cost,
-                    'total' => $item->total_cost
+                    'total' => $item->total_cost,
                 ]),
             ];
         };
@@ -107,7 +106,7 @@ class PurchaseOrderController extends Controller
         if ($perPage === -1) {
             $all = $query->latest('created_at')->get()->map($transform);
             $purchaseOrders = [
-                'data' => $all, 'total' => $filteredCount, 'per_page' => $perPage, 'from' => 1, 'to' => $all->count(), 'links' => []
+                'data' => $all, 'total' => $filteredCount, 'per_page' => $perPage, 'from' => 1, 'to' => $all->count(), 'links' => [],
             ];
         } else {
             $paginator = $query->latest('created_at')->paginate($perPage)->withQueryString();
@@ -147,7 +146,7 @@ class PurchaseOrderController extends Controller
         try {
             $year = date('Y');
             $count = PurchaseOrder::whereYear('created_at', $year)->count() + 1;
-            $poNumber = 'PO-' . $year . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+            $poNumber = 'PO-'.$year.'-'.str_pad((string) $count, 5, '0', STR_PAD_LEFT);
 
             $grandTotal = 0;
             $itemsToCreate = [];
@@ -173,10 +172,10 @@ class PurchaseOrderController extends Controller
                 'user_id' => Auth::id(), // Ensure this exists in migration
                 'requested_by_id' => Auth::id(),
                 'order_date' => $validated['order_date'],
-                'expected_delivery_date' => $validated['expected_delivery_date'],
+                'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
                 'total_amount' => $grandTotal,
                 'status' => 'draft',
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             $po->items()->saveMany($itemsToCreate);
@@ -186,8 +185,8 @@ class PurchaseOrderController extends Controller
             try {
                 $this->notifyStore(
                     $po->store_id,
-                    "New PO Request",
-                    "PO #{$poNumber} created by " . Auth::user()->name . ". Status: Draft.",
+                    'New PO Request',
+                    "PO #{$poNumber} created by ".Auth::user()->name.'. Status: Draft.',
                     route('purchase-orders.index')
                 );
             } catch (\Exception $e) {
@@ -198,8 +197,9 @@ class PurchaseOrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // 🛑 NUCLEAR OPTION: FORCE DISPLAY OF ERROR
-            //die("<h1>FATAL DATABASE ERROR</h1><pre>" . $e->getMessage() . "</pre>");
+            report($e);
+
+            return back()->with('flash.error', 'Could not create purchase order: '.$e->getMessage());
         }
     }
 
@@ -243,20 +243,22 @@ class PurchaseOrderController extends Controller
                 'supplier_id' => $validated['supplier_id'],
                 'store_id' => $validated['store_id'],
                 'order_date' => $validated['order_date'],
-                'expected_delivery_date' => $validated['expected_delivery_date'],
+                'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
                 'total_amount' => $grandTotal,
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             $purchaseOrder->items()->delete();
             $purchaseOrder->items()->saveMany($itemsToCreate);
 
             DB::commit();
+
             return back()->with('flash.success', 'Purchase Order updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('flash.error', 'Failed to update PO: ' . $e->getMessage());
+
+            return back()->with('flash.error', 'Failed to update PO: '.$e->getMessage());
         }
     }
 
@@ -275,20 +277,20 @@ class PurchaseOrderController extends Controller
 
             $this->notifyStore(
                 $purchaseOrder->store_id,
-                "PO Sent to Supplier",
+                'PO Sent to Supplier',
                 "PO #{$purchaseOrder->po_number} is now Ordered.",
                 route('purchase-orders.index')
             );
 
             return back()->with('flash.success', 'PO marked as Ordered.');
         } catch (\Exception $e) {
-            return back()->with('flash.error', 'Action failed: ' . $e->getMessage());
+            return back()->with('flash.error', 'Action failed: '.$e->getMessage());
         }
     }
 
     public function markReceived(PurchaseOrder $purchaseOrder)
     {
-        if (!in_array($purchaseOrder->status, ['ordered', 'partial'])) {
+        if (! in_array($purchaseOrder->status, ['ordered', 'partial'])) {
             return back()->with('flash.error', 'Only ordered POs can be received.');
         }
 
@@ -299,7 +301,9 @@ class PurchaseOrderController extends Controller
             $purchaseOrder->load('items');
 
             foreach ($purchaseOrder->items as $item) {
-                if ($item->quantity_received >= $item->quantity_ordered) continue;
+                if ($item->quantity_received >= $item->quantity_ordered) {
+                    continue;
+                }
 
                 $qtyToReceive = $item->quantity_ordered - $item->quantity_received;
 
@@ -337,7 +341,7 @@ class PurchaseOrderController extends Controller
 
             $this->notifyStore(
                 $purchaseOrder->store_id,
-                "Stock Received",
+                'Stock Received',
                 "PO #{$purchaseOrder->po_number} received in full.",
                 route('stocks.index')
             );
@@ -346,7 +350,8 @@ class PurchaseOrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('flash.error', 'Failed to receive goods: ' . $e->getMessage());
+
+            return back()->with('flash.error', 'Failed to receive goods: '.$e->getMessage());
         }
     }
 
@@ -364,7 +369,7 @@ class PurchaseOrderController extends Controller
 
         $this->notifyStore(
             $purchaseOrder->store_id,
-            "PO Cancelled",
+            'PO Cancelled',
             "PO #{$purchaseOrder->po_number} was cancelled.",
             route('purchase-orders.index')
         );
@@ -389,18 +394,27 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->load(['supplier', 'store', 'user', 'items.product', 'approvedBy', 'receivedBy']);
         $company = CompanySetting::where('is_default', true)->first() ?? CompanySetting::first();
         $pdf = Pdf::loadView('purchase-orders.single-pdf', compact('purchaseOrder', 'company'))->setPaper('a4', 'portrait');
+
         return $pdf->download("PO_{$purchaseOrder->po_number}.pdf");
     }
 
     public function exportSingleExcel(PurchaseOrder $purchaseOrder)
     {
         $purchaseOrder->load(['items.product']);
+
         return Excel::download(
-            new class($purchaseOrder) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+            new class($purchaseOrder) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $po;
-                public function __construct($po) { $this->po = $po; }
-                public function collection() {
-                    return $this->po->items->map(fn($item) => [
+
+                public function __construct($po)
+                {
+                    $this->po = $po;
+                }
+
+                public function collection()
+                {
+                    return $this->po->items->map(fn ($item) => [
                         'PO Number' => $this->po->po_number,
                         'Product' => $item->product->name,
                         'SKU' => $item->product->sku,
@@ -409,7 +423,11 @@ class PurchaseOrderController extends Controller
                         'Line Total' => $item->total_cost,
                     ]);
                 }
-                public function headings(): array { return ['PO Number', 'Product', 'SKU', 'Quantity', 'Unit Cost', 'Total']; }
+
+                public function headings(): array
+                {
+                    return ['PO Number', 'Product', 'SKU', 'Quantity', 'Unit Cost', 'Total'];
+                }
             },
             "PO_{$purchaseOrder->po_number}.xlsx"
         );
@@ -419,9 +437,12 @@ class PurchaseOrderController extends Controller
     {
         $idArray = explode(',', $ids);
         $purchaseOrders = PurchaseOrder::whereIn('id', $idArray)->with(['supplier', 'store'])->latest('order_date')->get();
-        if ($purchaseOrders->isEmpty()) return back()->with('flash.error', 'No records selected.');
+        if ($purchaseOrders->isEmpty()) {
+            return back()->with('flash.error', 'No records selected.');
+        }
         $company = CompanySetting::first();
         $pdf = Pdf::loadView('purchase-orders.bulk-pdf', compact('purchaseOrders', 'company'))->setPaper('a4', 'landscape');
+
         return $pdf->download('Purchase_Orders_Log.pdf');
     }
 
@@ -429,13 +450,23 @@ class PurchaseOrderController extends Controller
     {
         $idArray = explode(',', $ids);
         $purchaseOrders = PurchaseOrder::whereIn('id', $idArray)->with(['supplier', 'store', 'user'])->latest('order_date')->get();
-        if ($purchaseOrders->isEmpty()) return back()->with('flash.error', 'No records selected.');
+        if ($purchaseOrders->isEmpty()) {
+            return back()->with('flash.error', 'No records selected.');
+        }
+
         return Excel::download(
-            new class($purchaseOrders) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($purchaseOrders) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $pos;
-                public function __construct($pos) { $this->pos = $pos; }
-                public function collection() {
-                    return $this->pos->map(fn($po) => [
+
+                public function __construct($pos)
+                {
+                    $this->pos = $pos;
+                }
+
+                public function collection()
+                {
+                    return $this->pos->map(fn ($po) => [
                         'PO Number' => $po->po_number,
                         'Date' => $po->order_date->format('Y-m-d'),
                         'Supplier' => $po->supplier->name ?? 'N/A',
@@ -445,7 +476,11 @@ class PurchaseOrderController extends Controller
                         'Created By' => $po->user->name,
                     ]);
                 }
-                public function headings(): array { return ['PO Number', 'Date', 'Supplier', 'Store', 'Total Amount', 'Status', 'Created By']; }
+
+                public function headings(): array
+                {
+                    return ['PO Number', 'Date', 'Supplier', 'Store', 'Total Amount', 'Status', 'Created By'];
+                }
             },
             'Purchase_Orders_Log.xlsx'
         );

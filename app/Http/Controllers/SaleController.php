@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\Sale;
-use App\Models\PosSale;
 use App\Models\Invoice;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use App\Models\Sale;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SaleController extends Controller
@@ -25,18 +23,18 @@ class SaleController extends Controller
             'customer:id,name',
             'user:id,name',
             'store:id,name',
-            'items.product:id,name'
+            'items.product:id,name',
         ]);
 
         // 🟢 UPDATED SEARCH LOGIC
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('reference_no', 'like', "%{$search}%")
-                  ->orWhere('payment_status', 'like', "%{$search}%")
+                    ->orWhere('payment_status', 'like', "%{$search}%")
                   // Search Relations
-                  ->orWhereHas('customer', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%")) // 🟢 Store Search
-                  ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%")); // 🟢 User Search
+                    ->orWhereHas('customer', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%")) // 🟢 Store Search
+                    ->orWhereHas('user', fn ($sq) => $sq->where('name', 'like', "%{$search}%")); // 🟢 User Search
 
                 // 🟢 Source Search (Map "POS" or "Invoice" text to Class Names)
                 if (stripos('POS', $search) !== false || stripos($search, 'pos') !== false) {
@@ -51,9 +49,13 @@ class SaleController extends Controller
         if ($dateFrom || $dateTo) {
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
-            if ($start && $end) $query->whereBetween('created_at', [$start, $end]);
-            elseif ($start) $query->whereDate('created_at', '>=', $start);
-            elseif ($end) $query->whereDate('created_at', '<=', $end);
+            if ($start && $end) {
+                $query->whereBetween('created_at', [$start, $end]);
+            } elseif ($start) {
+                $query->whereDate('created_at', '>=', $start);
+            } elseif ($end) {
+                $query->whereDate('created_at', '<=', $end);
+            }
         }
 
         // Stats Logic
@@ -68,8 +70,11 @@ class SaleController extends Controller
 
         $transform = function (Sale $sale) {
             $sourceLabel = 'Unknown';
-            if ($sale->source_type === \App\Models\PosSale::class) $sourceLabel = 'POS';
-            elseif ($sale->source_type === \App\Models\Invoice::class) $sourceLabel = 'Invoice';
+            if ($sale->source_type === \App\Models\PosSale::class) {
+                $sourceLabel = 'POS';
+            } elseif ($sale->source_type === \App\Models\Invoice::class) {
+                $sourceLabel = 'Invoice';
+            }
 
             // Derived Paid Amount Logic
             $derivedPaidAmount = $sale->payment_status === 'paid' ? (float) $sale->total_amount : 0.00;
@@ -89,8 +94,8 @@ class SaleController extends Controller
 
                 'payment_status' => $sale->payment_status,
                 'status' => $sale->status,
-                'items' => $sale->items->map(fn($item) => [
-                    'product_name' => $item->product->name ?? 'Item #' . $item->product_id,
+                'items' => $sale->items->map(fn ($item) => [
+                    'product_name' => $item->product->name ?? 'Item #'.$item->product_id,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'total_price' => $item->total_price,
@@ -146,6 +151,44 @@ class SaleController extends Controller
     }
 
     /**
+     * Single Excel: one sale with its line items.
+     */
+    public function exportExcel(Sale $sale)
+    {
+        $sale->load(['customer', 'store', 'user', 'items.product']);
+
+        return Excel::download(new class($sale) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
+            protected $sale;
+
+            public function __construct($sale)
+            {
+                $this->sale = $sale;
+            }
+
+            public function collection()
+            {
+                return $this->sale->items->map(fn ($item) => [
+                    $this->sale->reference_no,
+                    optional($this->sale->created_at)->format('Y-m-d'),
+                    $this->sale->store->name ?? 'N/A',
+                    $this->sale->customer->name ?? 'Walk-in',
+                    $this->sale->user->name ?? 'System',
+                    $item->product->name ?? 'N/A',
+                    (int) $item->quantity,
+                    (float) $item->unit_price,
+                    (float) $item->total_price,
+                ]);
+            }
+
+            public function headings(): array
+            {
+                return ['Reference', 'Date', 'Store', 'Customer', 'Cashier', 'Product', 'Qty', 'Unit Price', 'Line Total'];
+            }
+        }, "Sale_{$sale->reference_no}.xlsx");
+    }
+
+    /**
      * Bulk PDF: Sales Register (Landscape)
      */
     public function bulkExportPDF($ids)
@@ -185,16 +228,25 @@ class SaleController extends Controller
             ->latest()
             ->get();
 
-        return Excel::download(new class($sales) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($sales) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $sales;
-            public function __construct($sales) { $this->sales = $sales; }
 
-            public function collection() {
+            public function __construct($sales)
+            {
+                $this->sales = $sales;
+            }
+
+            public function collection()
+            {
                 return $this->sales->map(function ($s) {
                     // 🟢 1. Logic for Source Label
                     $source = 'Direct';
-                    if (str_contains($s->source_type, 'PosSale')) $source = 'POS';
-                    elseif (str_contains($s->source_type, 'Invoice')) $source = 'Invoice';
+                    if (str_contains($s->source_type, 'PosSale')) {
+                        $source = 'POS';
+                    } elseif (str_contains($s->source_type, 'Invoice')) {
+                        $source = 'Invoice';
+                    }
 
                     // 🟢 2. Logic for Paid Amount
                     // If status is 'paid', force total_amount.
@@ -221,7 +273,8 @@ class SaleController extends Controller
                 });
             }
 
-            public function headings(): array {
+            public function headings(): array
+            {
                 // 🟢 Added 'Source' to headers
                 return ['Date', 'Reference', 'Store', 'Customer', 'Cashier', 'Source', 'Total Amount', 'Paid Amount', 'Status'];
             }

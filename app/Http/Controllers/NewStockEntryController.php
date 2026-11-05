@@ -2,21 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdjustmentReason;
 use App\Models\NewStockEntry;
-use App\Models\Product;
-use App\Models\Supplier;
-use App\Models\Store;
 use App\Models\Stock;
 use App\Models\StockAdjustment;
-use App\Models\AdjustmentReason;
+use App\Models\Store;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf; // For PDF export
-use Maatwebsite\Excel\Facades\Excel; // For Excel export
-use Illuminate\Support\Str;
+use Illuminate\Support\Str; // For PDF export
+use Illuminate\Validation\Rule; // For Excel export
+use Maatwebsite\Excel\Facades\Excel;
 
 class NewStockEntryController extends Controller
 {
@@ -33,8 +30,8 @@ class NewStockEntryController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('supplier', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('product', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('supplier', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -98,7 +95,7 @@ class NewStockEntryController extends Controller
             'supplier_id' => $validated['supplier_id'],
             'store_id' => $validated['store_id'],
             'quantity_received' => $validated['quantity_received'],
-            'invoice_number' => $validated['invoice_number'],
+            'invoice_number' => $validated['invoice_number'] ?? null,
             'user_id' => $request->user()->id,
             'status' => NewStockEntry::STATUS_PENDING,
             'quantity_transferred' => 0,
@@ -106,8 +103,8 @@ class NewStockEntryController extends Controller
 
         $this->notifyStore(
             $validated['store_id'],
-            "New Delivery Logged",
-            "Invoice #{$validated['invoice_number']} logged. Waiting for verification.",
+            'New Delivery Logged',
+            'Invoice #'.($validated['invoice_number'] ?? 'n/a').' logged. Waiting for verification.',
             route('new-stock-entries.index')
         );
 
@@ -143,23 +140,23 @@ class NewStockEntryController extends Controller
     public function post(NewStockEntry $newStockEntry)
     {
         // Guard 1: Ensure only PENDING entries can be posted
-    if ($newStockEntry->status !== NewStockEntry::STATUS_PENDING) {
-        return redirect()->back()->with('flash.error', 'This stock entry has already been posted or processed.');
-    }
+        if ($newStockEntry->status !== NewStockEntry::STATUS_PENDING) {
+            return redirect()->back()->with('flash.error', 'This stock entry has already been posted or processed.');
+        }
 
-    // 🔍 LOGGING CHECK START 🔍
+        // 🔍 LOGGING CHECK START 🔍
 
-    // 1. Attempt to find the reason ID
-    $reasonId = AdjustmentReason::where('name', 'Goods Received')->value('id');
+        // 1. Attempt to find the reason ID
+        $reasonId = AdjustmentReason::where('name', 'Goods Received')->value('id');
 
-    // 2. Log the outcome of the lookup
-    if ($reasonId === null) {
-        \Illuminate\Support\Facades\Log::warning('AdjustmentReason "Goods Received" not found. Using fallback ID 1.');
-        $reasonId = 1; // Apply the fallback *after* the log message
-    } else {
-        \Illuminate\Support\Facades\Log::info("AdjustmentReason found. Using ID: {$reasonId}");
-    }
-    // 🔍 LOGGING CHECK END 🔍
+        // 2. Log the outcome of the lookup
+        if ($reasonId === null) {
+            \Illuminate\Support\Facades\Log::warning('AdjustmentReason "Goods Received" not found. Using fallback ID 1.');
+            $reasonId = 1; // Apply the fallback *after* the log message
+        } else {
+            \Illuminate\Support\Facades\Log::info("AdjustmentReason found. Using ID: {$reasonId}");
+        }
+        // 🔍 LOGGING CHECK END 🔍
 
         try {
             DB::transaction(function () use ($newStockEntry, $reasonId) {
@@ -186,7 +183,7 @@ class NewStockEntryController extends Controller
                     'old_stock' => $oldStock,
                     'new_stock' => $newStock,
                     'adjustment_reason_id' => $reasonId,
-                    'user_id' => auth()->id(),
+                    'user_id' => Auth::id(),
                     'notes' => "Initial receipt posting from New Stock Entry #{$newStockEntry->id} (Invoice: {$newStockEntry->invoice_number})",
                 ]);
 
@@ -201,7 +198,7 @@ class NewStockEntryController extends Controller
                 // 🟢 NOTIFY STORE (Stock Added)
                 $this->notifyStore(
                     $newStockEntry->store_id,
-                    "Stock Confirmed",
+                    'Stock Confirmed',
                     "{$quantity} units of {$newStockEntry->product->name} added to inventory.",
                     route('stocks.index') // Link to the stock list to see the new levels
                 );
@@ -210,7 +207,8 @@ class NewStockEntryController extends Controller
             return redirect()->back()->with('flash.success', 'Stock successfully posted to live inventory and ready for transfer.');
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("New Stock Entry Post Error: " . $e->getMessage(), ['entry_id' => $newStockEntry->id]);
+            \Illuminate\Support\Facades\Log::error('New Stock Entry Post Error: '.$e->getMessage(), ['entry_id' => $newStockEntry->id]);
+
             return redirect()->back()->with('flash.error', 'Failed to post stock due to a system error. Check logs.');
         }
     }
@@ -227,10 +225,47 @@ class NewStockEntryController extends Controller
 
         try {
             $newStockEntry->delete();
+
             return redirect()->back()->with('flash.success', 'New Stock Entry record deleted successfully.');
         } catch (\Exception $e) {
             return back()->with('flash.error', 'Failed to delete record.');
         }
+    }
+
+    /**
+     * Delete several entries at once, skipping any that already entered processing.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return back()->with('flash.error', 'No entries selected.');
+        }
+
+        $entries = NewStockEntry::whereIn('id', $ids)->get();
+        $deleted = 0;
+        $blocked = [];
+
+        foreach ($entries as $entry) {
+            if ($entry->status !== NewStockEntry::STATUS_PENDING) {
+                $blocked[] = $entry->invoice_number ?: '#'.$entry->id;
+
+                continue;
+            }
+
+            $entry->delete();
+            $deleted++;
+        }
+
+        if ($blocked !== []) {
+            return back()->with(
+                'flash.warning',
+                $deleted.' deleted. Skipped because processing already started: '.implode(', ', $blocked).'.'
+            );
+        }
+
+        return back()->with('flash.success', $deleted.' new stock entr'.($deleted === 1 ? 'y' : 'ies').' deleted.');
     }
 
     // =========================================================
@@ -258,9 +293,14 @@ class NewStockEntryController extends Controller
         $newStockEntry->load(['product', 'supplier', 'store', 'user']);
 
         return Excel::download(
-            new class($newStockEntry) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($newStockEntry) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $entry;
-                public function __construct($entry) { $this->entry = $entry; }
+
+                public function __construct($entry)
+                {
+                    $this->entry = $entry;
+                }
 
                 public function collection()
                 {
@@ -291,7 +331,7 @@ class NewStockEntryController extends Controller
      */
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $entries = NewStockEntry::whereIn('id', $ids)->with(['product', 'supplier', 'store', 'user'])->get();
 
         if ($entries->isEmpty()) {
@@ -309,7 +349,7 @@ class NewStockEntryController extends Controller
      */
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $entries = NewStockEntry::whereIn('id', $ids)->with(['product', 'supplier', 'store', 'user'])->get();
 
         if ($entries->isEmpty()) {
@@ -317,9 +357,14 @@ class NewStockEntryController extends Controller
         }
 
         return Excel::download(
-            new class($entries) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($entries) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $entries;
-                public function __construct($entries) { $this->entries = $entries; }
+
+                public function __construct($entries)
+                {
+                    $this->entries = $entries;
+                }
 
                 public function collection()
                 {

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\CompanySetting;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class CompanySettingController extends Controller
 {
@@ -18,8 +18,8 @@ class CompanySettingController extends Controller
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('phone', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
         }
 
         // 🟢 STATS
@@ -32,7 +32,7 @@ class CompanySettingController extends Controller
         $totalCount = CompanySetting::count();
         $filteredCount = $query->count();
 
-        $settings = $query->latest()->paginate($perPage)->withQueryString()->through(fn($item) => [
+        $settings = $query->latest()->paginate($perPage)->withQueryString()->through(fn ($item) => [
             'id' => $item->id,
             'name' => $item->name,
             'phone' => $item->phone ?? '-',
@@ -132,6 +132,7 @@ class CompanySettingController extends Controller
         }
 
         $companySetting->delete();
+
         return redirect()->back()->with('success', 'Profile deleted.');
     }
 }

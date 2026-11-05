@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\Quotation;
-use App\Models\QuotationItem;
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Quotation;
+use App\Models\QuotationItem;
 use App\Models\Stock;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuotationController extends Controller
@@ -32,23 +32,27 @@ class QuotationController extends Controller
             'customer:id,name',
             'user:id,name',
             'store:id,name',
-            'items.product:id,name'
+            'items.product:id,name',
         ]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('quotation_number', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhereHas('customer', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
         if ($dateFrom || $dateTo) {
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
-            if ($start && $end) $query->whereBetween('quotation_date', [$start, $end]);
-            elseif ($start) $query->whereDate('quotation_date', '>=', $start);
-            elseif ($end) $query->whereDate('quotation_date', '<=', $end);
+            if ($start && $end) {
+                $query->whereBetween('quotation_date', [$start, $end]);
+            } elseif ($start) {
+                $query->whereDate('quotation_date', '>=', $start);
+            } elseif ($end) {
+                $query->whereDate('quotation_date', '<=', $end);
+            }
         }
 
         // 🟢 NEW: Calculate KPI Stats (Global or Filtered can be discussed, let's do Global for now)
@@ -77,7 +81,7 @@ class QuotationController extends Controller
         $productStocks = Stock::select('product_id', 'store_id', 'current_stock')
             ->get()
             ->groupBy('product_id')
-            ->map(fn($stocks) => $stocks->keyBy('store_id')->map(fn($stock) => (int)$stock->current_stock));
+            ->map(fn ($stocks) => $stocks->keyBy('store_id')->map(fn ($stock) => (int) $stock->current_stock));
 
         $totalCount = Quotation::count();
         $filteredCount = $query->count();
@@ -95,7 +99,7 @@ class QuotationController extends Controller
                 'total_amount' => $quote->total_amount,
                 'status' => $quote->status,
                 'notes' => $quote->notes,
-                'items' => $quote->items->map(fn($item) => [
+                'items' => $quote->items->map(fn ($item) => [
                     'product_id' => $item->product_id,
                     'product_name' => $item->product->name ?? 'N/A',
                     'quantity' => $item->quantity,
@@ -154,7 +158,7 @@ class QuotationController extends Controller
         DB::beginTransaction();
         try {
             $count = Quotation::count() + 1;
-            $quoteNumber = 'QT-' . date('Y') . '-' . str_pad($count, 6, '0', STR_PAD_LEFT);
+            $quoteNumber = 'QT-'.date('Y').'-'.str_pad((string) $count, 6, '0', STR_PAD_LEFT);
 
             $subTotal = 0;
             $itemsToCreate = [];
@@ -176,8 +180,8 @@ class QuotationController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'quotation_number' => $quoteNumber,
                 'quotation_date' => $validated['quotation_date'],
-                'valid_until' => $validated['valid_until'],
-                'notes' => $validated['notes'],
+                'valid_until' => $validated['valid_until'] ?? null,
+                'notes' => $validated['notes'] ?? null,
                 'sub_total' => $subTotal,
                 'total_amount' => $subTotal, // Quotations typically don't track tax/discount in this simplified model yet, but field exists
                 'status' => 'draft',
@@ -188,23 +192,25 @@ class QuotationController extends Controller
             DB::commit();
             $this->notifyStore(
                 Auth::user()->store_id, // Assuming current user's store
-                "New Quotation",
-                "Quotation #{$quoteNumber} created by " . Auth::user()->name . ". Status: Draft.",
+                'New Quotation',
+                "Quotation #{$quoteNumber} created by ".Auth::user()->name.'. Status: Draft.',
                 route('quotations.index')
             );
+
             return redirect()->route('quotations.index')->with('success', 'Quotation created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Quotation Create Failed: " . $e->getMessage());
-            return back()->with('error', 'Failed: ' . $e->getMessage());
+            Log::error('Quotation Create Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed: '.$e->getMessage());
         }
     }
 
     public function update(Request $request, Quotation $quotation)
     {
         if ($quotation->status === 'accepted') {
-            return back()->with('error', "Cannot edit an accepted quotation.");
+            return back()->with('error', 'Cannot edit an accepted quotation.');
         }
 
         $validated = $request->validate([
@@ -240,8 +246,8 @@ class QuotationController extends Controller
             $quotation->update([
                 'customer_id' => $validated['customer_id'],
                 'quotation_date' => $validated['quotation_date'],
-                'valid_until' => $validated['valid_until'],
-                'notes' => $validated['notes'],
+                'valid_until' => $validated['valid_until'] ?? null,
+                'notes' => $validated['notes'] ?? null,
                 'sub_total' => $subTotal,
                 'total_amount' => $subTotal,
             ]);
@@ -250,12 +256,14 @@ class QuotationController extends Controller
             $quotation->items()->saveMany($itemsToCreate);
 
             DB::commit();
+
             return back()->with('success', 'Quotation updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Quotation Update Failed: " . $e->getMessage());
-            return back()->with('error', 'Failed: ' . $e->getMessage());
+            Log::error('Quotation Update Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed: '.$e->getMessage());
         }
     }
 
@@ -268,7 +276,7 @@ class QuotationController extends Controller
         DB::beginTransaction();
         try {
             $count = Invoice::count() + 1;
-            $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($count, 6, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'INV-'.date('Y').'-'.str_pad((string) $count, 6, '0', STR_PAD_LEFT);
 
             $invoice = Invoice::create([
                 'store_id' => $quotation->store_id,
@@ -279,7 +287,7 @@ class QuotationController extends Controller
                 'invoice_date' => now(),
                 'due_date' => now()->addDays(30),
                 'payment_arrangement' => 'full',
-                'notes' => "Converted from Quote #{$quotation->quotation_number}. " . $quotation->notes,
+                'notes' => "Converted from Quote #{$quotation->quotation_number}. ".$quotation->notes,
                 'sub_total' => $quotation->sub_total,
                 'total_amount' => $quotation->total_amount,
                 'status' => 'draft',
@@ -304,7 +312,7 @@ class QuotationController extends Controller
             // 🟢 NOTIFY STORE (Deal Won!)
             $this->notifyStore(
                 $quotation->store_id,
-                "Deal Closed!",
+                'Deal Closed!',
                 "Quotation #{$quotation->quotation_number} accepted and converted to Invoice #{$invoice->invoice_number}.",
                 route('invoices.index') // Link to Invoices to see the new bill
             );
@@ -313,8 +321,9 @@ class QuotationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Conversion Failed: " . $e->getMessage());
-            return back()->with('error', 'Conversion Failed: ' . $e->getMessage());
+            Log::error('Conversion Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Conversion Failed: '.$e->getMessage());
         }
     }
 
@@ -325,12 +334,14 @@ class QuotationController extends Controller
             // 🟢 NOTIFY STORE
             $this->notifyStore(
                 $quotation->store_id,
-                "Quotation Sent",
+                'Quotation Sent',
                 "Quotation #{$quotation->quotation_number} marked as sent to customer.",
                 route('quotations.index')
             );
+
             return back()->with('success', 'Marked as Sent.');
         }
+
         return back()->with('error', 'Only drafts can be marked as sent.');
     }
 
@@ -341,22 +352,25 @@ class QuotationController extends Controller
             // 🟢 NOTIFY STORE (Deal Lost)
             $this->notifyStore(
                 $quotation->store_id,
-                "Quotation Rejected",
+                'Quotation Rejected',
                 "Quotation #{$quotation->quotation_number} was rejected by the customer.",
                 route('quotations.index')
             );
+
             return back()->with('success', 'Marked as Rejected.');
         }
+
         return back()->with('error', 'Cannot reject an accepted quote.');
     }
 
     public function destroy(Quotation $quotation)
     {
         if ($quotation->status === 'accepted') {
-            return back()->with('error', "Cannot delete an accepted quotation.");
+            return back()->with('error', 'Cannot delete an accepted quotation.');
         }
         $quotation->items()->delete();
         $quotation->delete();
+
         return back()->with('success', 'Quotation deleted.');
     }
 
@@ -365,24 +379,29 @@ class QuotationController extends Controller
     /**
      * Single PDF Export
      */
-    public function exportPdf(Quotation $quotation) {
+    public function exportPdf(Quotation $quotation)
+    {
         $quotation->load(['customer', 'store', 'user', 'items.product']);
         $pdf = Pdf::loadView('quotations.single-pdf', compact('quotation'))
             ->setPaper('a4', 'portrait');
+
         return $pdf->download("Quotation_{$quotation->quotation_number}.pdf");
     }
 
     /**
      * Bulk PDF Export
      */
-    public function bulkExportPDF($ids) {
+    public function bulkExportPDF($ids)
+    {
         $idArray = explode(',', $ids);
         $quotations = Quotation::whereIn('id', $idArray)
             ->with(['customer', 'store', 'user', 'items'])
             ->latest()
             ->get();
 
-        if ($quotations->isEmpty()) return back()->with('error', 'No quotations selected.');
+        if ($quotations->isEmpty()) {
+            return back()->with('error', 'No quotations selected.');
+        }
 
         $pdf = Pdf::loadView('quotations.bulk-pdf', compact('quotations'))
             ->setPaper('a4', 'portrait');
@@ -393,7 +412,8 @@ class QuotationController extends Controller
     /**
      * Bulk Excel Export (Using Anonymous Class Pattern)
      */
-    public function bulkExportExcel($ids) {
+    public function bulkExportExcel($ids)
+    {
         $idArray = explode(',', $ids);
         $quotations = Quotation::whereIn('id', $idArray)
             ->with(['customer', 'store', 'user'])
@@ -401,12 +421,21 @@ class QuotationController extends Controller
             ->latest()
             ->get();
 
-        if ($quotations->isEmpty()) return back()->with('error', 'No quotations selected.');
+        if ($quotations->isEmpty()) {
+            return back()->with('error', 'No quotations selected.');
+        }
 
-        return Excel::download(new class($quotations) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        return Excel::download(new class($quotations) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $quotations;
-            public function __construct($quotations) { $this->quotations = $quotations; }
-            public function collection() {
+
+            public function __construct($quotations)
+            {
+                $this->quotations = $quotations;
+            }
+
+            public function collection()
+            {
                 return $this->quotations->map(fn ($q) => [
                     $q->id,
                     $q->quotation_number,
@@ -416,10 +445,12 @@ class QuotationController extends Controller
                     Str::upper($q->status),
                     $q->quotation_date->format('Y-m-d'),
                     $q->valid_until ? $q->valid_until->format('Y-m-d') : '-',
-                    $q->user->name
+                    $q->user->name,
                 ]);
             }
-            public function headings(): array {
+
+            public function headings(): array
+            {
                 return ['ID', 'Quote #', 'Customer', 'Store', 'Total Amount', 'Status', 'Date', 'Valid Until', 'Created By'];
             }
         }, 'quotations_register.xlsx');

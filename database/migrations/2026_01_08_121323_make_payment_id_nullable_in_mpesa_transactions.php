@@ -39,7 +39,7 @@ return new class extends Migration
                 'amount',
                 'status',
                 'result_desc',
-                'checkout_request_id'
+                'checkout_request_id',
             ]);
 
             // 2. Revert transaction_code to NOT NULL (how it was originally)

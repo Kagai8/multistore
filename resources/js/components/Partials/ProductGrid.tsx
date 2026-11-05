@@ -1,4 +1,3 @@
-import React from 'react';
 import { Package } from 'lucide-react';
 
 interface Product {
@@ -11,10 +10,16 @@ interface Product {
     color: string;
 }
 
-export default function ProductGrid({ products, onAdd }: { products: Product[], onAdd: (p: Product) => void }) {
+export default function ProductGrid({
+    products,
+    onAdd,
+}: {
+    products: Product[];
+    onAdd: (p: Product) => void;
+}) {
     if (products.length === 0) {
         return (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+            <div className="flex h-full flex-col items-center justify-center text-gray-400">
                 <Package size={48} className="mb-2 opacity-50" />
                 <p>No products found.</p>
             </div>
@@ -22,34 +27,42 @@ export default function ProductGrid({ products, onAdd }: { products: Product[], 
     }
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {products.map((product) => (
                 <button
                     key={product.id}
                     onClick={() => onAdd(product)}
-                    className="group relative flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-orange-200 transition-all text-left overflow-hidden h-40 active:scale-95"
+                    className="group relative flex h-40 flex-col overflow-hidden rounded-xl border border-gray-100 bg-white text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md active:scale-95"
                 >
                     {/* Image Area */}
-                    <div className="h-24 w-full bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <div className="flex h-24 w-full items-center justify-center overflow-hidden bg-gray-50">
                         {product.main_image ? (
-                            <img src={product.main_image} alt={product.name} className="h-full w-full object-cover" />
+                            <img
+                                src={product.main_image}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                            />
                         ) : (
-                            <div className={`h-full w-full flex items-center justify-center text-xl font-bold ${product.color}`}>
+                            <div
+                                className={`flex h-full w-full items-center justify-center text-xl font-bold ${product.color}`}
+                            >
                                 {product.initials}
                             </div>
                         )}
                     </div>
 
                     {/* Content Area */}
-                    <div className="p-2 flex-1 flex flex-col justify-between w-full">
-                        <div className="text-xs font-semibold text-gray-700 line-clamp-1 group-hover:text-orange-600">
+                    <div className="flex w-full flex-1 flex-col justify-between p-2">
+                        <div className="line-clamp-1 text-xs font-semibold text-gray-700 group-hover:text-orange-600">
                             {product.name}
                         </div>
-                        <div className="flex items-end justify-between mt-1">
+                        <div className="mt-1 flex items-end justify-between">
                             <div className="text-sm font-bold text-gray-900">
                                 {product.retail_price.toLocaleString()}
                             </div>
-                            <div className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            <div
+                                className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                            >
                                 {product.stock} left
                             </div>
                         </div>

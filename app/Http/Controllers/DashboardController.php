@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
+use App\Models\CustomerDebt;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\Stock;
+use App\Models\StockAdjustment;
+use App\Models\StockTransfer;
+use App\Models\Store;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Carbon\CarbonPeriod;
-
-// Models
-use App\Models\Store;
-use App\Models\Product;
-use App\Models\StockTransfer;
-use App\Models\Stock;
-use App\Models\Sale;
-use App\Models\Invoice;
-use App\Models\StockAdjustment;
-use App\Models\Payment;
-use App\Models\CustomerDebt;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -42,7 +40,7 @@ class DashboardController extends Controller
                     'title' => $n->data['title'] ?? 'System Alert',
                     'message' => $n->data['message'] ?? '',
                     'time' => $n->created_at->diffForHumans(),
-                    'read' => !is_null($n->read_at),
+                    'read' => ! is_null($n->read_at),
                     'action_url' => $n->data['action_url'] ?? null,
                 ];
             });
@@ -53,7 +51,7 @@ class DashboardController extends Controller
             'topProducts' => $this->buildTopProducts($isGlobal, $storeId),
             'recentActivity' => $this->buildComprehensiveActivity($isGlobal, $storeId),
             'notifications' => $notifications,
-            'filters' => ['days' => (int)$days],
+            'filters' => ['days' => (int) $days],
 
             // 🟢 I ADDED THIS BLOCK BELOW
             // Your React Dashboard checks 'inventoryConfig'. Without this, the page stays on "Loading..."
@@ -61,9 +59,9 @@ class DashboardController extends Controller
                 'userContext' => [
                     'store_name' => $user->store->name ?? 'Head Office',
                     'roles' => $user->getRoleNames()->first() ?? 'Staff',
-                    'is_global_user' => $isGlobal
-                ]
-            ]
+                    'is_global_user' => $isGlobal,
+                ],
+            ],
         ]);
     }
 
@@ -80,7 +78,7 @@ class DashboardController extends Controller
         // DEBT QUERY FIX
         $debtQuery = CustomerDebt::where('status', 'active');
 
-        if (!$isGlobal && $storeId) {
+        if (! $isGlobal && $storeId) {
             $paymentQuery->where('store_id', $storeId);
             $stockQuery->where('store_id', $storeId);
             $transferQuery->where('destination_store_id', $storeId);
@@ -109,7 +107,7 @@ class DashboardController extends Controller
         $query = Sale::whereNotIn('status', ['void', 'cancelled'])
             ->whereBetween('created_at', [$startDate, $endDate]);
 
-        if (!$isGlobal && $storeId) {
+        if (! $isGlobal && $storeId) {
             $query->where('store_id', $storeId);
         }
 
@@ -148,7 +146,7 @@ class DashboardController extends Controller
             ->orderByDesc('qty')
             ->limit(5);
 
-        if (!$isGlobal && $storeId) {
+        if (! $isGlobal && $storeId) {
             $query->where('sales.store_id', $storeId);
         }
 
@@ -169,62 +167,66 @@ class DashboardController extends Controller
 
         // 1. Transfers
         $transfers = StockTransfer::with(['sourceStore', 'destinationStore'])->latest()->take($limit);
-        if (!$isGlobal && $storeId) {
-            $transfers->where(fn($q) => $q->where('source_store_id', $storeId)->orWhere('destination_store_id', $storeId));
+        if (! $isGlobal && $storeId) {
+            $transfers->where(fn ($q) => $q->where('source_store_id', $storeId)->orWhere('destination_store_id', $storeId));
         }
         foreach ($transfers->get() as $t) {
             $collection->push([
                 'timestamp' => $t->created_at,
-                'action' => 'Transfer ' . $t->status,
+                'action' => 'Transfer '.$t->status,
                 'target' => $t->reference ?? 'TR-#',
                 'store' => $t->destinationStore->name ?? 'Unknown',
-                'type' => 'transfer'
+                'type' => 'transfer',
             ]);
         }
 
         // 2. Invoices
         $invoices = Invoice::latest()->take($limit);
-        if (!$isGlobal && $storeId) $invoices->where('store_id', $storeId);
+        if (! $isGlobal && $storeId) {
+            $invoices->where('store_id', $storeId);
+        }
         foreach ($invoices->get() as $i) {
             $collection->push([
                 'timestamp' => $i->created_at,
                 'action' => 'Invoice Created',
                 'target' => $i->invoice_number,
                 'store' => $i->store->name ?? 'Unknown',
-                'type' => 'invoice'
+                'type' => 'invoice',
             ]);
         }
 
         // 3. Stock Adjustments
         $adjustments = StockAdjustment::with('product')->latest()->take($limit);
-        if (!$isGlobal && $storeId) $adjustments->where('store_id', $storeId);
+        if (! $isGlobal && $storeId) {
+            $adjustments->where('store_id', $storeId);
+        }
         foreach ($adjustments->get() as $adj) {
             $reason = 'Manual Adjustment';
-            try {
-                if ($adj->adjustment_reason_id && $adj->reason) {
-                    $reason = $adj->reason->name;
-                }
-            } catch (\Exception $e) {}
+            if ($adj->adjustment_reason_id && $adj->reason) {
+                $reason = $adj->reason->name;
+            }
 
             $collection->push([
                 'timestamp' => $adj->created_at,
-                'action' => 'Stock Adj (' . $reason . ')',
-                'target' => ($adj->product->name ?? 'Item') . " ({$adj->quantity})",
+                'action' => 'Stock Adj ('.$reason.')',
+                'target' => ($adj->product->name ?? 'Item')." ({$adj->quantity})",
                 'store' => $adj->store->name ?? 'Unknown',
-                'type' => 'adjustment'
+                'type' => 'adjustment',
             ]);
         }
 
         // 4. Sales
         $sales = Sale::whereNotIn('status', ['void', 'cancelled'])->latest()->take($limit);
-        if (!$isGlobal && $storeId) $sales->where('store_id', $storeId);
+        if (! $isGlobal && $storeId) {
+            $sales->where('store_id', $storeId);
+        }
         foreach ($sales->get() as $s) {
             $collection->push([
                 'timestamp' => $s->created_at,
                 'action' => 'Sale Completed',
                 'target' => $s->reference_no,
                 'store' => $s->store->name ?? 'Unknown',
-                'type' => 'sale'
+                'type' => 'sale',
             ]);
         }
 
@@ -234,7 +236,7 @@ class DashboardController extends Controller
                 'target' => $item['target'],
                 'store' => $item['store'],
                 'time' => $item['timestamp']->diffForHumans(),
-                'type' => $item['type']
+                'type' => $item['type'],
             ];
         })->values()->toArray();
     }

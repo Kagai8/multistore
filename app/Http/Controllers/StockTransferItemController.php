@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use Illuminate\Http\Request;
 use App\Models\StockTransferItem;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StockTransferItemController extends Controller
@@ -22,8 +22,8 @@ class StockTransferItemController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"))
-                  ->orWhereHas('stockTransfer', fn($sq) => $sq->where('reference', 'like', "%{$search}%"));
+                $q->whereHas('product', fn ($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"))
+                    ->orWhereHas('stockTransfer', fn ($sq) => $sq->where('reference', 'like', "%{$search}%"));
             });
         }
 
@@ -31,9 +31,13 @@ class StockTransferItemController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
             $query->whereHas('stockTransfer', function ($q) use ($start, $end) {
-                if ($start && $end) $q->whereBetween('transfer_date', [$start, $end]);
-                elseif ($start) $q->whereDate('transfer_date', '>=', $start);
-                elseif ($end) $q->whereDate('transfer_date', '<=', $end);
+                if ($start && $end) {
+                    $q->whereBetween('transfer_date', [$start, $end]);
+                } elseif ($start) {
+                    $q->whereDate('transfer_date', '>=', $start);
+                } elseif ($end) {
+                    $q->whereDate('transfer_date', '<=', $end);
+                }
             });
         }
 
@@ -45,7 +49,7 @@ class StockTransferItemController extends Controller
                 'transfer_reference' => $item->stockTransfer->reference ?? 'N/A',
                 'transfer_status' => $item->stockTransfer->status ?? 'unknown',
                 // 🟢 FIX: Use ?-> before format() to prevent crashing on null dates
-                'transfer_date'      => $item->stockTransfer?->transfer_date?->format('d M Y') ?? 'N/A',
+                'transfer_date' => $item->stockTransfer?->transfer_date?->format('d M Y') ?? 'N/A',
                 'source_store' => $item->stockTransfer->sourceStore->name ?? 'N/A',
                 'destination_store' => $item->stockTransfer->destinationStore->name ?? 'N/A',
                 'product_name' => $item->product->name ?? 'Deleted Product',
@@ -71,13 +75,15 @@ class StockTransferItemController extends Controller
     // 🟢 BULK PDF EXPORT
     public function bulkExportPdf(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $items = StockTransferItem::whereIn('id', $ids)
             ->with(['product', 'stockTransfer.sourceStore', 'stockTransfer.destinationStore'])
             ->latest()
             ->get();
 
-        if ($items->isEmpty()) return back()->with('error', 'No items selected.');
+        if ($items->isEmpty()) {
+            return back()->with('error', 'No items selected.');
+        }
 
         $pdf = Pdf::loadView('stock-transfer-items.bulk-pdf', ['items' => $items, 'date_from' => null, 'date_to' => null])
             ->setPaper('a4', 'landscape');
@@ -88,18 +94,27 @@ class StockTransferItemController extends Controller
     // 🟢 BULK EXCEL EXPORT
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $items = StockTransferItem::whereIn('id', $ids)
             ->with(['product', 'stockTransfer.sourceStore', 'stockTransfer.destinationStore'])
             ->latest()
             ->get();
 
-        if ($items->isEmpty()) return back()->with('error', 'No items selected.');
+        if ($items->isEmpty()) {
+            return back()->with('error', 'No items selected.');
+        }
 
-        return Excel::download(new class($items) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($items) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $items;
-            public function __construct($items) { $this->items = $items; }
-            public function collection() {
+
+            public function __construct($items)
+            {
+                $this->items = $items;
+            }
+
+            public function collection()
+            {
                 return $this->items->map(fn ($item) => [
                     'Date' => $item->stockTransfer->transfer_date?->format('Y-m-d'),
                     'Ref' => $item->stockTransfer->reference ?? '-',
@@ -111,7 +126,11 @@ class StockTransferItemController extends Controller
                     'Qty' => $item->quantity,
                 ]);
             }
-            public function headings(): array { return ['Date', 'Reference', 'Status', 'Product', 'SKU', 'From', 'To', 'Qty']; }
+
+            public function headings(): array
+            {
+                return ['Date', 'Reference', 'Status', 'Product', 'SKU', 'From', 'To', 'Qty'];
+            }
         }, 'stock_movement_selection.xlsx');
     }
 }

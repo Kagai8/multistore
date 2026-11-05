@@ -10,12 +10,12 @@ return new class extends Migration
     {
         Schema::table('purchase_orders', function (Blueprint $table) {
             // Add order_date if it's missing
-            if (!Schema::hasColumn('purchase_orders', 'order_date')) {
+            if (! Schema::hasColumn('purchase_orders', 'order_date')) {
                 $table->date('order_date')->after('po_number');
             }
 
             // Add expected_delivery_date if it's missing
-            if (!Schema::hasColumn('purchase_orders', 'expected_delivery_date')) {
+            if (! Schema::hasColumn('purchase_orders', 'expected_delivery_date')) {
                 $table->date('expected_delivery_date')->nullable()->after('order_date');
             }
         });
@@ -28,4 +28,3 @@ return new class extends Migration
         });
     }
 };
-

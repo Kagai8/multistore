@@ -1,18 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { route } from 'ziggy-js';
-import { useEffect, useState } from 'react';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { BrandTableConfig } from '@/components/config/tables/brand-table';
 import { BrandModalFormConfig } from '@/components/config/forms/brand-modal-form';
+import { BrandTableConfig } from '@/components/config/tables/brand-table';
 import CustomTable from '@/components/custom-table';
-import SimpleModalForm from '@/components/simple-custom-modal-form';
 import { CustomToast, toast } from '@/components/custom-toast';
-import { Input } from '@/components/ui/input';
+import SimpleModalForm from '@/components/simple-custom-modal-form';
 import { Button } from '@/components/ui/button';
-import { X, Tag, AlertTriangle } from 'lucide-react'; // 🟢 Added AlertTriangle
+import { Input } from '@/components/ui/input';
 import Pagination from '@/components/ui/pagination';
+import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { AlertTriangle, Tag, X } from 'lucide-react'; // 🟢 Added AlertTriangle
+import { useEffect, useState } from 'react';
+import { route } from 'ziggy-js';
 
 // --- TYPES ---
 interface AuthPageProps {
@@ -67,8 +67,12 @@ interface IndexProps {
 }
 // --- END TYPES ---
 
-
-export default function Index({ brands, filters, totalCount, filteredCount }: IndexProps) {
+export default function Index({
+    brands,
+    filters,
+    totalCount,
+    filteredCount,
+}: IndexProps) {
     const { flash } = usePage<AuthPageProps>().props;
     const flashMessage = flash?.success || flash?.error;
 
@@ -76,13 +80,17 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
     const [modalOpen, setModalOpen] = useState(false);
     const [mode, setMode] = useState<'create' | 'view' | 'edit'>('create');
     const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
-    const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
+    const [mainImagePreview, setMainImagePreview] = useState<string | null>(
+        null,
+    );
 
     // Delete confirmation modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-    const [brandsToBulkDeleteIds, setBrandsToBulkDeleteIds] = useState<number[]>([]);
+    const [brandsToBulkDeleteIds, setBrandsToBulkDeleteIds] = useState<
+        number[]
+    >([]);
 
     // Form for creating/editing
     const { data, setData, reset, errors, processing, post } = useForm({
@@ -102,19 +110,23 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
 
     // Handle File Input Correctly
     const handleSetData = (key: string, value: any) => {
-        setData(key, value);
+        setData(key as Parameters<typeof setData>[0], value);
         if (key === 'logo' && value instanceof File) {
             const url = URL.createObjectURL(value);
             setMainImagePreview(url);
         } else if (key === 'logo' && value === null) {
-             setMainImagePreview(null);
+            setMainImagePreview(null);
         }
     };
 
     // Auto-hide toast after 3s (Global Listener)
     useEffect(() => {
         if (flashMessage) {
-            const type = flash.success ? 'success' : flash.error ? 'error' : 'warning';
+            const type = flash.success
+                ? 'success'
+                : flash.error
+                  ? 'error'
+                  : 'warning';
             toast[type](flashMessage);
         }
     }, [flashMessage, flash]);
@@ -131,7 +143,10 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
             ...(filtersForm.dateTo && { dateTo: filtersForm.dateTo }),
         };
 
-        router.get(route('brands.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('brands.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     // Reset Filters
@@ -140,7 +155,11 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
         setFilterData('perPage', '10');
         setFilterData('dateFrom', null);
         setFilterData('dateTo', null);
-        router.get(route('brands.index'), {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            route('brands.index'),
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     // Per Page Change
@@ -152,11 +171,17 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
             ...(filtersForm.dateFrom && { dateFrom: filtersForm.dateFrom }),
             ...(filtersForm.dateTo && { dateTo: filtersForm.dateTo }),
         };
-        router.get(route('brands.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('brands.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     // Date Filter Handler
-    const handleDateFilterChange = (dateFrom: string | null, dateTo: string | null) => {
+    const handleDateFilterChange = (
+        dateFrom: string | null,
+        dateTo: string | null,
+    ) => {
         setFilterData((prev) => ({
             ...prev,
             dateFrom: dateFrom,
@@ -170,7 +195,10 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
             ...(dateTo && { dateTo: dateTo }),
         };
 
-        router.get(route('brands.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('brands.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     // Open Modal Logic
@@ -208,7 +236,9 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
     // Submit Handler
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const actionRoute = selectedBrand ? route('brands.update', selectedBrand.id) : route('brands.store');
+        const actionRoute = selectedBrand
+            ? route('brands.update', selectedBrand.id)
+            : route('brands.store');
 
         post(actionRoute, {
             forceFormData: true,
@@ -217,7 +247,11 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
                 closeModal();
             },
             onError: (err: any) => {
-                const msg = err?.message || (selectedBrand ? 'Failed to update brand.' : 'Failed to create brand.');
+                const msg =
+                    err?.message ||
+                    (selectedBrand
+                        ? 'Failed to update brand.'
+                        : 'Failed to create brand.');
                 toast.error(msg);
             },
         });
@@ -244,11 +278,11 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
 
     // Single Export Logic
     const handleExportPDF = (brand: Brand) => {
-        window.open(route('brands.exportSinglePdf', brand.id), '_blank');
+        window.open(route('brands.export.pdf.single', brand.id), '_blank');
     };
 
     const handleExportExcel = (brand: Brand) => {
-        window.open(route('brands.exportSingleExcel', brand.id), '_blank');
+        window.open(route('brands.export.excel.single', brand.id), '_blank');
     };
 
     // 🟢 BULK ACTIONS HELPERS
@@ -283,8 +317,8 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
                     toast.error('Failed to delete selected brands');
                     setShowBulkDeleteModal(false);
                     setBrandsToBulkDeleteIds([]);
-                }
-            }
+                },
+            },
         );
     };
 
@@ -317,7 +351,8 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
                 toast.dismiss('import');
             },
             onError: (errors: any) => {
-                const errorMessage = errors?.file || 'Failed to import file. Check file format.';
+                const errorMessage =
+                    errors?.file || 'Failed to import file. Check file format.';
                 toast.error(errorMessage, { id: 'import' });
             },
         });
@@ -325,158 +360,208 @@ export default function Index({ brands, filters, totalCount, filteredCount }: In
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-        <Head title="Brands" />
-        <CustomToast />
+            <Head title="Brands" />
+            <CustomToast />
 
-        <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-             <h2 className="text-xl font-semibold text-gray-800 relative pb-2 before:absolute before:bottom-0 before:left-0 before:w-15 before:h-0.5 before:bg-orange-600 before:rounded-full flex items-center gap-2">
-                <Tag size={26} className="text-orange-600" />
-                Brand Management Hub
-            </h2>
-            <p className="text-sm text-gray-600 max-w-2xxl">
-                Create new brands, update and view existing ones, and organize your brand information efficiently. Use the filters to get reporting data as needed.
-            </p>
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                <h2 className="relative flex items-center gap-2 pb-2 text-xl font-semibold text-gray-800 before:absolute before:bottom-0 before:left-0 before:h-0.5 before:w-15 before:rounded-full before:bg-orange-600">
+                    <Tag size={26} className="text-orange-600" />
+                    Brand Management Hub
+                </h2>
+                <p className="max-w-2xxl text-sm text-gray-600">
+                    Create new brands, update and view existing ones, and
+                    organize your brand information efficiently. Use the filters
+                    to get reporting data as needed.
+                </p>
 
-            {/* Filters */}
-            <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-2 sm:gap-4">
-                <Input
-                    type="text"
-                    value={filtersForm.search}
-                    onChange={handleSearchChange}
-                    className="h-10 w-full sm:w-1/2"
-                    placeholder="Search Brand..."
-                    name="search"
-                />
-
-                <Button onClick={handleReset} className="h-10 cursor-pointer bg-orange-600 hover:bg-orange-500">
-                    <X size={20} />
-                </Button>
-
-                <div className="ml-auto">
-                    <SimpleModalForm
-                        title={mode === 'view' ? 'View Brand' : mode === 'edit' ? 'Update Brand' : BrandModalFormConfig.title}
-                        description={BrandModalFormConfig.description}
-                        fields={BrandModalFormConfig.fields}
-                        buttons={BrandModalFormConfig.buttons}
-                        data={data}
-                        setData={handleSetData}
-                        processing={processing}
-                        handleSubmit={handleSubmit}
-                        errors={errors}
-                        open={modalOpen}
-                        onOpenChange={(open: boolean) => {
-                            if (!open) closeModal();
-                            else setModalOpen(open);
-                        }}
-                        mode={mode}
-                        mainImagePreview={mainImagePreview}
-                        addButton={BrandModalFormConfig.addButton}
+                {/* Filters */}
+                <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-2 sm:gap-4">
+                    <Input
+                        type="text"
+                        value={filtersForm.search}
+                        onChange={handleSearchChange}
+                        className="h-10 w-full sm:w-1/2"
+                        placeholder="Search Brand..."
+                        name="search"
                     />
+
+                    <Button
+                        onClick={handleReset}
+                        className="h-10 cursor-pointer bg-orange-600 hover:bg-orange-500"
+                    >
+                        <X size={20} />
+                    </Button>
+
+                    <div className="ml-auto">
+                        <SimpleModalForm
+                            title={
+                                mode === 'view'
+                                    ? 'View Brand'
+                                    : mode === 'edit'
+                                      ? 'Update Brand'
+                                      : BrandModalFormConfig.title
+                            }
+                            description={BrandModalFormConfig.description}
+                            fields={BrandModalFormConfig.fields}
+                            buttons={BrandModalFormConfig.buttons}
+                            data={data}
+                            setData={handleSetData}
+                            processing={processing}
+                            handleSubmit={handleSubmit}
+                            errors={errors}
+                            open={modalOpen}
+                            onOpenChange={(open: boolean) => {
+                                if (!open) closeModal();
+                                else setModalOpen(open);
+                            }}
+                            mode={mode}
+                            mainImagePreview={mainImagePreview}
+                            addButton={BrandModalFormConfig.addButton}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/* Table */}
-            <CustomTable
-                moduleName="Brand"
-                importPermission="import-brand"
-                downloadTemplatePermission="download-template-brand"
-                columns={BrandTableConfig.columns}
-                actions={BrandTableConfig.actions}
-                data={brands.data}
-                from={brands.from}
-                onView={(b: any) => openModal('view', b)}
-                onEdit={(b: any) => openModal('edit', b)}
-                onDelete={handleDelete}
-                onExportPDF={handleExportPDF}
-                onExportExcel={handleExportExcel}
-                onBulkDelete={handleBulkDelete}
-                onBulkExportPDF={handleBulkExportPDF}
-                onBulkExportExcel={handleBulkExportExcel}
-                isModal
-                onDownloadTemplate={handleDownloadTemplate}
-                onFileSelected={handleFileSelected}
-                onDateFilterChange={handleDateFilterChange}
-            />
-
-            {/* Pagination */}
-            {brands.data && brands.data.length > 0 && (
-                <Pagination
-                    products={brands}
-                    perPage={filtersForm.perPage}
-                    onPerPageChange={handlePerPageChange}
-                    totalCount={totalCount}
-                    filteredCount={filteredCount}
-                    search={filtersForm.search}
+                {/* Table */}
+                <CustomTable
+                    moduleName="Brand"
+                    importPermission="import-brand"
+                    downloadTemplatePermission="download-template-brand"
+                    columns={BrandTableConfig.columns}
+                    actions={BrandTableConfig.actions}
+                    data={brands.data}
+                    from={brands.from}
+                    onView={(b: any) => openModal('view', b)}
+                    onEdit={(b: any) => openModal('edit', b)}
+                    onDelete={handleDelete}
+                    onExportPDF={handleExportPDF}
+                    onExportExcel={handleExportExcel}
+                    onBulkDelete={handleBulkDelete}
+                    onBulkExportPDF={handleBulkExportPDF}
+                    onBulkExportExcel={handleBulkExportExcel}
+                    isModal
+                    onDownloadTemplate={handleDownloadTemplate}
+                    onFileSelected={handleFileSelected}
+                    onDateFilterChange={handleDateFilterChange}
                 />
+
+                {/* Pagination */}
+                {brands.data && brands.data.length > 0 && (
+                    <Pagination
+                        products={brands}
+                        perPage={filtersForm.perPage}
+                        onPerPageChange={handlePerPageChange}
+                        totalCount={totalCount}
+                        filteredCount={filteredCount}
+                        search={filtersForm.search}
+                    />
+                )}
+            </div>
+
+            {/* 🟢 SMART DELETE MODAL */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+                        <div className="mb-4 flex items-center gap-3 text-red-600">
+                            <AlertTriangle className="h-6 w-6" />
+                            <h2 className="text-lg font-semibold">
+                                Confirm Deletion
+                            </h2>
+                        </div>
+
+                        <div className="space-y-3 text-sm text-gray-600">
+                            <p>
+                                Are you sure you want to delete{' '}
+                                <span className="font-bold text-gray-800">
+                                    {brandToDelete?.name}
+                                </span>
+                                ?
+                            </p>
+
+                            {(brandToDelete?.products_count || 0) > 0 && (
+                                <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-orange-800">
+                                    <span className="font-bold">Warning:</span>{' '}
+                                    This brand is currently assigned to
+                                    <span className="mx-1 text-lg font-bold">
+                                        {brandToDelete?.products_count}
+                                    </span>
+                                    products. Deleting it may detach these
+                                    products or cause data issues.
+                                </div>
+                            )}
+
+                            <p>This action cannot be undone.</p>
+                        </div>
+
+                        <div className="mt-6 flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowDeleteModal(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                onClick={confirmDelete}
+                            >
+                                Yes, Delete
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
-        </div>
 
-        {/* 🟢 SMART DELETE MODAL */}
-        {showDeleteModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-                    <div className="flex items-center gap-3 text-red-600 mb-4">
-                        <AlertTriangle className="h-6 w-6" />
-                        <h2 className="text-lg font-semibold">Confirm Deletion</h2>
-                    </div>
+            {/* 🟢 SMART BULK DELETE MODAL */}
+            {showBulkDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+                        <div className="mb-4 flex items-center gap-3 text-red-600">
+                            <AlertTriangle className="h-6 w-6" />
+                            <h2 className="text-lg font-semibold">
+                                Bulk Delete Warning
+                            </h2>
+                        </div>
 
-                    <div className="space-y-3 text-sm text-gray-600">
-                        <p>
-                            Are you sure you want to delete <span className="font-bold text-gray-800">{brandToDelete?.name}</span>?
-                        </p>
+                        <div className="space-y-3 text-sm text-gray-600">
+                            <p>
+                                You are about to delete{' '}
+                                <span className="font-bold text-gray-800">
+                                    {brandsToBulkDeleteIds.length} brands
+                                </span>
+                                .
+                            </p>
 
-                        {(brandToDelete?.products_count || 0) > 0 && (
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-orange-800">
-                                <span className="font-bold">Warning:</span> This brand is currently assigned to
-                                <span className="font-bold text-lg mx-1">{brandToDelete?.products_count}</span>
-                                products. Deleting it may detach these products or cause data issues.
-                            </div>
-                        )}
+                            {getBulkAffectedCount() > 0 && (
+                                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
+                                    <span className="font-bold">CRITICAL:</span>{' '}
+                                    These brands affect a total of
+                                    <span className="mx-1 text-lg font-bold">
+                                        {getBulkAffectedCount()}
+                                    </span>
+                                    products. This could significantly impact
+                                    your inventory.
+                                </div>
+                            )}
 
-                        <p>This action cannot be undone.</p>
-                    </div>
+                            <p>Are you absolutely sure?</p>
+                        </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-                        <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>Yes, Delete</Button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* 🟢 SMART BULK DELETE MODAL */}
-        {showBulkDeleteModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-                    <div className="flex items-center gap-3 text-red-600 mb-4">
-                        <AlertTriangle className="h-6 w-6" />
-                        <h2 className="text-lg font-semibold">Bulk Delete Warning</h2>
-                    </div>
-
-                    <div className="space-y-3 text-sm text-gray-600">
-                        <p>
-                            You are about to delete <span className="font-bold text-gray-800">{brandsToBulkDeleteIds.length} brands</span>.
-                        </p>
-
-                        {getBulkAffectedCount() > 0 && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
-                                <span className="font-bold">CRITICAL:</span> These brands affect a total of
-                                <span className="font-bold text-lg mx-1">{getBulkAffectedCount()}</span>
-                                products. This could significantly impact your inventory.
-                            </div>
-                        )}
-
-                        <p>Are you absolutely sure?</p>
-                    </div>
-
-                    <div className="mt-6 flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setShowBulkDeleteModal(false)}>Cancel</Button>
-                        <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmBulkDelete}>Confirm Bulk Delete</Button>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowBulkDeleteModal(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                onClick={confirmBulkDelete}
+                            >
+                                Confirm Bulk Delete
+                            </Button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        )}
-
+            )}
         </AppLayout>
     );
 }

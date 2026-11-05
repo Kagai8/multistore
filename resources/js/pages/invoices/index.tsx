@@ -1,25 +1,33 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { route } from 'ziggy-js';
-import { useEffect, useState, useCallback } from 'react';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
+import { route } from 'ziggy-js';
 
-import { InvoiceTableConfig } from '@/components/config/tables/invoice-table';
 import { InvoiceFormConfig } from '@/components/config/forms/invoice-modal-form';
+import { InvoiceTableConfig } from '@/components/config/tables/invoice-table';
 import { InvoiceItemEditor } from '@/components/InvoiceItemEditor';
 
-import FinanceModalForm from '@/components/finance-modal-form';
 import ComplexTable from '@/components/complex-table';
 import { CustomToast, toast } from '@/components/custom-toast';
-import { Input } from '@/components/ui/input';
+import FinanceModalForm from '@/components/finance-modal-form';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 // 🟢 ADDED ICONS: Wallet, AlertCircle, FileClock
-import { X, FileText, AlertTriangle, RotateCcw, Wallet, AlertCircle, FileClock } from 'lucide-react';
-import Pagination from '@/components/ui/pagination';
-import { type BreadcrumbItem } from '@/types';
 import { PaymentModal } from '@/components/payment-modal';
 import { SuccessModal } from '@/components/success-modal';
+import Pagination from '@/components/ui/pagination';
+import { type BreadcrumbItem } from '@/types';
+import {
+    AlertCircle,
+    AlertTriangle,
+    FileClock,
+    FileText,
+    RotateCcw,
+    Wallet,
+    X,
+} from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Finance', href: '/finance' },
@@ -119,7 +127,7 @@ interface LookupData {
         sku: string;
         retail_price: number;
         wholesale_price: number;
-        special_price: number
+        special_price: number;
     }>;
     productStocks: Record<string, Record<string, number>>;
 }
@@ -147,19 +155,33 @@ const StatCard = ({ title, value, icon: Icon, colorClass, subText }: any) => (
         <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500">{title}</span>
             <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>
-                <Icon size={20} className={colorClass.replace('bg-', 'text-')} />
+                <Icon
+                    size={20}
+                    className={colorClass.replace('bg-', 'text-')}
+                />
             </div>
         </div>
         <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
-        {subText && <span className="text-xs text-gray-400 mt-1">{subText}</span>}
+        {subText && (
+            <span className="mt-1 text-xs text-gray-400">{subText}</span>
+        )}
     </div>
 );
 
-export default function Index({ invoices, filters, totalCount, filteredCount, lookupData, stats }: IndexProps) {
+export default function Index({
+    invoices,
+    filters,
+    totalCount,
+    filteredCount,
+    lookupData,
+    stats,
+}: IndexProps) {
     const { inventoryConfig } = usePage<PagePropsWithConfig>().props;
     const currentUserContext = inventoryConfig?.userContext || null;
 
-    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string };
+    }>().props;
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -179,11 +201,15 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
     // --- STATE ---
     const [modalOpen, setModalOpen] = useState(false);
     const [mode, setMode] = useState<'create' | 'view' | 'edit'>('create');
-    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(
+        null,
+    );
 
     // Modals
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [invoiceForPayment, setInvoiceForPayment] = useState<Invoice | null>(null);
+    const [invoiceForPayment, setInvoiceForPayment] = useState<Invoice | null>(
+        null,
+    );
 
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successModalMessage, setSuccessModalMessage] = useState('');
@@ -192,10 +218,14 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
     const [invoiceToVoid, setInvoiceToVoid] = useState<Invoice | null>(null);
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+    const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(
+        null,
+    );
 
     const [showRefundModal, setShowRefundModal] = useState(false);
-    const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(null);
+    const [invoiceToRefund, setInvoiceToRefund] = useState<Invoice | null>(
+        null,
+    );
 
     const invoiceForm = useForm<InvoiceForm>(initialInvoiceData);
 
@@ -220,15 +250,18 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
         invoiceForm.setData(key as keyof InvoiceForm, value);
     };
 
-    const handleItemUpdate = useCallback((newItems: any[], newGrandTotal: number) => {
-        invoiceForm.setData((previousData) => ({
-            ...previousData,
-            items: newItems,
-            total_amount: newGrandTotal,
-            balance_due: newGrandTotal,
-            paid_amount: 0,
-        }));
-    }, [invoiceForm]);
+    const handleItemUpdate = useCallback(
+        (newItems: any[], newGrandTotal: number) => {
+            invoiceForm.setData((previousData) => ({
+                ...previousData,
+                items: newItems,
+                total_amount: newGrandTotal,
+                balance_due: newGrandTotal,
+                paid_amount: 0,
+            }));
+        },
+        [invoiceForm],
+    );
 
     useEffect(() => {
         if (invoiceForm.data.is_walkin) {
@@ -239,6 +272,7 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
                 handleSetData('customer_id', '');
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invoiceForm.data.is_walkin]);
 
     const handleOpenEditViewModal = (m: 'view' | 'edit', invoice: Invoice) => {
@@ -253,11 +287,11 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
             due_date: invoice.due_date || '',
             payment_arrangement: invoice.payment_arrangement,
             notes: invoice.notes || '',
-            items: invoice.items.map(item => ({
+            items: invoice.items.map((item) => ({
                 product_id: item.product_id,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
-                price_category: item.price_category
+                price_category: item.price_category,
             })),
             total_amount: invoice.total_amount,
             paid_amount: invoice.paid_amount,
@@ -290,13 +324,20 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
 
         for (const item of invoiceForm.data.items) {
             const productId = String(item.product_id);
-            const currentStock = stockData[productId]?.[String(currentStoreId)] ?? 0;
+            const currentStock =
+                stockData[productId]?.[String(currentStoreId)] ?? 0;
 
             if (currentStock < item.quantity) {
-                 const product = lookupData.products.find(p => String(p.id) === productId);
-                 const productName = product ? product.name : `Product #${productId}`;
-                 toast.error(`Insufficient stock for ${productName}. Available: ${currentStock}, Requested: ${item.quantity}`);
-                 return false;
+                const product = lookupData.products.find(
+                    (p) => String(p.id) === productId,
+                );
+                const productName = product
+                    ? product.name
+                    : `Product #${productId}`;
+                toast.error(
+                    `Insufficient stock for ${productName}. Available: ${currentStock}, Requested: ${item.quantity}`,
+                );
+                return false;
             }
         }
         return true;
@@ -304,19 +345,20 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (invoiceForm.data.items.length === 0) return toast.error("Invoice must contain at least one item.");
+        if (invoiceForm.data.items.length === 0)
+            return toast.error('Invoice must contain at least one item.');
         if (!checkStockAvailability()) return;
 
-        if (mode === "edit" && selectedInvoice) {
-            invoiceForm.put(route("invoices.update", selectedInvoice.id), {
+        if (mode === 'edit' && selectedInvoice) {
+            invoiceForm.put(route('invoices.update', selectedInvoice.id), {
                 onSuccess: () => closeModal(),
-                onError: (errors) => toast.error("Failed to update Invoice"),
+                onError: (errors) => toast.error('Failed to update Invoice'),
             });
         } else {
-            invoiceForm.post(route("invoices.store"), {
+            invoiceForm.post(route('invoices.store'), {
                 forceFormData: true,
                 onSuccess: () => closeModal(),
-                onError: (errors) => toast.error("Failed to create Invoice"),
+                onError: (errors) => toast.error('Failed to create Invoice'),
             });
         }
     };
@@ -325,10 +367,15 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
         const cleanLabel = label.trim();
         switch (cleanLabel) {
             case 'Post Invoice':
-                router.post(route('invoices.post', invoice.id), {}, {
-                    onSuccess: () => router.reload({ preserveState: true }),
-                    onError: (e: any) => toast.error(e.message || 'Failed to post invoice.'),
-                });
+                router.post(
+                    route('invoices.post', invoice.id),
+                    {},
+                    {
+                        onSuccess: () => router.reload(),
+                        onError: (e: any) =>
+                            toast.error(e.message || 'Failed to post invoice.'),
+                    },
+                );
                 break;
             case 'Void':
                 setInvoiceToVoid(invoice);
@@ -343,7 +390,10 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
                 setShowRefundModal(true);
                 break;
             case 'Print Receipt':
-                window.open(route('invoices.print-receipt', invoice.id), '_blank');
+                window.open(
+                    route('invoices.print-receipt', invoice.id),
+                    '_blank',
+                );
                 break;
             default:
                 toast.error(`Action "${cleanLabel}" not configured.`);
@@ -352,26 +402,36 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
 
     const confirmVoid = () => {
         if (!invoiceToVoid) return;
-        router.post(route('invoices.void', invoiceToVoid.id), {}, {
-            onSuccess: () => {
-                setShowVoidModal(false);
-                setInvoiceToVoid(null);
-                router.reload({ preserveState: true });
+        router.post(
+            route('invoices.void', invoiceToVoid.id),
+            {},
+            {
+                onSuccess: () => {
+                    setShowVoidModal(false);
+                    setInvoiceToVoid(null);
+                    router.reload();
+                },
+                onError: (e: any) =>
+                    toast.error(e.message || 'Failed to void invoice.'),
             },
-            onError: (e: any) => toast.error(e.message || 'Failed to void invoice.'),
-        });
+        );
     };
 
     const confirmRefund = () => {
         if (!invoiceToRefund) return;
-        router.post(route('invoices.refund', invoiceToRefund.id), {}, {
-            onSuccess: () => {
-                setShowRefundModal(false);
-                setInvoiceToRefund(null);
-                router.reload({ preserveState: true });
+        router.post(
+            route('invoices.refund', invoiceToRefund.id),
+            {},
+            {
+                onSuccess: () => {
+                    setShowRefundModal(false);
+                    setInvoiceToRefund(null);
+                    router.reload();
+                },
+                onError: (e: any) =>
+                    toast.error(e.message || 'Failed to refund invoice.'),
             },
-            onError: (e: any) => toast.error(e.message || 'Failed to refund invoice.'),
-        });
+        );
     };
 
     const handleDelete = (invoice: Invoice) => {
@@ -393,8 +453,13 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
         });
     };
 
-    const handleExportPDF = (invoice: Invoice) => window.open(route('invoices.export.pdf.single', invoice.id), '_blank');
-    const handleExportExcel = (invoice: Invoice) => window.open(route('invoices.export.excel.single', invoice.id), '_blank');
+    const handleExportPDF = (invoice: Invoice) =>
+        window.open(route('invoices.export.pdf.single', invoice.id), '_blank');
+    const handleExportExcel = (invoice: Invoice) =>
+        window.open(
+            route('invoices.export.excel.single', invoice.id),
+            '_blank',
+        );
     const handleBulkExportPDF = (ids: number[]) => {
         if (!ids.length) return toast.error('No invoices selected');
         const url = route('invoices.bulk-export.pdf', { ids: ids.join(',') });
@@ -411,9 +476,14 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
         filterForm.setData('search', value);
         const query = {
             ...(value && { search: value }),
-            ...(filterForm.data.perPage && { perPage: filterForm.data.perPage }),
+            ...(filterForm.data.perPage && {
+                perPage: filterForm.data.perPage,
+            }),
         };
-        router.get(route('invoices.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('invoices.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleReset = () => {
@@ -421,7 +491,11 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
         filterForm.setData('perPage', '10');
         filterForm.setData('dateFrom', null);
         filterForm.setData('dateTo', null);
-        router.get(route('invoices.index'), {}, { preserveState: true, preserveScroll: true });
+        router.get(
+            route('invoices.index'),
+            {},
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     const handlePerPageChange = (value: string) => {
@@ -430,19 +504,30 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
             ...(filterForm.data.search && { search: filterForm.data.search }),
             ...(value && { perPage: value }),
         };
-        router.get(route('invoices.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('invoices.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
-    const handleDateFilterChange = (dateFrom: string | null, dateTo: string | null) => {
+    const handleDateFilterChange = (
+        dateFrom: string | null,
+        dateTo: string | null,
+    ) => {
         filterForm.setData('dateFrom', dateFrom);
         filterForm.setData('dateTo', dateTo);
         const query = {
             ...(filterForm.data.search && { search: filterForm.data.search }),
-            ...(filterForm.data.perPage && { perPage: filterForm.data.perPage }),
+            ...(filterForm.data.perPage && {
+                perPage: filterForm.data.perPage,
+            }),
             ...(dateFrom && { dateFrom: dateFrom }),
             ...(dateTo && { dateTo: dateTo }),
         };
-        router.get(route('invoices.index'), query, { preserveState: true, preserveScroll: true });
+        router.get(route('invoices.index'), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const extraDataForForm = {
@@ -450,12 +535,15 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
         payment_arrangements: [
             { id: 'full', name: 'Full Payment' },
             { id: 'partial', name: 'Partial Payment' },
-        ]
+        ],
     };
 
     // 🟢 Currency Helper
     const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(value);
+        return new Intl.NumberFormat('en-KE', {
+            style: 'currency',
+            currency: 'KES',
+        }).format(value);
     };
 
     return (
@@ -472,18 +560,18 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
             />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h2 className="text-xl font-semibold text-gray-800 relative pb-2 before:absolute before:bottom-0 before:left-0 before:w-15 before:h-0.5 before:bg-orange-600 before:rounded-full flex items-center gap-2">
-                    <FileText size={26} className="text-orange-600 mr-1" />
+                <h2 className="relative flex items-center gap-2 pb-2 text-xl font-semibold text-gray-800 before:absolute before:bottom-0 before:left-0 before:h-0.5 before:w-15 before:rounded-full before:bg-orange-600">
+                    <FileText size={26} className="mr-1 text-orange-600" />
                     Invoice Hub
                 </h2>
 
                 {/* 🟢 DESCRIPTION */}
-                <p className="text-sm text-gray-600 max-w-2xxl mb-2">
+                <p className="max-w-2xxl mb-2 text-sm text-gray-600">
                     Create, manage, and finalize sales invoices.
                 </p>
 
                 {/* 🟢 STAT TABS GRID */}
-                <div className="grid gap-4 md:grid-cols-3 mb-2">
+                <div className="mb-2 grid gap-4 md:grid-cols-3">
                     <StatCard
                         title="Draft Invoices"
                         value={stats?.draft_count || 0}
@@ -516,13 +604,26 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
                         placeholder="Search Invoice #, Customer, or Status..."
                         name="search"
                     />
-                    <Button onClick={handleReset} className="h-10 cursor-pointer bg-orange-600 hover:bg-orange-500">
+                    <Button
+                        onClick={handleReset}
+                        className="h-10 cursor-pointer bg-orange-600 hover:bg-orange-500"
+                    >
                         <X size={20} />
                     </Button>
                     <div className="ml-auto">
                         <FinanceModalForm
-                            key={selectedInvoice ? `invoice-edit-${selectedInvoice.id}` : 'invoice-create'}
-                            title={mode === 'view' ? 'View Invoice' : mode === 'edit' ? 'Edit Draft Invoice' : InvoiceFormConfig.title}
+                            key={
+                                selectedInvoice
+                                    ? `invoice-edit-${selectedInvoice.id}`
+                                    : 'invoice-create'
+                            }
+                            title={
+                                mode === 'view'
+                                    ? 'View Invoice'
+                                    : mode === 'edit'
+                                      ? 'Edit Draft Invoice'
+                                      : InvoiceFormConfig.title
+                            }
                             description={InvoiceFormConfig.description}
                             fields={InvoiceFormConfig.fields}
                             buttons={InvoiceFormConfig.buttons}
@@ -533,7 +634,11 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
                             errors={invoiceForm.errors}
                             open={modalOpen}
                             onOpenChange={(open: boolean) => {
-                                if (open && mode !== 'edit' && mode !== 'view') {
+                                if (
+                                    open &&
+                                    mode !== 'edit' &&
+                                    mode !== 'view'
+                                ) {
                                     setMode('create');
                                     invoiceForm.reset();
                                 }
@@ -546,15 +651,17 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
                             addButton={InvoiceFormConfig.addButton}
                             childrenPosition={0}
                         >
-                            <div className="space-y-3 p-4 border rounded-lg shadow-sm">
-                                <h3 className="text-lg font-semibold border-b pb-2 mb-3 text-orange-600 dark:text-orange-400">
+                            <div className="space-y-3 rounded-lg border p-4 shadow-sm">
+                                <h3 className="mb-3 border-b pb-2 text-lg font-semibold text-orange-600 dark:text-orange-400">
                                     Invoice Items
                                 </h3>
                                 <InvoiceItemEditor
                                     data={invoiceForm.data.items}
                                     onUpdate={handleItemUpdate}
                                     products={lookupData.products}
-                                    currentStoreId={currentUserContext?.store_id || null}
+                                    currentStoreId={
+                                        currentUserContext?.store_id || null
+                                    }
                                     mode={mode}
                                     productStocks={lookupData.productStocks}
                                 />
@@ -605,18 +712,28 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
             {/* DELETE MODAL */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md">
-                        <h2 className="text-lg font-semibold text-gray-800">Confirm Deletion</h2>
+                    <div className="w-[90%] max-w-md rounded-xl bg-white p-6 shadow-lg">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                            Confirm Deletion
+                        </h2>
                         <p className="mt-2 text-sm text-gray-600">
                             Are you sure you want to delete Invoice{' '}
-                            <span className="font-semibold text-gray-800">{invoiceToDelete?.invoice_number}</span>?
-                            This action cannot be undone.
+                            <span className="font-semibold text-gray-800">
+                                {invoiceToDelete?.invoice_number}
+                            </span>
+                            ? This action cannot be undone.
                         </p>
                         <div className="mt-6 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowDeleteModal(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmDelete}>
+                            <Button
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                onClick={confirmDelete}
+                            >
                                 Delete
                             </Button>
                         </div>
@@ -627,27 +744,40 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
             {/* VOID MODAL */}
             {showVoidModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md border-l-4 border-orange-500">
-                        <div className="flex items-center gap-3 mb-2">
-                             <div className="p-2 bg-orange-100 rounded-full text-orange-600">
+                    <div className="w-[90%] max-w-md rounded-xl border-l-4 border-orange-500 bg-white p-6 shadow-lg">
+                        <div className="mb-2 flex items-center gap-3">
+                            <div className="rounded-full bg-orange-100 p-2 text-orange-600">
                                 <AlertTriangle size={24} />
-                             </div>
-                             <h2 className="text-lg font-semibold text-gray-800">Confirm Void</h2>
+                            </div>
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Confirm Void
+                            </h2>
                         </div>
                         <p className="mt-2 text-sm text-gray-600">
-                            Are you sure you want to <span className="font-bold text-red-600">VOID</span> Invoice{' '}
-                            <span className="font-semibold text-gray-800">{invoiceToVoid?.invoice_number}</span>?
+                            Are you sure you want to{' '}
+                            <span className="font-bold text-red-600">VOID</span>{' '}
+                            Invoice{' '}
+                            <span className="font-semibold text-gray-800">
+                                {invoiceToVoid?.invoice_number}
+                            </span>
+                            ?
                         </p>
-                        <ul className="mt-3 text-sm text-gray-500 list-disc list-inside space-y-1">
+                        <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-gray-500">
                             <li>Stock will be returned to inventory.</li>
                             <li>Sales ledger will be cancelled.</li>
                             <li>This action cannot be undone.</li>
                         </ul>
                         <div className="mt-6 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setShowVoidModal(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowVoidModal(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={confirmVoid}>
+                            <Button
+                                className="bg-orange-600 text-white hover:bg-orange-700"
+                                onClick={confirmVoid}
+                            >
                                 Confirm Void
                             </Button>
                         </div>
@@ -658,25 +788,39 @@ export default function Index({ invoices, filters, totalCount, filteredCount, lo
             {/* REFUND MODAL */}
             {showRefundModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-xl shadow-lg p-6 w-[90%] max-w-md border-l-4 border-purple-500">
-                        <div className="flex items-center gap-3 mb-2">
-                             <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                    <div className="w-[90%] max-w-md rounded-xl border-l-4 border-purple-500 bg-white p-6 shadow-lg">
+                        <div className="mb-2 flex items-center gap-3">
+                            <div className="rounded-full bg-purple-100 p-2 text-purple-600">
                                 <RotateCcw size={24} />
-                             </div>
-                             <h2 className="text-lg font-semibold text-gray-800">Confirm Refund</h2>
+                            </div>
+                            <h2 className="text-lg font-semibold text-gray-800">
+                                Confirm Refund
+                            </h2>
                         </div>
                         <p className="mt-2 text-sm text-gray-600">
-                            Process full refund for <span className="font-semibold text-gray-800">{invoiceToRefund?.invoice_number}</span>?
+                            Process full refund for{' '}
+                            <span className="font-semibold text-gray-800">
+                                {invoiceToRefund?.invoice_number}
+                            </span>
+                            ?
                         </p>
-                        <div className="bg-yellow-50 p-3 rounded mt-3 text-xs text-yellow-800 border border-yellow-200">
-                            <strong>Note:</strong> This will return stock, create a "Refund" transaction in the ledger, and mark the invoice as Refunded.
-                            You should physically return cash/M-Pesa to the customer.
+                        <div className="mt-3 rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">
+                            <strong>Note:</strong> This will return stock,
+                            create a "Refund" transaction in the ledger, and
+                            mark the invoice as Refunded. You should physically
+                            return cash/M-Pesa to the customer.
                         </div>
                         <div className="mt-6 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setShowRefundModal(false)}>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowRefundModal(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button className="bg-purple-600 hover:bg-purple-700 text-white" onClick={confirmRefund}>
+                            <Button
+                                className="bg-purple-600 text-white hover:bg-purple-700"
+                                onClick={confirmRefund}
+                            >
                                 Process Refund
                             </Button>
                         </div>

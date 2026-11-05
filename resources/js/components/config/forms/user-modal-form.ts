@@ -1,15 +1,17 @@
-import { CirclePlus } from "lucide-react";
+import { CirclePlus } from 'lucide-react';
 // Assuming FieldGroup is imported from the ComplexModalForm component or defined nearby
-import { FieldGroup } from "@/components/complex-modal-form";
+import { FieldGroup } from '@/components/complex-modal-form';
 
 export const UserModalFormConfig = {
     moduleTitle: 'Manage Users',
     title: 'Create New User',
-    description: 'Provide core user credentials and assign their system role and store location.',
+    description:
+        'Provide core user credentials and assign their system role and store location.',
     addButton: {
         id: 'add-user',
         label: 'Add User',
-        className: 'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
+        className:
+            'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
         icon: CirclePlus,
         type: 'button',
         variant: 'default',
@@ -107,7 +109,6 @@ export const UserModalFormConfig = {
                 },
             ],
         },
-
     ] as FieldGroup[],
 
     buttons: [

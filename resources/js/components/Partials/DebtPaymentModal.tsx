@@ -1,20 +1,36 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useRef } from 'react';
-import { useForm, router } from '@inertiajs/react';
-import axios from 'axios';
-import { route } from 'ziggy-js';
+import { Button } from '@/components/ui/button';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { router } from '@inertiajs/react';
+import axios from 'axios';
 import {
-    DollarSign, Plus, Wallet, Split,
-    CreditCard, Banknote, Smartphone, Building,
-    UserCheck, AlertCircle, RefreshCw, CheckCircle2, X,
-    Loader2, SmartphoneNfc, Ban, Lock, ShieldCheck, Search
+    Ban,
+    Banknote,
+    Building,
+    CheckCircle2,
+    CreditCard,
+    DollarSign,
+    Loader2,
+    Lock,
+    Plus,
+    RefreshCw,
+    Search,
+    Smartphone,
+    SmartphoneNfc,
+    Split,
+    Wallet,
+    X,
 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { route } from 'ziggy-js';
 // Import Searchable Select for Quick Pay Mode
 import { SearchableSelect } from '@/components/ui/searchable-select';
 
@@ -28,9 +44,21 @@ interface DebtPaymentModalProps {
     selectedDebtIds?: number[]; // NEW: Passed from Table Selection
 }
 
-type PaymentMethod = 'cash' | 'mpesa' | 'card' | 'bank_transfer' | 'credit_limit' | 'other';
+type PaymentMethod =
+    | 'cash'
+    | 'mpesa'
+    | 'card'
+    | 'bank_transfer'
+    | 'credit_limit'
+    | 'other';
 type MpesaMode = 'stk' | 'c2b' | 'manual';
-type StkStatus = 'idle' | 'sending' | 'verifying' | 'waiting_for_pin' | 'success' | 'failed';
+type StkStatus =
+    | 'idle'
+    | 'sending'
+    | 'verifying'
+    | 'waiting_for_pin'
+    | 'success'
+    | 'failed';
 
 interface PaymentLine {
     id: number;
@@ -42,67 +70,130 @@ interface PaymentLine {
     verified?: boolean;
 }
 
-const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.ElementType; color: string; requiresRef: boolean }[] = [
-    { id: 'cash', label: 'Cash', icon: Banknote, color: 'text-green-600 bg-green-50 border-green-200', requiresRef: false },
-    { id: 'mpesa', label: 'M-Pesa', icon: Smartphone, color: 'text-emerald-600 bg-emerald-50 border-emerald-200', requiresRef: true },
-    { id: 'card', label: 'Card', icon: CreditCard, color: 'text-blue-600 bg-blue-50 border-blue-200', requiresRef: true },
-    { id: 'bank_transfer', label: 'Bank', icon: Building, color: 'text-indigo-600 bg-indigo-50 border-indigo-200', requiresRef: true },
+const PAYMENT_METHODS: {
+    id: PaymentMethod;
+    label: string;
+    icon: React.ElementType;
+    color: string;
+    requiresRef: boolean;
+}[] = [
+    {
+        id: 'cash',
+        label: 'Cash',
+        icon: Banknote,
+        color: 'text-green-600 bg-green-50 border-green-200',
+        requiresRef: false,
+    },
+    {
+        id: 'mpesa',
+        label: 'M-Pesa',
+        icon: Smartphone,
+        color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+        requiresRef: true,
+    },
+    {
+        id: 'card',
+        label: 'Card',
+        icon: CreditCard,
+        color: 'text-blue-600 bg-blue-50 border-blue-200',
+        requiresRef: true,
+    },
+    {
+        id: 'bank_transfer',
+        label: 'Bank',
+        icon: Building,
+        color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+        requiresRef: true,
+    },
 ];
 
 // --- STATUS DIALOG ---
-const StkStatusDialog = ({ status, errorMsg, onClose }: { status: StkStatus, errorMsg: string, onClose: () => void }) => {
+const StkStatusDialog = ({
+    status,
+    errorMsg,
+    onClose,
+}: {
+    status: StkStatus;
+    errorMsg: string;
+    onClose: () => void;
+}) => {
     if (status === 'idle') return null;
 
     return (
-        <Dialog open={true} onOpenChange={() => status === 'failed' || status === 'success' ? onClose() : null}>
-            <DialogContent className="sm:max-w-sm text-center py-10 z-[150]">
+        <Dialog
+            open={true}
+            onOpenChange={() =>
+                status === 'failed' || status === 'success' ? onClose() : null
+            }
+        >
+            <DialogContent className="z-[150] py-10 text-center sm:max-w-sm">
                 {status === 'sending' && (
                     <div className="flex flex-col items-center space-y-4">
-                        <Loader2 className="h-16 w-16 text-emerald-600 animate-spin" />
-                        <h3 className="text-lg font-bold text-gray-700">Contacting Safaricom...</h3>
+                        <Loader2 className="h-16 w-16 animate-spin text-emerald-600" />
+                        <h3 className="text-lg font-bold text-gray-700">
+                            Contacting Safaricom...
+                        </h3>
                     </div>
                 )}
                 {status === 'verifying' && (
                     <div className="flex flex-col items-center space-y-4">
-                        <Loader2 className="h-16 w-16 text-blue-600 animate-spin" />
+                        <Loader2 className="h-16 w-16 animate-spin text-blue-600" />
                         <div className="space-y-1">
-                            <h3 className="text-lg font-bold text-gray-700">Checking Records...</h3>
-                            <p className="text-sm text-gray-500">Searching for payment...</p>
+                            <h3 className="text-lg font-bold text-gray-700">
+                                Checking Records...
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                Searching for payment...
+                            </p>
                         </div>
                     </div>
                 )}
                 {status === 'waiting_for_pin' && (
                     <div className="flex flex-col items-center space-y-4 animate-in fade-in">
                         <div className="relative">
-                            <SmartphoneNfc className="h-20 w-20 text-blue-600 animate-pulse" />
+                            <SmartphoneNfc className="h-20 w-20 animate-pulse text-blue-600" />
                             <span className="absolute top-0 right-0 flex h-4 w-4">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex h-4 w-4 rounded-full bg-blue-500"></span>
                             </span>
                         </div>
                         <div className="space-y-1">
-                            <h3 className="text-lg font-bold text-gray-800">Check Customer Phone</h3>
-                            <p className="text-sm text-gray-500">Waiting for PIN entry...</p>
+                            <h3 className="text-lg font-bold text-gray-800">
+                                Check Customer Phone
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                Waiting for PIN entry...
+                            </p>
                         </div>
                     </div>
                 )}
                 {status === 'success' && (
-                    <div className="flex flex-col items-center space-y-4 animate-in zoom-in duration-300">
+                    <div className="flex flex-col items-center space-y-4 duration-300 animate-in zoom-in">
                         <CheckCircle2 className="h-20 w-20 text-green-500" />
                         <div className="space-y-1">
-                            <h3 className="text-xl font-bold text-green-700">Confirmed!</h3>
-                            <p className="text-sm text-gray-500">Payment Verified Successfully.</p>
+                            <h3 className="text-xl font-bold text-green-700">
+                                Confirmed!
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                Payment Verified Successfully.
+                            </p>
                         </div>
                     </div>
                 )}
                 {status === 'failed' && (
-                    <div className="flex flex-col items-center space-y-4 animate-in zoom-in duration-300">
+                    <div className="flex flex-col items-center space-y-4 duration-300 animate-in zoom-in">
                         <Ban className="h-20 w-20 text-red-500" />
                         <div className="space-y-1">
-                            <h3 className="text-xl font-bold text-red-700">Verification Failed</h3>
-                            <p className="text-sm text-red-600 px-4">{errorMsg}</p>
+                            <h3 className="text-xl font-bold text-red-700">
+                                Verification Failed
+                            </h3>
+                            <p className="px-4 text-sm text-red-600">
+                                {errorMsg}
+                            </p>
                         </div>
-                        <Button variant="outline" onClick={onClose}>Close</Button>
+                        <Button variant="outline" onClick={onClose}>
+                            Close
+                        </Button>
                     </div>
                 )}
             </DialogContent>
@@ -115,22 +206,19 @@ const PaymentRow = ({
     line,
     onChange,
     onRemove,
-    creditLimit,
     isSingleMode,
-    onAutoSubmit
+    onAutoSubmit,
 }: {
     line: PaymentLine;
     onChange: (updates: Partial<PaymentLine>) => void;
     onRemove?: () => void;
-    creditLimit: number;
     isSingleMode?: boolean;
     onAutoSubmit: () => void;
 }) => {
-
     const isPaid = line.verified || false;
     const [stkStatus, setStkStatus] = useState<StkStatus>('idle');
     const [stkError, setStkError] = useState('');
-    const pollInterval = useRef<NodeJS.Timeout | null>(null);
+    const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         return () => {
@@ -144,11 +232,11 @@ const PaymentRow = ({
 
     const handleStkPush = async () => {
         if (!line.mpesaPhone || line.mpesaPhone.length < 9) {
-            alert("Please enter a valid phone number");
+            alert('Please enter a valid phone number');
             return;
         }
         if (!line.amount || Number(line.amount) <= 0) {
-            alert("Enter an amount first.");
+            alert('Enter an amount first.');
             return;
         }
 
@@ -158,7 +246,7 @@ const PaymentRow = ({
         try {
             const response = await axios.post('/mpesa/stk-push', {
                 phone: line.mpesaPhone,
-                amount: line.amount
+                amount: line.amount,
             });
 
             if (response.data.success) {
@@ -168,7 +256,7 @@ const PaymentRow = ({
             }
         } catch (error: any) {
             setStkStatus('failed');
-            setStkError(error.response?.data?.error || "Connection failed");
+            setStkError(error.response?.data?.error || 'Connection failed');
         }
     };
 
@@ -183,40 +271,42 @@ const PaymentRow = ({
                 const status = res.data.status;
 
                 if (status === 'COMPLETED') {
-                    if (pollInterval.current) clearInterval(pollInterval.current);
+                    if (pollInterval.current)
+                        clearInterval(pollInterval.current);
                     onChange({
-                        transaction_ref: res.data.transaction_code || checkoutId,
-                        verified: true
+                        transaction_ref:
+                            res.data.transaction_code || checkoutId,
+                        verified: true,
                     });
                     setStkStatus('success');
                     setTimeout(() => {
                         setStkStatus('idle');
                         onAutoSubmit();
                     }, 1500);
-                }
-                else if (status === 'FAILED') {
-                    if (pollInterval.current) clearInterval(pollInterval.current);
+                } else if (status === 'FAILED') {
+                    if (pollInterval.current)
+                        clearInterval(pollInterval.current);
                     setStkStatus('failed');
-                    setStkError(res.data.result_desc || "User Cancelled");
-                }
-                else if (attempts >= maxAttempts) {
-                    if (pollInterval.current) clearInterval(pollInterval.current);
+                    setStkError(res.data.result_desc || 'User Cancelled');
+                } else if (attempts >= maxAttempts) {
+                    if (pollInterval.current)
+                        clearInterval(pollInterval.current);
                     setStkStatus('failed');
-                    setStkError("Timeout: No response from M-Pesa");
+                    setStkError('Timeout: No response from M-Pesa');
                 }
-            } catch (err) {
-                 console.log("Polling...", attempts);
+            } catch {
+                console.log('Polling...', attempts);
             }
         }, 3000);
     };
 
     const handleManualVerify = async () => {
         if (!line.mpesaPhone || line.mpesaPhone.length < 9) {
-            alert("Please enter phone number.");
+            alert('Please enter phone number.');
             return;
         }
         if (!line.amount || Number(line.amount) <= 0) {
-            alert("Enter Amount.");
+            alert('Enter Amount.');
             return;
         }
 
@@ -226,14 +316,14 @@ const PaymentRow = ({
         try {
             const response = await axios.post('/api/mpesa/verify', {
                 phone: line.mpesaPhone,
-                amount: line.amount
+                amount: line.amount,
             });
 
             if (response.data.success) {
                 const realCode = response.data.data.transaction_code;
                 onChange({
                     transaction_ref: realCode,
-                    verified: true
+                    verified: true,
                 });
                 setStkStatus('success');
                 setTimeout(() => {
@@ -243,22 +333,31 @@ const PaymentRow = ({
             }
         } catch (error: any) {
             setStkStatus('failed');
-            setStkError(error.response?.data?.error || "Payment not found.");
+            setStkError(error.response?.data?.error || 'Payment not found.');
         }
     };
 
-    const isRefRequired = PAYMENT_METHODS.find(m => m.id === line.method)?.requiresRef || false;
+    const isRefRequired =
+        PAYMENT_METHODS.find((m) => m.id === line.method)?.requiresRef || false;
 
     const containerClass = isPaid
-        ? "bg-emerald-50 border-emerald-500 shadow-sm ring-1 ring-emerald-500 opacity-90"
-        : (isSingleMode ? 'border-transparent p-0' : 'bg-gray-50 border-gray-200 shadow-sm');
+        ? 'bg-emerald-50 border-emerald-500 shadow-sm ring-1 ring-emerald-500 opacity-90'
+        : isSingleMode
+          ? 'border-transparent p-0'
+          : 'bg-gray-50 border-gray-200 shadow-sm';
 
     return (
-        <div className={`space-y-4 p-4 rounded-xl border transition-all ${containerClass}`}>
-            <StkStatusDialog status={stkStatus} errorMsg={stkError} onClose={() => setStkStatus('idle')} />
+        <div
+            className={`space-y-4 rounded-xl border p-4 transition-all ${containerClass}`}
+        >
+            <StkStatusDialog
+                status={stkStatus}
+                errorMsg={stkError}
+                onClose={() => setStkStatus('idle')}
+            />
 
             {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex items-start justify-between">
                 <div className="flex flex-wrap gap-2">
                     {PAYMENT_METHODS.map((m) => {
                         const isActive = line.method === m.id;
@@ -270,24 +369,33 @@ const PaymentRow = ({
                                 type="button"
                                 disabled={isPaid}
                                 onClick={() => onChange({ method: m.id })}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all
-                                    ${isActive ? `bg-white border-emerald-500 shadow-sm text-emerald-700 ring-1 ring-emerald-500` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}
-                                    ${isPaid ? 'cursor-default' : ''}`}
+                                className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-all ${isActive ? `border-emerald-500 bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-500` : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'} ${isPaid ? 'cursor-default' : ''}`}
                             >
                                 <m.icon size={18} />
-                                <span className="text-xs font-semibold">{m.label}</span>
-                                {isPaid && <CheckCircle2 size={16} className="ml-1 fill-emerald-100 text-emerald-600" />}
+                                <span className="text-xs font-semibold">
+                                    {m.label}
+                                </span>
+                                {isPaid && (
+                                    <CheckCircle2
+                                        size={16}
+                                        className="ml-1 fill-emerald-100 text-emerald-600"
+                                    />
+                                )}
                             </button>
                         );
                     })}
                 </div>
                 {onRemove && !isPaid && (
-                    <button type="button" onClick={onRemove} className="text-gray-400 hover:text-red-500 p-1">
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="p-1 text-gray-400 hover:text-red-500"
+                    >
                         <X size={18} />
                     </button>
                 )}
                 {isPaid && (
-                    <div className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold flex items-center gap-1">
+                    <div className="flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">
                         <Lock size={12} /> VERIFIED
                     </div>
                 )}
@@ -295,14 +403,18 @@ const PaymentRow = ({
 
             {/* Amount */}
             <div className="space-y-2">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Amount</Label>
+                <Label className="text-xs font-bold text-gray-500 uppercase">
+                    Amount
+                </Label>
                 <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold">$</span>
+                    <span className="absolute top-2.5 left-3 font-bold text-gray-400">
+                        $
+                    </span>
                     <Input
                         type="number"
                         disabled={isPaid}
                         onKeyDown={handleKeyDown}
-                        className={`pl-8 text-lg font-bold bg-white ${isPaid ? 'text-gray-500 bg-gray-50' : ''}`}
+                        className={`bg-white pl-8 text-lg font-bold ${isPaid ? 'bg-gray-50 text-gray-500' : ''}`}
                         value={line.amount}
                         onChange={(e) => onChange({ amount: e.target.value })}
                         placeholder="0.00"
@@ -312,20 +424,29 @@ const PaymentRow = ({
 
             {/* M-Pesa Content */}
             {line.method === 'mpesa' && (
-                <div className={`rounded-lg p-3 space-y-3 transition-all ${isPaid ? 'bg-transparent p-0' : 'bg-emerald-50/80 border border-emerald-100'}`}>
-
+                <div
+                    className={`space-y-3 rounded-lg p-3 transition-all ${isPaid ? 'bg-transparent p-0' : 'border border-emerald-100 bg-emerald-50/80'}`}
+                >
                     {!isPaid && (
                         <div className="flex gap-2 border-b border-emerald-200/50 pb-2">
-                            {(['stk', 'c2b', 'manual'] as MpesaMode[]).map((mMode) => (
-                                <button
-                                    key={mMode}
-                                    type="button"
-                                    onClick={() => onChange({ mpesaMode: mMode })}
-                                    className={`text-[10px] font-bold px-3 py-1 rounded-full transition-colors uppercase tracking-wide ${line.mpesaMode === mMode ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-100'}`}
-                                >
-                                    {mMode === 'c2b' ? 'Paybill' : mMode === 'stk' ? 'STK Push' : 'Manual'}
-                                </button>
-                            ))}
+                            {(['stk', 'c2b', 'manual'] as MpesaMode[]).map(
+                                (mMode) => (
+                                    <button
+                                        key={mMode}
+                                        type="button"
+                                        onClick={() =>
+                                            onChange({ mpesaMode: mMode })
+                                        }
+                                        className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wide uppercase transition-colors ${line.mpesaMode === mMode ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-100'}`}
+                                    >
+                                        {mMode === 'c2b'
+                                            ? 'Paybill'
+                                            : mMode === 'stk'
+                                              ? 'STK Push'
+                                              : 'Manual'}
+                                    </button>
+                                ),
+                            )}
                         </div>
                     )}
 
@@ -336,23 +457,46 @@ const PaymentRow = ({
                                 value={line.mpesaPhone}
                                 disabled={isPaid}
                                 onKeyDown={handleKeyDown}
-                                onChange={(e) => onChange({ mpesaPhone: e.target.value })}
-                                className="bg-white border-emerald-200 h-9 text-sm"
+                                onChange={(e) =>
+                                    onChange({ mpesaPhone: e.target.value })
+                                }
+                                className="h-9 border-emerald-200 bg-white text-sm"
                             />
                             {!isPaid && (
-                                <Button type="button" size="sm" onClick={handleStkPush} disabled={stkStatus === 'sending' || (line.mpesaPhone || '').length < 10} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[100px]">
-                                    {stkStatus === 'sending' ? <RefreshCw className="animate-spin h-3 w-3" /> : 'Push'}
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleStkPush}
+                                    disabled={
+                                        stkStatus === 'sending' ||
+                                        (line.mpesaPhone || '').length < 10
+                                    }
+                                    className="min-w-[100px] bg-emerald-600 text-white hover:bg-emerald-700"
+                                >
+                                    {stkStatus === 'sending' ? (
+                                        <RefreshCw className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                        'Push'
+                                    )}
                                 </Button>
                             )}
                         </div>
                     )}
 
-                    {(line.mpesaMode === 'c2b' || line.mpesaMode === 'manual') && (
-                        <div className="flex flex-col gap-2 bg-white p-2 rounded border border-emerald-100">
+                    {(line.mpesaMode === 'c2b' ||
+                        line.mpesaMode === 'manual') && (
+                        <div className="flex flex-col gap-2 rounded border border-emerald-100 bg-white p-2">
                             {line.mpesaMode === 'c2b' && (
-                                <div className="flex justify-between items-center text-xs text-emerald-800 mb-1">
-                                    <span><span className="font-bold">Paybill/Till:</span></span>
-                                    <span><span className="font-bold">Amt:</span> {line.amount}</span>
+                                <div className="mb-1 flex items-center justify-between text-xs text-emerald-800">
+                                    <span>
+                                        <span className="font-bold">
+                                            Paybill/Till:
+                                        </span>
+                                    </span>
+                                    <span>
+                                        <span className="font-bold">Amt:</span>{' '}
+                                        {line.amount}
+                                    </span>
                                 </div>
                             )}
 
@@ -362,7 +506,11 @@ const PaymentRow = ({
                                         placeholder="Customer Phone (e.g. 07xx...)"
                                         value={line.mpesaPhone}
                                         onKeyDown={handleKeyDown}
-                                        onChange={(e) => onChange({ mpesaPhone: e.target.value })}
+                                        onChange={(e) =>
+                                            onChange({
+                                                mpesaPhone: e.target.value,
+                                            })
+                                        }
                                         className="h-9 text-sm"
                                     />
                                     <Button
@@ -370,13 +518,14 @@ const PaymentRow = ({
                                         size="sm"
                                         type="button"
                                         onClick={handleManualVerify}
-                                        className="h-9 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 whitespace-nowrap"
+                                        className="h-9 border-emerald-200 bg-emerald-50 text-xs whitespace-nowrap text-emerald-700 hover:bg-emerald-100"
                                     >
-                                        <Search size={14} className="mr-1"/> Find Payment
+                                        <Search size={14} className="mr-1" />{' '}
+                                        Find Payment
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-2 text-sm text-emerald-700 font-mono bg-emerald-50 p-1 rounded">
+                                <div className="flex items-center gap-2 rounded bg-emerald-50 p-1 font-mono text-sm text-emerald-700">
                                     <CheckCircle2 size={14} />
                                     <span>Code: {line.transaction_ref}</span>
                                 </div>
@@ -388,13 +537,17 @@ const PaymentRow = ({
 
             {line.method !== 'mpesa' && isRefRequired && (
                 <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                    <Label className="text-xs font-bold text-gray-500 uppercase">Reference / Code</Label>
+                    <Label className="text-xs font-bold text-gray-500 uppercase">
+                        Reference / Code
+                    </Label>
                     <Input
                         placeholder="Auth Code..."
                         value={line.transaction_ref}
                         disabled={isPaid}
                         onKeyDown={handleKeyDown}
-                        onChange={(e) => onChange({ transaction_ref: e.target.value })}
+                        onChange={(e) =>
+                            onChange({ transaction_ref: e.target.value })
+                        }
                         className="bg-white"
                     />
                 </div>
@@ -403,10 +556,15 @@ const PaymentRow = ({
     );
 };
 
-
 // --- MAIN MODAL ---
-export const DebtPaymentModal: React.FC<DebtPaymentModalProps> = ({ customer, isOpen, onClose, preFilledAmount, allCustomers = [], selectedDebtIds = [] }) => {
-
+export const DebtPaymentModal: React.FC<DebtPaymentModalProps> = ({
+    customer,
+    isOpen,
+    onClose,
+    preFilledAmount,
+    allCustomers = [],
+    selectedDebtIds = [],
+}) => {
     const [selectedCustomer, setSelectedCustomer] = useState<any>(customer);
 
     useEffect(() => {
@@ -417,36 +575,69 @@ export const DebtPaymentModal: React.FC<DebtPaymentModalProps> = ({ customer, is
     const [localProcessing, setLocalProcessing] = useState(false);
 
     const targetAmount = selectedCustomer
-        ? (preFilledAmount && preFilledAmount > 0 ? preFilledAmount : (selectedCustomer.total_debt ?? 0))
+        ? preFilledAmount && preFilledAmount > 0
+            ? preFilledAmount
+            : (selectedCustomer.total_debt ?? 0)
         : 0;
 
     const [lines, setLines] = useState<PaymentLine[]>([
-        { id: 1, method: 'cash', amount: '', transaction_ref: '', mpesaMode: 'stk', mpesaPhone: '' }
+        {
+            id: 1,
+            method: 'cash',
+            amount: '',
+            transaction_ref: '',
+            mpesaMode: 'stk',
+            mpesaPhone: '',
+        },
     ]);
 
     useEffect(() => {
         if (isOpen && selectedCustomer) {
             setMode('single');
-            setLines([{
-                id: Date.now(),
-                method: 'cash',
-                amount: targetAmount,
-                transaction_ref: '',
-                mpesaMode: 'stk',
-                mpesaPhone: '',
-                verified: false
-            }]);
+            setLines([
+                {
+                    id: Date.now(),
+                    method: 'cash',
+                    amount: targetAmount,
+                    transaction_ref: '',
+                    mpesaMode: 'stk',
+                    mpesaPhone: '',
+                    verified: false,
+                },
+            ]);
         }
     }, [isOpen, targetAmount, selectedCustomer]);
 
-    const updateLine = (id: number, updates: Partial<PaymentLine>) => setLines(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
-    const addLine = () => setLines(prev => [...prev, { id: Date.now(), method: 'cash', amount: '', transaction_ref: '', mpesaMode: 'stk', mpesaPhone: '', verified: false }]);
-    const removeLine = (id: number) => setLines(prev => prev.filter(l => l.id !== id));
+    const updateLine = (id: number, updates: Partial<PaymentLine>) =>
+        setLines((prev) =>
+            prev.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+        );
+    const addLine = () =>
+        setLines((prev) => [
+            ...prev,
+            {
+                id: Date.now(),
+                method: 'cash',
+                amount: '',
+                transaction_ref: '',
+                mpesaMode: 'stk',
+                mpesaPhone: '',
+                verified: false,
+            },
+        ]);
+    const removeLine = (id: number) =>
+        setLines((prev) => prev.filter((l) => l.id !== id));
 
-    const currentTotal = lines.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+    const currentTotal = lines.reduce(
+        (sum, l) => sum + Number(l.amount || 0),
+        0,
+    );
     const remaining = targetAmount - currentTotal;
 
-    const isSubmitDisabled = !selectedCustomer || localProcessing || lines.some(l => l.method === 'mpesa' && !l.verified);
+    const isSubmitDisabled =
+        !selectedCustomer ||
+        localProcessing ||
+        lines.some((l) => l.method === 'mpesa' && !l.verified);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -455,59 +646,87 @@ export const DebtPaymentModal: React.FC<DebtPaymentModalProps> = ({ customer, is
 
         const primaryLine = lines[0];
 
-        router.post(route('debts.store'), {
-            customer_id: selectedCustomer.id,
-            amount: currentTotal,
-            payment_date: new Date().toISOString().split('T')[0],
-            method: primaryLine.method,
-            transaction_ref: primaryLine.transaction_ref,
-            selected_debt_ids: selectedDebtIds || [],
-            notes: mode === 'split' ? "Split Payment via Debt Modal" : "Lump Sum Payment"
-        }, {
-            onSuccess: () => {
-                setLocalProcessing(false);
-                onClose();
+        router.post(
+            route('debts.store'),
+            {
+                customer_id: selectedCustomer.id,
+                amount: currentTotal,
+                payment_date: new Date().toISOString().split('T')[0],
+                method: primaryLine.method,
+                transaction_ref: primaryLine.transaction_ref,
+                selected_debt_ids: selectedDebtIds || [],
+                notes:
+                    mode === 'split'
+                        ? 'Split Payment via Debt Modal'
+                        : 'Lump Sum Payment',
             },
-            onError: (errors) => {
-                setLocalProcessing(false);
-                console.error("Validation Errors:", errors);
-                alert("Validation Error: " + Object.values(errors).flat().join("\n"));
+            {
+                onSuccess: () => {
+                    setLocalProcessing(false);
+                    onClose();
+                },
+                onError: (errors) => {
+                    setLocalProcessing(false);
+                    console.error('Validation Errors:', errors);
+                    alert(
+                        'Validation Error: ' +
+                            Object.values(errors).flat().join('\n'),
+                    );
+                },
+                onFinish: () => {
+                    setLocalProcessing(false);
+                },
             },
-            onFinish: () => {
-                setLocalProcessing(false);
-            }
-        });
+        );
     };
 
-    const handleAutoSubmit = () => console.log("Verification successful.");
+    const handleAutoSubmit = () => console.log('Verification successful.');
 
     if (!isOpen) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                 <DialogHeader className="mb-2">
                     <DialogTitle className="flex items-center gap-2 text-xl text-emerald-700">
                         <Wallet className="h-6 w-6" /> Record Debt Repayment
                     </DialogTitle>
                     <DialogDescription>
                         {selectedCustomer ? (
-                            <span>Customer: <span className="font-bold text-gray-800">{selectedCustomer.name}</span></span>
+                            <span>
+                                Customer:{' '}
+                                <span className="font-bold text-gray-800">
+                                    {selectedCustomer.name}
+                                </span>
+                            </span>
                         ) : (
-                            <span>Select a customer to receive payment from.</span>
+                            <span>
+                                Select a customer to receive payment from.
+                            </span>
                         )}
                     </DialogDescription>
                 </DialogHeader>
 
                 {!customer && (
-                    <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
-                        <Label className="mb-1 block text-xs font-bold text-gray-500 uppercase">Search Customer</Label>
+                    <div className="mb-4 rounded border border-gray-200 bg-gray-50 p-3">
+                        <Label className="mb-1 block text-xs font-bold text-gray-500 uppercase">
+                            Search Customer
+                        </Label>
                         <SearchableSelect
-                            options={allCustomers.map(c => ({ value: c.id, label: c.name + (c.total_debt > 0 ? ` (Debt: ${c.total_debt})` : '') }))}
+                            options={allCustomers.map((c) => ({
+                                value: c.id,
+                                label:
+                                    c.name +
+                                    (c.total_debt > 0
+                                        ? ` (Debt: ${c.total_debt})`
+                                        : ''),
+                            }))}
                             value={selectedCustomer?.id}
                             onChange={(val) => {
-                                const found = allCustomers.find(c => c.id === Number(val));
-                                if(found) setSelectedCustomer(found);
+                                const found = allCustomers.find(
+                                    (c) => c.id === Number(val),
+                                );
+                                if (found) setSelectedCustomer(found);
                             }}
                             placeholder="Type to search..."
                         />
@@ -516,41 +735,68 @@ export const DebtPaymentModal: React.FC<DebtPaymentModalProps> = ({ customer, is
 
                 {selectedCustomer && (
                     <>
-                        <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 mb-6">
+                        <div className="mb-6 grid grid-cols-3 gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                             <div>
-                                <div className="text-xs font-semibold text-gray-500 uppercase">Target Amount</div>
-                                <div className="text-lg font-bold text-gray-800">{Number(targetAmount).toLocaleString()}</div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase">
+                                    Target Amount
+                                </div>
+                                <div className="text-lg font-bold text-gray-800">
+                                    {Number(targetAmount).toLocaleString()}
+                                </div>
                             </div>
                             <div>
-                                <div className="text-xs font-semibold text-gray-500 uppercase">Tendered</div>
-                                <div className="text-lg font-bold text-emerald-600">{Number(currentTotal).toLocaleString()}</div>
+                                <div className="text-xs font-semibold text-gray-500 uppercase">
+                                    Tendered
+                                </div>
+                                <div className="text-lg font-bold text-emerald-600">
+                                    {Number(currentTotal).toLocaleString()}
+                                </div>
                             </div>
                             <div>
-                                <div className="text-xs font-semibold text-gray-500 uppercase">Balance / Excess</div>
-                                <div className={`text-2xl font-black ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                                    {remaining > 0 ? remaining.toLocaleString() : Math.abs(remaining).toLocaleString()}
+                                <div className="text-xs font-semibold text-gray-500 uppercase">
+                                    Balance / Excess
+                                </div>
+                                <div
+                                    className={`text-2xl font-black ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}
+                                >
+                                    {remaining > 0
+                                        ? remaining.toLocaleString()
+                                        : Math.abs(remaining).toLocaleString()}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex p-1 bg-gray-100 rounded-lg mb-6 w-full sm:w-fit">
-                            <button type="button" onClick={() => setMode('single')} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${mode === 'single' ? 'bg-white shadow text-emerald-700' : 'text-gray-500 hover:text-gray-700'}`}>
+                        <div className="mb-6 flex w-full rounded-lg bg-gray-100 p-1 sm:w-fit">
+                            <button
+                                type="button"
+                                onClick={() => setMode('single')}
+                                className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${mode === 'single' ? 'bg-white text-emerald-700 shadow' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
                                 <DollarSign size={16} /> Single Method
                             </button>
-                            <button type="button" onClick={() => setMode('split')} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${mode === 'split' ? 'bg-white shadow text-emerald-700' : 'text-gray-500 hover:text-gray-700'}`}>
+                            <button
+                                type="button"
+                                onClick={() => setMode('split')}
+                                className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${mode === 'split' ? 'bg-white text-emerald-700 shadow' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
                                 <Split size={16} /> Split Payment
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-4">
-                                {lines.map((line, index) => (
+                                {lines.map((line) => (
                                     <PaymentRow
                                         key={line.id}
                                         line={line}
-                                        onChange={(updates: any) => updateLine(line.id, updates)}
-                                        onRemove={mode === 'split' && lines.length > 1 ? () => removeLine(line.id) : undefined}
-                                        creditLimit={0}
+                                        onChange={(updates: any) =>
+                                            updateLine(line.id, updates)
+                                        }
+                                        onRemove={
+                                            mode === 'split' && lines.length > 1
+                                                ? () => removeLine(line.id)
+                                                : undefined
+                                        }
                                         isSingleMode={mode === 'single'}
                                         onAutoSubmit={handleAutoSubmit}
                                     />
@@ -558,31 +804,54 @@ export const DebtPaymentModal: React.FC<DebtPaymentModalProps> = ({ customer, is
                             </div>
 
                             {mode === 'split' && (
-                                <Button type="button" variant="outline" onClick={addLine} className="w-full border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-                                    <Plus size={16} className="mr-2"/> Add Another Payment Method
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={addLine}
+                                    className="w-full border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                >
+                                    <Plus size={16} className="mr-2" /> Add
+                                    Another Payment Method
                                 </Button>
                             )}
 
-                            <div className="pt-4 border-t mt-6">
-                                <div className="flex justify-between items-center mb-6">
-                                    <div className="text-sm text-gray-500">Date: {new Date().toLocaleDateString()}</div>
+                            <div className="mt-6 border-t pt-4">
+                                <div className="mb-6 flex items-center justify-between">
+                                    <div className="text-sm text-gray-500">
+                                        Date: {new Date().toLocaleDateString()}
+                                    </div>
                                     <div className="text-right">
-                                        <div className="text-sm text-gray-500">Total Tendered</div>
-                                        <div className="text-xl font-bold text-gray-900">{currentTotal.toLocaleString()}</div>
-                                        <div className="text-xs text-gray-400 mt-1 italic">
-                                            System will auto-allocate to oldest debts first.
+                                        <div className="text-sm text-gray-500">
+                                            Total Tendered
+                                        </div>
+                                        <div className="text-xl font-bold text-gray-900">
+                                            {currentTotal.toLocaleString()}
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-400 italic">
+                                            System will auto-allocate to oldest
+                                            debts first.
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex justify-end gap-3">
-                                    <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={onClose}
+                                    >
+                                        Cancel
+                                    </Button>
                                     <Button
                                         type="submit"
-                                        className={`min-w-[150px] ${isSubmitDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                                        className={`min-w-[150px] ${isSubmitDisabled ? 'cursor-not-allowed bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                                         disabled={isSubmitDisabled}
                                     >
-                                        {localProcessing ? 'Processing...' : (isSubmitDisabled ? 'Verify First' : 'Confirm Payment')}
+                                        {localProcessing
+                                            ? 'Processing...'
+                                            : isSubmitDisabled
+                                              ? 'Verify First'
+                                              : 'Confirm Payment'}
                                     </Button>
                                 </div>
                             </div>

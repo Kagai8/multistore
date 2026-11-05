@@ -27,7 +27,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
 
             // Audit
-            $table->foreignId('user_id')->constrained('users')->comment('User who created the request');
+            $table->foreignId('user_id')->constrained('users');
             $table->timestamps();
         });
     }

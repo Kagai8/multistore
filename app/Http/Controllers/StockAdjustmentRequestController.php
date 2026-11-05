@@ -2,22 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdjustmentReason;
+use App\Models\Stock;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentRequest;
-use App\Models\Stock;
-use App\Models\AdjustmentReason;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Carbon;
-use Inertia\Inertia;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Str;
-
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class StockAdjustmentRequestController extends Controller
 {
@@ -33,7 +30,7 @@ class StockAdjustmentRequestController extends Controller
             'store:id,name',
             'requester:id,name',
             'approver:id,name',
-            'reason:id,name'
+            'reason:id,name',
         ])
             ->latest()
             ->paginate($request->get('perPage', 10));
@@ -74,7 +71,7 @@ class StockAdjustmentRequestController extends Controller
         });
         $stockQuery = Stock::query();
 
-        if (!$user->is_global_user) {
+        if (! $user->is_global_user) {
             $stockQuery->where('store_id', $user->store_id);
         }
 
@@ -95,7 +92,7 @@ class StockAdjustmentRequestController extends Controller
                 'products' => \App\Models\Product::select('id', 'name', 'sku')->get(),
                 'adjustmentReasons' => AdjustmentReason::where('is_active', true)->get(['id', 'name']),
                 'productStocksArray' => $productStocks->toArray(),
-            ]
+            ],
         ]);
 
     }
@@ -124,7 +121,7 @@ class StockAdjustmentRequestController extends Controller
 
             if ($deduction > $currentStock) {
                 return redirect()->back()->withErrors([
-                    'quantity' => "Failed: Cannot deduct {$deduction}. Current stock is only {$currentStock}."
+                    'quantity' => "Failed: Cannot deduct {$deduction}. Current stock is only {$currentStock}.",
                 ]);
             }
         }
@@ -140,16 +137,17 @@ class StockAdjustmentRequestController extends Controller
                 'type' => $type,
                 'quantity' => $quantityAdjusted,
                 'adjustment_reason_id' => $validated['adjustment_reason_id'],
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             return redirect()->back()->with('success', 'Adjustment request saved as draft.');
 
         } catch (\Exception $e) {
-            Log::error("Stock Adjustment Draft Save Failed: " . $e->getMessage(), [
+            Log::error('Stock Adjustment Draft Save Failed: '.$e->getMessage(), [
                 'user_id' => $user->id,
-                'input' => $request->all()
+                'input' => $request->all(),
             ]);
+
             return redirect()->back()->with('error', 'Failed to save draft.');
         }
     }
@@ -172,13 +170,15 @@ class StockAdjustmentRequestController extends Controller
             // 🟢 NOTIFY STORE MANAGERS
             $this->notifyStore(
                 $request->store_id,
-                "Adjustment Request Pending",
-                "Request #{$request->id} submitted by " . Auth::user()->name . ". Please review.",
+                'Adjustment Request Pending',
+                "Request #{$request->id} submitted by ".Auth::user()->name.'. Please review.',
                 route('stock-adjustment-requests.index')
             );
+
             return back()->with('success', 'Request submitted for approval.');
         } catch (\Exception $e) {
-            Log::error("Failed to submit request for approval: " . $e->getMessage());
+            Log::error('Failed to submit request for approval: '.$e->getMessage());
+
             return back()->with('error', 'Failed to submit request.');
         }
     }
@@ -215,21 +215,22 @@ class StockAdjustmentRequestController extends Controller
                 'type' => $type,
                 'quantity' => $quantityAdjusted,
                 'adjustment_reason_id' => $validated['adjustment_reason_id'],
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             // 🟢 NOTIFY STORE MANAGERS
             $this->notifyStore(
                 $request->store_id,
-                "Adjustment Request Pending",
-                "Request #{$request->id} submitted by " . Auth::user()->name . ". Please review.",
+                'Adjustment Request Pending',
+                "Request #{$request->id} submitted by ".Auth::user()->name.'. Please review.',
                 route('stock-adjustment-requests.index')
             );
 
             return back()->with('success', 'Draft updated successfully.');
 
         } catch (\Exception $e) {
-            Log::error("Failed to update draft: " . $e->getMessage());
+            Log::error('Failed to update draft: '.$e->getMessage());
+
             return back()->with('error', 'Failed to update draft.');
         }
     }
@@ -259,7 +260,8 @@ class StockAdjustmentRequestController extends Controller
             return back()->with('success', 'Draft deleted successfully.');
 
         } catch (\Exception $e) {
-            Log::error("Failed to delete draft: " . $e->getMessage());
+            Log::error('Failed to delete draft: '.$e->getMessage());
+
             return back()->with('error', 'Failed to delete draft.');
         }
     }
@@ -292,7 +294,7 @@ class StockAdjustmentRequestController extends Controller
             // Note: We use the requester's user ID if possible, or just notify the whole store
             $this->notifyStore(
                 $request->store_id,
-                "Request Approved",
+                'Request Approved',
                 "Adjustment Request #{$request->id} was APPROVED. Stock updated.",
                 route('stock-adjustment-requests.index')
             );
@@ -301,12 +303,13 @@ class StockAdjustmentRequestController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Stock Adjustment Approval Failed: " . $e->getMessage(), [
+            Log::error('Stock Adjustment Approval Failed: '.$e->getMessage(), [
                 'request_id' => $request->id,
             ]);
 
             if (str_contains($e->getMessage(), 'Insufficient stock')) {
                 $request->update(['status' => 'rejected', 'approved_by_id' => Auth::id(), 'approved_at' => Carbon::now()]);
+
                 return back()->with('error', $e->getMessage());
             }
 
@@ -336,15 +339,16 @@ class StockAdjustmentRequestController extends Controller
             // 🟢 NOTIFY REQUESTER (Rejection)
             $this->notifyStore(
                 $request->store_id,
-                "Request Rejected",
-                "Adjustment Request #{$request->id} was REJECTED by " . Auth::user()->name,
+                'Request Rejected',
+                "Adjustment Request #{$request->id} was REJECTED by ".Auth::user()->name,
                 route('stock-adjustment-requests.index')
             );
 
             return back()->with('success', 'Stock Adjustment Request rejected.');
 
         } catch (\Exception $e) {
-            Log::error("Stock Adjustment Rejection Failed: " . $e->getMessage());
+            Log::error('Stock Adjustment Rejection Failed: '.$e->getMessage());
+
             return back()->with('error', 'Failed to reject adjustment request.');
         }
     }
@@ -364,8 +368,8 @@ class StockAdjustmentRequestController extends Controller
         $isPositiveAdjustment = $adjustmentRequest->type === 'in';
         $newStock = $isPositiveAdjustment ? $oldStock + $quantityAdjusted : $oldStock - $quantityAdjusted;
 
-        if (!$isPositiveAdjustment && $oldStock < $quantityAdjusted) {
-            throw new \Exception('Insufficient stock for this OUT adjustment. Current stock: ' . $oldStock);
+        if (! $isPositiveAdjustment && $oldStock < $quantityAdjusted) {
+            throw new \Exception('Insufficient stock for this OUT adjustment. Current stock: '.$oldStock);
         }
 
         StockAdjustment::create([
@@ -377,7 +381,7 @@ class StockAdjustmentRequestController extends Controller
             'quantity' => $quantityAdjusted,
             'old_stock' => $oldStock,
             'new_stock' => $newStock,
-            'notes' => 'Approved Request ID ' . $adjustmentRequest->id . ': ' . $adjustmentRequest->notes,
+            'notes' => 'Approved Request ID '.$adjustmentRequest->id.': '.$adjustmentRequest->notes,
             'related_transfer_id' => null,
         ]);
 
@@ -387,9 +391,6 @@ class StockAdjustmentRequestController extends Controller
             $stock->decrement('current_stock', $quantityAdjusted);
         }
     }
-
-
-
 
     public function exportSinglePdf($id)
     {
@@ -403,16 +404,20 @@ class StockAdjustmentRequestController extends Controller
         return $pdf->download("adjustment_request_{$adjustmentRequest->id}.pdf");
     }
 
-
     public function exportSingleExcel($id)
     {
         $adjustmentRequest = StockAdjustmentRequest::findOrFail($id);
         $adjustmentRequest->load(['product', 'store', 'requester', 'approver', 'reason']);
 
         return Excel::download(
-            new class($adjustmentRequest) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($adjustmentRequest) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $req;
-                public function __construct($req) { $this->req = $req; }
+
+                public function __construct($req)
+                {
+                    $this->req = $req;
+                }
 
                 public function collection()
                 {
@@ -446,7 +451,7 @@ class StockAdjustmentRequestController extends Controller
      */
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $requests = StockAdjustmentRequest::whereIn('id', $ids)
             ->with(['product', 'store', 'requester', 'approver', 'reason'])
             ->latest()
@@ -467,7 +472,7 @@ class StockAdjustmentRequestController extends Controller
      */
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $requests = StockAdjustmentRequest::whereIn('id', $ids)
             ->with(['product', 'store', 'requester', 'approver', 'reason'])
             ->latest()
@@ -478,9 +483,14 @@ class StockAdjustmentRequestController extends Controller
         }
 
         return Excel::download(
-            new class($requests) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($requests) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $requests;
-                public function __construct($requests) { $this->requests = $requests; }
+
+                public function __construct($requests)
+                {
+                    $this->requests = $requests;
+                }
 
                 public function collection()
                 {

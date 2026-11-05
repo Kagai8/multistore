@@ -32,7 +32,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'partially_sent', 'completed'])->default('pending')->comment('Status of the allocation process.');
 
             // --- Audit ---
-            $table->foreignId('user_id')->nullable()->constrained('users')->comment('User who recorded the entry.');
+            $table->foreignId('user_id')->nullable()->constrained('users');
             $table->timestamps();
         });
     }

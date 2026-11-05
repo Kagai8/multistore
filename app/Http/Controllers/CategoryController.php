@@ -3,14 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use Carbon\Carbon;
-use Inertia\Inertia;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -32,8 +30,8 @@ class CategoryController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -41,12 +39,12 @@ class CategoryController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('created_at', '>=', $start);
-            } elseif (!$start && $end) {
+            } elseif (! $start && $end) {
                 $query->where('created_at', '<=', $end);
             } elseif ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
 
@@ -95,7 +93,7 @@ class CategoryController extends Controller
         // 🟢 NOTE: Ensure your React Page is expecting 'categories' prop, not 'brands'
         return Inertia::render('categories/index', [
             'categories' => $categories,
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -176,23 +174,39 @@ class CategoryController extends Controller
     public function exportSinglePdf(Category $category)
     {
         $pdf = Pdf::loadView('categories.category-single', compact('category'))->setPaper('a4', 'portrait');
+
         return $pdf->download("category_{$category->id}.pdf");
     }
 
     public function exportSingleExcel(Category $category)
     {
-        return Excel::download(new class($category) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        return Excel::download(new class($category) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $category;
-            public function __construct($category) { $this->category = $category; }
-            public function collection() { return collect([['ID' => $this->category->id, 'Name' => $this->category->name, 'Slug' => $this->category->slug, 'Description' => $this->category->description, 'Created Date' => $this->category->created_at->format('d M Y')]]); }
-            public function headings(): array { return ['ID', 'Name', 'Slug', 'Description', 'Created Date']; }
+
+            public function __construct($category)
+            {
+                $this->category = $category;
+            }
+
+            public function collection()
+            {
+                return collect([['ID' => $this->category->id, 'Name' => $this->category->name, 'Slug' => $this->category->slug, 'Description' => $this->category->description, 'Created Date' => $this->category->created_at->format('d M Y')]]);
+            }
+
+            public function headings(): array
+            {
+                return ['ID', 'Name', 'Slug', 'Description', 'Created Date'];
+            }
         }, "category_{$category->id}.xlsx");
     }
 
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids', []);
-        if (empty($ids)) return back()->with('error', 'No categories selected.');
+        if (empty($ids)) {
+            return back()->with('error', 'No categories selected.');
+        }
 
         $categories = Category::whereIn('id', $ids)->get();
         foreach ($categories as $category) {
@@ -202,42 +216,63 @@ class CategoryController extends Controller
             $category->delete();
         }
 
-        return back()->with('success', count($ids) . ' category(s) deleted successfully.');
+        return back()->with('success', count($ids).' category(s) deleted successfully.');
     }
 
     public function bulkExportPDF(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $categories = Category::whereIn('id', $ids)->get();
-        if ($categories->isEmpty()) return back()->with('error', 'No categories selected.');
+        if ($categories->isEmpty()) {
+            return back()->with('error', 'No categories selected.');
+        }
         $pdf = Pdf::loadView('categories.category-bulk-pdf', compact('categories'))->setPaper('a4', 'portrait');
+
         return $pdf->download('categories_export.pdf');
     }
 
     public function bulkExportExcel(Request $request)
     {
-        $ids = explode(',', $request->input('ids', ''));
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
         $categories = Category::whereIn('id', $ids)->get();
-        if ($categories->isEmpty()) return back()->with('error', 'No categories selected.');
+        if ($categories->isEmpty()) {
+            return back()->with('error', 'No categories selected.');
+        }
 
-        return Excel::download(new class($categories) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        return Excel::download(new class($categories) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $categories;
-            public function __construct($categories) { $this->categories = $categories; }
-            public function collection() { return $this->categories->map(fn ($category) => ['ID' => $category->id, 'Name' => $category->name, 'Slug' => $category->slug, 'Description' => $category->description, 'Created Date' => optional($category->created_at)->format('d M Y')]); }
-            public function headings(): array { return ['ID', 'Name', 'Slug', 'Description', 'Created Date']; }
+
+            public function __construct($categories)
+            {
+                $this->categories = $categories;
+            }
+
+            public function collection()
+            {
+                return $this->categories->map(fn ($category) => ['ID' => $category->id, 'Name' => $category->name, 'Slug' => $category->slug, 'Description' => $category->description, 'Created Date' => optional($category->created_at)->format('d M Y')]);
+            }
+
+            public function headings(): array
+            {
+                return ['ID', 'Name', 'Slug', 'Description', 'Created Date'];
+            }
         }, 'categories_export.xlsx');
     }
 
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setCellValue('A1', 'name');
         $sheet->setCellValue('B1', 'description');
         $sheet->setCellValue('A2', 'Sample Category');
         $sheet->setCellValue('B2', 'Optional description');
-        foreach (range('A', 'B') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+        foreach (range('A', 'B') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
         $writer = new Xlsx($spreadsheet);
+
         return response()->streamDownload(fn () => $writer->save('php://output'), 'categories_template.xlsx');
     }
 
@@ -258,17 +293,19 @@ class CategoryController extends Controller
                 $header = fgetcsv($handle, 1000, ',');
                 $header = array_map('strtolower', $header);
                 while (($data = fgetcsv($handle, 1000, ',')) !== false) {
-                    if (count($header) === count($data)) $rows[] = array_combine($header, $data);
+                    if (count($header) === count($data)) {
+                        $rows[] = array_combine($header, $data);
+                    }
                 }
                 fclose($handle);
             }
         } else {
-            $sheets = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
+            $sheets = \Maatwebsite\Excel\Facades\Excel::toArray(new \stdClass, $file);
             $rawRows = $sheets[0] ?? [];
             if (count($rawRows) > 0) {
                 $header = array_map('strtolower', $rawRows[0]);
                 unset($rawRows[0]);
-                $rows = array_map(function($r) use ($header) {
+                $rows = array_map(function ($r) use ($header) {
                     return count($header) === count($r) ? array_combine($header, $r) : [];
                 }, $rawRows);
             }
@@ -277,9 +314,13 @@ class CategoryController extends Controller
         $imported = 0;
 
         foreach ($rows as $row) {
-            if (empty($row)) continue;
+            if (empty($row)) {
+                continue;
+            }
             $originalName = trim($row['name'] ?? '');
-            if (empty($originalName)) continue;
+            if (empty($originalName)) {
+                continue;
+            }
 
             $name = $originalName;
             $slug = \Illuminate\Support\Str::slug($name);

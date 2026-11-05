@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
+    ArrowRightCircle,
     Eye,
     FileText,
     Pencil,
+    Send,
     Trash2,
     XCircle,
-    Send,
-    ArrowRightCircle, // Icon for Conversion
-} from "lucide-react";
+} from 'lucide-react';
 
 export const QuotationTableConfig = {
-    moduleName: "Quotations",
+    moduleName: 'Quotations',
 
     columns: [
         // Core Identity
@@ -18,24 +18,25 @@ export const QuotationTableConfig = {
             label: 'ID',
             key: 'id',
             className: 'p-4 border text-center font-mono w-16 text-gray-500',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Quote #',
             key: 'quotation_number',
             className: 'p-4 border font-bold text-gray-800',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Date',
             key: 'quotation_date',
             className: 'p-4 border text-center whitespace-nowrap',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Valid Until',
             key: 'valid_until',
-            className: 'p-4 border text-center whitespace-nowrap text-sm text-gray-600'
+            className:
+                'p-4 border text-center whitespace-nowrap text-sm text-gray-600',
         },
 
         // Customer & Context
@@ -43,13 +44,13 @@ export const QuotationTableConfig = {
             label: 'Customer',
             key: 'customer_name',
             className: 'p-4 border font-medium',
-            sortable: true
+            sortable: true,
         },
         {
             label: 'Store',
             key: 'store_name',
             className: 'p-4 border text-sm text-gray-600',
-            defaultHidden: true
+            defaultHidden: true,
         },
 
         // Financials
@@ -58,7 +59,7 @@ export const QuotationTableConfig = {
             key: 'total_amount',
             type: 'currency',
             className: 'p-4 border text-right font-semibold',
-            sortable: true
+            sortable: true,
         },
 
         // Status Flags
@@ -66,7 +67,7 @@ export const QuotationTableConfig = {
             label: 'Status',
             key: 'status', // draft, sent, accepted, rejected, expired
             type: 'tag-status',
-            className: 'p-4 border text-center font-bold w-24'
+            className: 'p-4 border text-center font-bold w-24',
         },
 
         // Actions
@@ -75,7 +76,7 @@ export const QuotationTableConfig = {
             key: 'actions',
             isAction: true,
             isMandatory: true,
-            className: 'p-4 border text-center w-64' // Slightly wider to fit buttons
+            className: 'p-4 border text-center w-64', // Slightly wider to fit buttons
         },
     ],
 
@@ -84,7 +85,8 @@ export const QuotationTableConfig = {
         {
             label: 'View',
             icon: Eye,
-            className: 'flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
+            className:
+                'flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150',
             permission: 'view-quotation',
         },
 
@@ -93,7 +95,8 @@ export const QuotationTableConfig = {
         {
             label: 'Convert to Invoice',
             icon: ArrowRightCircle,
-            className: 'flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             permission: 'convert-invoice', // Requires invoice creation permission
             condition: (row: any) => ['draft', 'sent'].includes(row.status),
             tooltip: 'Accept quote and generate invoice.',
@@ -103,7 +106,8 @@ export const QuotationTableConfig = {
         {
             label: 'Mark Sent',
             icon: Send,
-            className: 'flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             permission: 'edit-quotation',
             conditionKey: 'status',
             conditionValue: 'draft',
@@ -114,7 +118,8 @@ export const QuotationTableConfig = {
         {
             label: 'Reject',
             icon: XCircle,
-            className: 'flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             permission: 'edit-quotation',
             condition: (row: any) => ['draft', 'sent'].includes(row.status),
             tooltip: 'Mark quote as rejected.',
@@ -125,7 +130,8 @@ export const QuotationTableConfig = {
             label: 'Edit',
             icon: Pencil,
             permission: 'edit-quotation',
-            className: 'flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            className:
+                'flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
             conditionKey: 'status',
             conditionValue: 'draft',
         },
@@ -136,8 +142,10 @@ export const QuotationTableConfig = {
             label: 'Delete',
             icon: Trash2,
             permission: 'delete-quotation',
-            className: 'flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
-            condition: (row: any) => ['draft', 'rejected', 'expired'].includes(row.status),
+            className:
+                'flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-2 py-1 rounded-lg shadow-sm transition-all duration-150 ms-1',
+            condition: (row: any) =>
+                ['draft', 'rejected', 'expired'].includes(row.status),
         },
 
         // 7. EXPORTS
@@ -149,4 +157,3 @@ export const QuotationTableConfig = {
         // Excel export usually less critical for single quotes, but good for bulk.
     ],
 };
-

@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
+use App\Models\DebtRepayment;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PosSale;
-use App\Models\Invoice;
-use App\Models\DebtRepayment;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PaymentController extends Controller
@@ -26,33 +25,37 @@ class PaymentController extends Controller
         $query = Payment::with([
             'payable',
             'store:id,name',
-            'user:id,name'
+            'user:id,name',
         ]);
 
         // 🟢 SEARCH LOGIC
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('transaction_ref', 'like', "%{$search}%")
-                  ->orWhere('method', 'like', "%{$search}%")
-                  ->orWhere('payment_group_id', 'like', "%{$search}%")
+                    ->orWhere('method', 'like', "%{$search}%")
+                    ->orWhere('payment_group_id', 'like', "%{$search}%")
                   // Search Relations
-                  ->orWhereHas('store', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('user', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('store', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
                   // Polymorphic Search (Customer via Payable)
-                  ->orWhereHasMorph('payable', [Invoice::class, PosSale::class], function ($q) use ($search) {
-                      $q->whereHas('customer', fn($c) => $c->where('name', 'like', "%{$search}%"))
-                        ->orWhere('invoice_number', 'like', "%{$search}%") // Invoice
-                        ->orWhere('receipt_number', 'like', "%{$search}%"); // POS
-                  });
+                    ->orWhereHasMorph('payable', [Invoice::class, PosSale::class], function ($q) use ($search) {
+                        $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"))
+                            ->orWhere('invoice_number', 'like', "%{$search}%") // Invoice
+                            ->orWhere('receipt_number', 'like', "%{$search}%"); // POS
+                    });
             });
         }
 
         if ($dateFrom || $dateTo) {
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
-            if ($start && $end) $query->whereBetween('payment_date', [$start, $end]);
-            elseif ($start) $query->whereDate('payment_date', '>=', $start);
-            elseif ($end) $query->whereDate('payment_date', '<=', $end);
+            if ($start && $end) {
+                $query->whereBetween('payment_date', [$start, $end]);
+            } elseif ($start) {
+                $query->whereDate('payment_date', '>=', $start);
+            } elseif ($end) {
+                $query->whereDate('payment_date', '<=', $end);
+            }
         }
 
         // 🟢 STATS
@@ -75,18 +78,18 @@ class PaymentController extends Controller
                 }
 
                 if ($payment->payable_type === Invoice::class) {
-                    $payableLabel = "Invoice #" . ($payment->payable->invoice_number ?? 'N/A');
+                    $payableLabel = 'Invoice #'.($payment->payable->invoice_number ?? 'N/A');
                 } elseif ($payment->payable_type === PosSale::class) {
-                    $payableLabel = "POS #" . ($payment->payable->receipt_number ?? 'N/A');
+                    $payableLabel = 'POS #'.($payment->payable->receipt_number ?? 'N/A');
                 } elseif ($payment->payable_type === DebtRepayment::class) {
-                    $payableLabel = "Debt Repayment";
+                    $payableLabel = 'Debt Repayment';
                 }
             }
 
             return [
                 'id' => $payment->id,
                 'transaction_ref' => $payment->transaction_ref ?? $payment->payment_group_id ?? '-',
-                'payment_date' => $payment->payment_date ? $payment->payment_date->format('Y-m-d') : '-',
+                'payment_date' => $payment->payment_date->format('Y-m-d'),
                 'amount' => (float) $payment->amount,
                 'method' => ucfirst($payment->method),
                 'status' => $payment->status,
@@ -106,7 +109,7 @@ class PaymentController extends Controller
                 'per_page' => $perPage,
                 'from' => $all->count() ? 1 : 0,
                 'to' => $all->count(),
-                'links' => []
+                'links' => [],
             ];
         } else {
             $paginator = $query->latest()->paginate($perPage)->withQueryString();
@@ -125,34 +128,52 @@ class PaymentController extends Controller
 
     // --- EXPORTS ---
 
-    public function exportPdf(Payment $payment) {
+    public function exportPdf(Payment $payment)
+    {
         $payment->load(['payable.customer', 'store', 'user']);
         $pdf = Pdf::loadView('payments.single-pdf', compact('payment'))->setPaper('a5', 'landscape');
+
         return $pdf->download("Receipt_{$payment->transaction_ref}.pdf");
     }
 
-    public function exportExcel(Payment $payment) {
-        return Excel::download(new class($payment) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+    public function exportExcel(Payment $payment)
+    {
+        return Excel::download(new class($payment) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $p;
-            public function __construct($p) { $this->p = $p; }
-            public function collection() {
+
+            public function __construct($p)
+            {
+                $this->p = $p;
+            }
+
+            public function collection()
+            {
                 $customer = $this->p->payable->customer->name ?? 'Walk-in';
+
                 return collect([[
                     $this->p->transaction_ref,
                     $this->p->payment_date->format('Y-m-d'),
                     $this->p->store->name ?? 'N/A',
                     $customer,
                     ucfirst($this->p->method),
-                    $this->p->amount
+                    $this->p->amount,
                 ]]);
             }
-            public function headings(): array { return ['Ref', 'Date', 'Store', 'Customer', 'Method', 'Amount']; }
+
+            public function headings(): array
+            {
+                return ['Ref', 'Date', 'Store', 'Customer', 'Method', 'Amount'];
+            }
         }, "Payment_{$payment->id}.xlsx");
     }
 
-    public function bulkExportPDF($ids) {
+    public function bulkExportPDF($ids)
+    {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records.');
+        }
 
         $payments = Payment::whereIn('id', $idArray)
             ->with(['payable.customer', 'store', 'user'])
@@ -160,22 +181,33 @@ class PaymentController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('payments.bulk-pdf', compact('payments'))->setPaper('a4', 'landscape');
+
         return $pdf->download('Payments_Register.pdf');
     }
 
-    public function bulkExportExcel($ids) {
+    public function bulkExportExcel($ids)
+    {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No records.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No records.');
+        }
 
         $payments = Payment::whereIn('id', $idArray)
             ->with(['payable.customer', 'store', 'user'])
             ->latest()
             ->get();
 
-        return Excel::download(new class($payments) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($payments) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $payments;
-            public function __construct($payments) { $this->payments = $payments; }
-            public function collection() {
+
+            public function __construct($payments)
+            {
+                $this->payments = $payments;
+            }
+
+            public function collection()
+            {
                 return $this->payments->map(fn ($p) => [
                     $p->payment_date ? $p->payment_date->format('Y-m-d') : '-',
                     $p->transaction_ref,
@@ -183,10 +215,14 @@ class PaymentController extends Controller
                     $p->payable->customer->name ?? 'Walk-in',
                     ucfirst($p->method),
                     $p->amount,
-                    $p->user->name ?? 'System'
+                    $p->user->name ?? 'System',
                 ]);
             }
-            public function headings(): array { return ['Date', 'Ref', 'Store', 'Customer', 'Method', 'Amount', 'Received By']; }
+
+            public function headings(): array
+            {
+                return ['Date', 'Ref', 'Store', 'Customer', 'Method', 'Amount', 'Received By'];
+            }
         }, 'Payments_Register.xlsx');
     }
 }

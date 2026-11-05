@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\SaleItem;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SaleItemController extends Controller
@@ -21,25 +21,25 @@ class SaleItemController extends Controller
         // Eager load deep relationships
         $query = SaleItem::with([
             'product:id,name,sku',
-            'sale' => function($q) {
+            'sale' => function ($q) {
                 $q->select('id', 'reference_no', 'created_at', 'store_id', 'customer_id', 'source_type')
-                  ->with(['store:id,name', 'customer:id,name']);
-            }
+                    ->with(['store:id,name', 'customer:id,name']);
+            },
         ]);
 
         // Search Filter
         if ($search) {
             $query->where(function ($q) use ($search) {
                 // Product Search
-                $q->whereHas('product', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"))
+                $q->whereHas('product', fn ($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"))
                   // Price Category
-                  ->orWhere('price_category', 'like', "%{$search}%")
+                    ->orWhere('price_category', 'like', "%{$search}%")
                   // Sale Reference, Store, Customer
-                  ->orWhereHas('sale', function($sq) use ($search) {
-                      $sq->where('reference_no', 'like', "%{$search}%")
-                         ->orWhereHas('store', fn($ssq) => $ssq->where('name', 'like', "%{$search}%"))
-                         ->orWhereHas('customer', fn($csq) => $csq->where('name', 'like', "%{$search}%"));
-                  });
+                    ->orWhereHas('sale', function ($sq) use ($search) {
+                        $sq->where('reference_no', 'like', "%{$search}%")
+                            ->orWhereHas('store', fn ($ssq) => $ssq->where('name', 'like', "%{$search}%"))
+                            ->orWhereHas('customer', fn ($csq) => $csq->where('name', 'like', "%{$search}%"));
+                    });
             });
         }
 
@@ -48,10 +48,14 @@ class SaleItemController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
-            $query->whereHas('sale', function($q) use ($start, $end) {
-                if ($start && $end) $q->whereBetween('created_at', [$start, $end]);
-                elseif ($start) $q->where('created_at', '>=', $start);
-                elseif ($end) $q->where('created_at', '<=', $end);
+            $query->whereHas('sale', function ($q) use ($start, $end) {
+                if ($start && $end) {
+                    $q->whereBetween('created_at', [$start, $end]);
+                } elseif ($start) {
+                    $q->where('created_at', '>=', $start);
+                } elseif ($end) {
+                    $q->where('created_at', '<=', $end);
+                }
             });
         }
 
@@ -68,8 +72,11 @@ class SaleItemController extends Controller
         // Transform Data
         $transform = function (SaleItem $item) {
             $sourceLabel = 'Direct';
-            if ($item->sale && str_contains($item->sale->source_type, 'Pos')) $sourceLabel = 'POS';
-            elseif ($item->sale && str_contains($item->sale->source_type, 'Invoice')) $sourceLabel = 'Invoice';
+            if ($item->sale && str_contains($item->sale->source_type, 'Pos')) {
+                $sourceLabel = 'POS';
+            } elseif ($item->sale && str_contains($item->sale->source_type, 'Invoice')) {
+                $sourceLabel = 'Invoice';
+            }
 
             return [
                 'id' => $item->id,
@@ -96,7 +103,7 @@ class SaleItemController extends Controller
                 'per_page' => $perPage,
                 'from' => $all->count() ? 1 : 0,
                 'to' => $all->count(),
-                'links' => []
+                'links' => [],
             ];
         } else {
             $paginator = $query->latest()->paginate($perPage)->withQueryString();
@@ -119,6 +126,7 @@ class SaleItemController extends Controller
     {
         $item->load(['sale.store', 'sale.customer', 'product']);
         $pdf = Pdf::loadView('sale-items.single-pdf', compact('item'))->setPaper('a6', 'portrait');
+
         return $pdf->stream("Item_{$item->id}.pdf");
     }
 
@@ -130,7 +138,9 @@ class SaleItemController extends Controller
     public function bulkExportPDF($ids)
     {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No items selected.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No items selected.');
+        }
 
         $items = SaleItem::whereIn('id', $idArray)
             ->with(['sale.store', 'sale.customer', 'product'])
@@ -138,23 +148,33 @@ class SaleItemController extends Controller
             ->get();
 
         $pdf = Pdf::loadView('sale-items.bulk-pdf', compact('items'))->setPaper('a4', 'landscape');
+
         return $pdf->download('Sales_Items_Report.pdf');
     }
 
     public function bulkExportExcel($ids)
     {
         $idArray = array_filter(explode(',', $ids));
-        if (empty($idArray)) return back()->with('error', 'No items selected.');
+        if (empty($idArray)) {
+            return back()->with('error', 'No items selected.');
+        }
 
         $items = SaleItem::whereIn('id', $idArray)
             ->with(['sale.store', 'sale.customer', 'product'])
             ->latest()
             ->get();
 
-        return Excel::download(new class($items) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings, \Maatwebsite\Excel\Concerns\ShouldAutoSize {
+        return Excel::download(new class($items) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\ShouldAutoSize, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $items;
-            public function __construct($items) { $this->items = $items; }
-            public function collection() {
+
+            public function __construct($items)
+            {
+                $this->items = $items;
+            }
+
+            public function collection()
+            {
                 return $this->items->map(fn ($i) => [
                     $i->sale->created_at->format('Y-m-d H:i'),
                     $i->product->name ?? 'Unknown',
@@ -167,7 +187,9 @@ class SaleItemController extends Controller
                     $i->sale->store->name ?? 'N/A',
                 ]);
             }
-            public function headings(): array {
+
+            public function headings(): array
+            {
                 return ['Date', 'Product', 'SKU', 'Qty', 'Price Type', 'Unit Price', 'Total', 'Reference', 'Store'];
             }
         }, 'Sales_Items_Report.xlsx');

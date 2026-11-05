@@ -14,8 +14,9 @@ class StoreScope implements Scope
         $user = Auth::user();
 
         // Safety check: If no user is logged in, hide everything
-        if (!$user) {
+        if (! $user) {
             $builder->whereRaw('1 = 0');
+
             return;
         }
 
@@ -26,7 +27,7 @@ class StoreScope implements Scope
 
         // Normal Users: Filter by their assigned Store
         if ($user->store_id) {
-            $builder->where($model->getTable() . '.store_id', $user->store_id);
+            $builder->where($model->getTable().'.store_id', $user->store_id);
         } else {
             $builder->whereRaw('1 = 0');
         }

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('payment_to_customers', function (Blueprint $table) {
             // Nullable because a payment might belong to an Invoice OR a POS Sale
-            $table->foreignId('pos_sale_id')->nullable()->constrained()->nullOnDelete()->after('invoice_id');
+            $table->foreignId('pos_sale_id')->nullable()->constrained()->nullOnDelete();
         });
     }
 

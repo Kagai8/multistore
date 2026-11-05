@@ -13,10 +13,9 @@ return new class extends Migration
     {
         Schema::table('stock_adjustments', function (Blueprint $table) {
             $table->foreignId('related_transfer_id')
-                  ->nullable()
-                  ->constrained('stock_transfers')
-                  ->onDelete('set null') // If a transfer is deleted, keep the adjustments but clear the link.
-                  ->after('adjustment_reason_id');
+                ->nullable()
+                ->constrained('stock_transfers')
+                ->onDelete('set null'); // If a transfer is deleted, keep the adjustments but clear the link.
         });
     }
 

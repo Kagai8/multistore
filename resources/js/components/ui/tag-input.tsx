@@ -1,5 +1,4 @@
 // resources/js/components/ui/tag-input.tsx (FINAL FIX)
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useCallback, KeyboardEvent, ChangeEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,7 @@ const parseInitialTags = (jsonString: string): string[] => {
         return parsedTags.filter(t => typeof t === 'string' && t.trim() !== '');
       }
     }
-  } catch (e) {
+  } catch {
     return [];
   }
   return [];

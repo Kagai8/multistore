@@ -1,4 +1,4 @@
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart } from 'lucide-react';
 
 // Re-export interface
 export interface FieldGroup {
@@ -8,7 +8,13 @@ export interface FieldGroup {
         key: string;
         name: string;
         label: string;
-        type: 'text' | 'number' | 'email' | 'textarea' | 'single-select' | 'date';
+        type:
+            | 'text'
+            | 'number'
+            | 'email'
+            | 'textarea'
+            | 'single-select'
+            | 'date';
         placeholder?: string;
         tabIndex?: number;
         autoFocus?: boolean;
@@ -28,7 +34,8 @@ export const PurchaseOrderFormConfig = {
     addButton: {
         id: 'create-po',
         label: 'Create Purchase Order',
-        className: 'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
+        className:
+            'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
         icon: ShoppingCart,
         type: 'button',
         variant: 'default',
@@ -151,7 +158,7 @@ export const PurchaseOrderFormConfig = {
                     disabled: true,
                 },
             ],
-        }
+        },
     ] as FieldGroup[],
 
     buttons: [

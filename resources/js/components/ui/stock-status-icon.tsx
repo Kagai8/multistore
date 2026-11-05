@@ -4,7 +4,6 @@ import { AlertTriangle, X, Check } from 'lucide-react';
 interface StockData {
   current_stock: number;
   reorder_level: number;
-  [key: string]: any;
 }
 
 interface StockStatusIconProps {

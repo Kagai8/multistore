@@ -4,15 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\AdjustmentReason;
 use App\Models\StockAdjustment; // Needed for the deletion check
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Facades\Log; // Kept Log usage from BrandController pattern
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel; // Kept Log usage from BrandController pattern
 
 // We don't need PhpSpreadsheet/Storage for this simplified controller
 
@@ -34,8 +34,8 @@ class AdjustmentReasonController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -44,12 +44,12 @@ class AdjustmentReasonController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('created_at', '>=', $start);
-            } elseif (!$start && $end) {
+            } elseif (! $start && $end) {
                 $query->where('created_at', '<=', $end);
             } elseif ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
 
@@ -88,7 +88,7 @@ class AdjustmentReasonController extends Controller
         // IMPORTANT: Use lowercase 'adjustmentreasons/index' as per your convention
         return Inertia::render('adjustment-reason/index', [
             'reasons' => $reasons,
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -143,7 +143,7 @@ class AdjustmentReasonController extends Controller
     {
         // CRITICAL CHECK: Prevent deletion if this reason is used in any stock transaction
         if (StockAdjustment::where('adjustment_reason_id', $adjustmentreason->id)->exists()) {
-             return back()->with('error', 'Cannot delete: This reason is currently used in existing stock adjustment records.');
+            return back()->with('error', 'Cannot delete: This reason is currently used in existing stock adjustment records.');
         }
 
         $adjustmentreason->delete();
@@ -172,6 +172,7 @@ class AdjustmentReasonController extends Controller
                 // Check if reason is linked to any StockAdjustment
                 if (StockAdjustment::where('adjustment_reason_id', $reason->id)->exists()) {
                     $blockedNames[] = $reason->name;
+
                     continue; // Skip and log
                 }
                 $reason->delete();
@@ -179,15 +180,17 @@ class AdjustmentReasonController extends Controller
             }
             DB::commit();
 
-            if (!empty($blockedNames)) {
-                 $message = "$deletedCount reason(s) deleted successfully. However, the following reasons could not be deleted because they are linked to existing stock adjustments: " . implode(', ', $blockedNames) . ".";
-                 return back()->with('warning', $message);
+            if (! empty($blockedNames)) {
+                $message = "$deletedCount reason(s) deleted successfully. However, the following reasons could not be deleted because they are linked to existing stock adjustments: ".implode(', ', $blockedNames).'.';
+
+                return back()->with('warning', $message);
             }
 
-            return back()->with('success', $deletedCount . ' adjustment reason(s) deleted successfully.');
+            return back()->with('success', $deletedCount.' adjustment reason(s) deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Bulk Delete Error (Adjustment Reasons): ' . $e->getMessage());
+            Log::error('Bulk Delete Error (Adjustment Reasons): '.$e->getMessage());
+
             return back()->with('error', 'An error occurred during bulk deletion.');
         }
     }
@@ -207,88 +210,98 @@ class AdjustmentReasonController extends Controller
      * Export a single record to Excel.
      */
     public function exportSingleExcel(AdjustmentReason $adjustmentreason)
-        {
-            return Excel::download(
-                new class($adjustmentreason) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $reason;
-                    public function __construct($reason) { $this->reason = $reason; }
+    {
+        return Excel::download(
+            new class($adjustmentreason) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $reason;
 
-                    public function collection()
-                    {
-                        return collect([[
-                            'ID' => $this->reason->id,
-                            'Name' => $this->reason->name,
-                            'Slug' => $this->reason->slug,
-                            'Description' => $this->reason->description,
-                            'Is Active' => $this->reason->is_active ? 'Yes' : 'No',
-                            'Created Date' => optional($this->reason->created_at)->format('d M Y'),
-                        ]]);
-                    }
+                public function __construct($reason)
+                {
+                    $this->reason = $reason;
+                }
 
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Description', 'Is Active', 'Created Date'];
-                    }
-                },
-                "adjustment_reason_{$adjustmentreason->id}.xlsx"
-            );
-        }
+                public function collection()
+                {
+                    return collect([[
+                        'ID' => $this->reason->id,
+                        'Name' => $this->reason->name,
+                        'Slug' => $this->reason->slug,
+                        'Description' => $this->reason->description,
+                        'Is Active' => $this->reason->is_active ? 'Yes' : 'No',
+                        'Created Date' => optional($this->reason->created_at)->format('d M Y'),
+                    ]]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Description', 'Is Active', 'Created Date'];
+                }
+            },
+            "adjustment_reason_{$adjustmentreason->id}.xlsx"
+        );
+    }
 
     /**
      * Export multiple records to PDF.
      */
     public function bulkExportPDF(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $reasons = AdjustmentReason::whereIn('id', $ids)->get();
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $reasons = AdjustmentReason::whereIn('id', $ids)->get();
 
-            if ($reasons->isEmpty()) {
-                return back()->with('error', 'No adjustment reasons selected for export.');
-            }
-
-            $pdf = Pdf::loadView('adjustmentreasons.reason-bulk-pdf', compact('reasons'))
-                ->setPaper('a4', 'portrait');
-
-            return $pdf->download('adjustment_reasons_export.pdf');
+        if ($reasons->isEmpty()) {
+            return back()->with('error', 'No adjustment reasons selected for export.');
         }
+
+        $pdf = Pdf::loadView('adjustmentreasons.reason-bulk-pdf', compact('reasons'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('adjustment_reasons_export.pdf');
+    }
 
     /**
      * Export multiple records to Excel.
      */
     public function bulkExportExcel(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $reasons = AdjustmentReason::whereIn('id', $ids)->get();
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $reasons = AdjustmentReason::whereIn('id', $ids)->get();
 
-            if ($reasons->isEmpty()) {
-                return back()->with('error', 'No adjustment reasons selected for export.');
-            }
-
-            return Excel::download(
-                new class($reasons) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $reasons;
-                    public function __construct($reasons) { $this->reasons = $reasons; }
-
-                    public function collection()
-                    {
-                        return $this->reasons->map(fn ($reason) => [
-                            'ID' => $reason->id,
-                            'Name' => $reason->name,
-                            'Slug' => $reason->slug,
-                            'Description' => $reason->description,
-                            'Is Active' => $reason->is_active ? 'Yes' : 'No',
-                            'Created Date' => optional($reason->created_at)->format('d M Y'),
-                        ]);
-                    }
-
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Description', 'Is Active', 'Created Date'];
-                    }
-                },
-                'adjustment_reasons_export.xlsx'
-            );
+        if ($reasons->isEmpty()) {
+            return back()->with('error', 'No adjustment reasons selected for export.');
         }
+
+        return Excel::download(
+            new class($reasons) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $reasons;
+
+                public function __construct($reasons)
+                {
+                    $this->reasons = $reasons;
+                }
+
+                public function collection()
+                {
+                    return $this->reasons->map(fn ($reason) => [
+                        'ID' => $reason->id,
+                        'Name' => $reason->name,
+                        'Slug' => $reason->slug,
+                        'Description' => $reason->description,
+                        'Is Active' => $reason->is_active ? 'Yes' : 'No',
+                        'Created Date' => optional($reason->created_at)->format('d M Y'),
+                    ]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Description', 'Is Active', 'Created Date'];
+                }
+            },
+            'adjustment_reasons_export.xlsx'
+        );
+    }
 
     // Removed: downloadTemplate and import (as this is a simple, text-based lookup CRUD)
 }

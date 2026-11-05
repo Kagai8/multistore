@@ -13,12 +13,11 @@ return new class extends Migration
     {
         Schema::create('stock_adjustments', function (Blueprint $table) {
             $table->id();
-            
 
             // 1. Core Foreign Keys (What was adjusted, and where)
             $table->foreignId('product_id')->constrained()->onDelete('restrict');
             $table->foreignId('store_id')->constrained()->onDelete('restrict');
-            $table->foreignId('user_id')->constrained()->onDelete('restrict')->comment('Who performed the adjustment');
+            $table->foreignId('user_id')->constrained()->onDelete('restrict');
 
             // 2. Adjustment Details
             // Use 'in' (positive) or 'out' (negative) to classify the reason/direction

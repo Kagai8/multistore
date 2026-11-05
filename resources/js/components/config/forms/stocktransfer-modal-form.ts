@@ -1,6 +1,5 @@
 // resources/js/config/forms/stock-transfer-form.ts
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { CirclePlus, ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight } from 'lucide-react';
 
 // Re-export the new FieldGroup interface for use in the component
 export interface FieldGroup {
@@ -10,7 +9,20 @@ export interface FieldGroup {
         key: string;
         name: string;
         label: string;
-        type: 'text' | 'number' | 'email' | 'password' | 'textarea' | 'file' | 'multi-file' | 'single-select' | 'multi-select' | 'checkbox' | 'tag-input' | 'hidden' | 'date'; // Added 'date' type
+        type:
+            | 'text'
+            | 'number'
+            | 'email'
+            | 'password'
+            | 'textarea'
+            | 'file'
+            | 'multi-file'
+            | 'single-select'
+            | 'multi-select'
+            | 'checkbox'
+            | 'tag-input'
+            | 'hidden'
+            | 'date'; // Added 'date' type
         placeholder?: string;
         autocomplete?: string;
         tabIndex?: number;
@@ -26,15 +38,16 @@ export interface FieldGroup {
     columns: number;
 }
 
-
 export const StockTransferFormConfig = {
     moduleTitle: 'Stock Management',
     title: 'Create New Stock Transfer',
-    description: 'Initiate a movement of inventory from one storage location to another.',
+    description:
+        'Initiate a movement of inventory from one storage location to another.',
     addButton: {
         id: 'add-transfer',
         label: 'Initiate Transfer',
-        className: 'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
+        className:
+            'flex items-center gap-2 bg-orange-600 text-white rounded-lg px-4 py-2 hover:bg-orange-700 cursor-pointer',
         icon: ArrowLeftRight, // Changed icon to reflect transfer
         type: 'button',
         variant: 'default',
@@ -58,13 +71,17 @@ export const StockTransferFormConfig = {
                     tabIndex: 1,
                     autoFocus: true,
                     colSpan: 1,
-                    disabled: (mode: 'create' | 'view' | 'edit', userContext) => {
-        // Use the snake_case attribute name
-        const isGlobalUser = userContext?.is_global_user ?? false;
+                    disabled: (
+                        mode: 'create' | 'view' | 'edit',
+                        userContext?: { is_global_user?: boolean } | null,
+                    ) => {
+                        // Use the snake_case attribute name
+                        const isGlobalUser =
+                            userContext?.is_global_user ?? false;
 
-        // Disable if: 1) We are creating AND 2) The user is NOT global
-        return mode === 'create' && !isGlobalUser;
-    },
+                        // Disable if: 1) We are creating AND 2) The user is NOT global
+                        return mode === 'create' && !isGlobalUser;
+                    },
                 },
                 {
                     id: 'transfer-destination',
@@ -104,8 +121,6 @@ export const StockTransferFormConfig = {
             ],
         },
 
-
-
         // 3. Notes
         {
             header: 'Notes',
@@ -117,7 +132,8 @@ export const StockTransferFormConfig = {
                     name: 'notes',
                     label: 'Internal Notes',
                     type: 'textarea',
-                    placeholder: 'Any instructions or notes for the transfer process',
+                    placeholder:
+                        'Any instructions or notes for the transfer process',
                     tabIndex: 5,
                     rows: 3,
                     colSpan: 1,
@@ -211,67 +227,66 @@ export const StockTransferFormConfig = {
             ],
         },
         // ✅ 4. NEW: Delivery Details
-    {
-        header: 'Delivery Details',
-        columns: 2,
-        fields: [
-            {
-                id: 'delivery-type',
-                key: 'delivery_type',
-                name: 'delivery_type',
-                label: 'Delivery Type',
-                type: 'text',
-                colSpan: 2,
-                disabled: true,
-            },
-            {
-                id: 'assigned-driver',
-                key: 'assigned_to_user_name',
-                name: 'assigned_to_user_name',
-                label: 'Assigned Driver',
-                type: 'text',
-                colSpan: 1,
-                disabled: true,
-            },
-            {
-                id: 'carrier-name',
-                key: 'carrier_name',
-                name: 'carrier_name',
-                label: 'Carrier Name',
-                type: 'text',
-                colSpan: 1,
-                disabled: true,
-            },
-            {
-                id: 'contact-number',
-                key: 'contact_number',
-                name: 'contact_number',
-                label: 'Contact Number',
-                type: 'text',
-                colSpan: 1,
-                disabled: true,
-            },
-            {
-                id: 'tracking-reference',
-                key: 'tracking_reference',
-                name: 'tracking_reference',
-                label: 'Tracking / Reference ID',
-                type: 'text',
-                colSpan: 1,
-                disabled: true,
-            },
-            {
-                id: 'delivery-time',
-                key: 'delivery_time',
-                name: 'delivery_time',
-                label: 'Delivery Time',
-                type: 'text',
-                colSpan: 2,
-                disabled: true,
-            },
-        ],
-    },
-
+        {
+            header: 'Delivery Details',
+            columns: 2,
+            fields: [
+                {
+                    id: 'delivery-type',
+                    key: 'delivery_type',
+                    name: 'delivery_type',
+                    label: 'Delivery Type',
+                    type: 'text',
+                    colSpan: 2,
+                    disabled: true,
+                },
+                {
+                    id: 'assigned-driver',
+                    key: 'assigned_to_user_name',
+                    name: 'assigned_to_user_name',
+                    label: 'Assigned Driver',
+                    type: 'text',
+                    colSpan: 1,
+                    disabled: true,
+                },
+                {
+                    id: 'carrier-name',
+                    key: 'carrier_name',
+                    name: 'carrier_name',
+                    label: 'Carrier Name',
+                    type: 'text',
+                    colSpan: 1,
+                    disabled: true,
+                },
+                {
+                    id: 'contact-number',
+                    key: 'contact_number',
+                    name: 'contact_number',
+                    label: 'Contact Number',
+                    type: 'text',
+                    colSpan: 1,
+                    disabled: true,
+                },
+                {
+                    id: 'tracking-reference',
+                    key: 'tracking_reference',
+                    name: 'tracking_reference',
+                    label: 'Tracking / Reference ID',
+                    type: 'text',
+                    colSpan: 1,
+                    disabled: true,
+                },
+                {
+                    id: 'delivery-time',
+                    key: 'delivery_time',
+                    name: 'delivery_time',
+                    label: 'Delivery Time',
+                    type: 'text',
+                    colSpan: 2,
+                    disabled: true,
+                },
+            ],
+        },
     ] as FieldGroup[],
 
     buttons: [

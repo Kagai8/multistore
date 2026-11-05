@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+import { route } from 'ziggy-js';
 
-import { PaymentSettingsTableConfig } from '@/components/config/tables/payment-settings-table';
 import { PaymentSettingsModalFormConfig } from '@/components/config/forms/payment-settings-modal-form';
+import { PaymentSettingsTableConfig } from '@/components/config/tables/payment-settings-table';
 
-import SimpleModalForm from '@/components/simple-custom-modal-form';
 import ComplexTable from '@/components/complex-table';
 import { CustomToast, toast } from '@/components/custom-toast';
-import { CreditCard } from 'lucide-react';
+import SimpleModalForm from '@/components/simple-custom-modal-form';
 import { type BreadcrumbItem } from '@/types';
+import { CreditCard } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Settings', href: '/settings' },
@@ -17,7 +19,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Index({ settings }: { settings: any }) {
-    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+    const { flash } = usePage<{
+        flash?: { success?: string; error?: string };
+    }>().props;
 
     // --- STATE ---
     const [modalOpen, setModalOpen] = useState(false);
@@ -104,8 +108,8 @@ export default function Index({ settings }: { settings: any }) {
             <CustomToast />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h2 className="text-xl font-semibold text-gray-800 relative pb-2 before:absolute before:bottom-0 before:left-0 before:w-15 before:h-0.5 before:bg-orange-600 before:rounded-full flex items-center gap-2">
-                    <CreditCard size={26} className="text-orange-600 mr-1" />
+                <h2 className="relative flex items-center gap-2 pb-2 text-xl font-semibold text-gray-800 before:absolute before:bottom-0 before:left-0 before:h-0.5 before:w-15 before:rounded-full before:bg-orange-600">
+                    <CreditCard size={26} className="mr-1 text-orange-600" />
                     Payment Integrations
                 </h2>
                 <p className="text-sm text-gray-600">
@@ -114,7 +118,11 @@ export default function Index({ settings }: { settings: any }) {
 
                 <div className="mb-4 flex w-full justify-end">
                     <SimpleModalForm
-                        title={mode === 'create' ? PaymentSettingsModalFormConfig.title : 'Edit Configuration'}
+                        title={
+                            mode === 'create'
+                                ? PaymentSettingsModalFormConfig.title
+                                : 'Edit Configuration'
+                        }
                         description={PaymentSettingsModalFormConfig.description}
                         fields={PaymentSettingsModalFormConfig.fields}
                         buttons={PaymentSettingsModalFormConfig.buttons}

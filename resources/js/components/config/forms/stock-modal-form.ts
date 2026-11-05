@@ -1,11 +1,12 @@
 // resources/js/config/forms/stock-modal-form.ts
-import { FieldGroup } from "./product-modal-form"; // Reusing the FieldGroup interface
+import { FieldGroup } from './product-modal-form'; // Reusing the FieldGroup interface
 
 export const StockModalFormConfig = {
     moduleTitle: 'Manage Inventory Levels',
     // 💡 No Add Button (CREATE is done via Purchase Receipt)
     title: 'Update Reorder Policy',
-    description: 'Adjust the minimum stock threshold and replenishment quantity for this location/product.',
+    description:
+        'Adjust the minimum stock threshold and replenishment quantity for this location/product.',
 
     // Fields are now grouped
     fields: [
@@ -40,7 +41,7 @@ export const StockModalFormConfig = {
                     type: 'number',
                     disabled: () => true, // Always disabled
                     colSpan: 2,
-                    className: 'font-bold text-blue-600'
+                    className: 'font-bold text-blue-600',
                 },
             ],
         },
@@ -81,7 +82,6 @@ export const StockModalFormConfig = {
                 },
             ],
         },
-
     ] as FieldGroup[],
 
     buttons: [

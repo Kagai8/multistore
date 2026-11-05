@@ -36,7 +36,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 // Eager load roles to ensure they are available
-                'roles' => fn() => $request->user()?->loadMissing('roles')->roles->pluck('name'),
+                'roles' => fn () => $request->user()?->loadMissing('roles')->roles->pluck('name'),
                 'permissions' => $request->user()
                                 ? $request->user()->getAllPermissions()->pluck('name')->toArray()
                                 : [],
@@ -52,7 +52,7 @@ class HandleInertiaRequests extends Middleware
                         'title' => $n->data['title'] ?? 'System Alert',
                         'message' => $n->data['message'] ?? '',
                         'time' => $n->created_at->diffForHumans(),
-                        'read' => !is_null($n->read_at),
+                        'read' => ! is_null($n->read_at),
                         'action_url' => $n->data['action_url'] ?? null,
                     ];
                 }) : [],

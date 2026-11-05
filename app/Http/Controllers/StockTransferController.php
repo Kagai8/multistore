@@ -2,24 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\Store;
 use App\Models\Product;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
+use App\Models\Stock;
 use App\Models\StockTransfer;
-use App\Models\StockAdjustment;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Validation\Rule;
-use App\Models\AdjustmentReason;
 use App\Models\StockTransferItem;
+use App\Models\Store;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Models\Stock; // Assuming Stock model exists for live stock updates
-
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel; // Assuming Stock model exists for live stock updates
 
 class StockTransferController extends Controller
 {
@@ -47,9 +44,9 @@ class StockTransferController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('reference', 'like', "%{$search}%")
-                ->orWhere('status', 'like', "%{$search}%")
-                ->orWhereHas('sourceStore', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
-                ->orWhereHas('destinationStore', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('sourceStore', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('destinationStore', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -73,12 +70,12 @@ class StockTransferController extends Controller
         $productStocks = Stock::select('product_id', 'store_id', 'current_stock')
             ->get()
             ->groupBy('product_id')
-            ->map(fn($stocks) => $stocks->keyBy('store_id')->map(fn($stock) => (int)$stock->current_stock));
+            ->map(fn ($stocks) => $stocks->keyBy('store_id')->map(fn ($stock) => (int) $stock->current_stock));
         $productStocksArray = $productStocks->toArray();
 
         // 🔑 NEW: Delivery Lookup Data
         $deliveryUsers = \App\Models\User::whereHas('roles', function ($query) {
-        $query->where('name', 'delivery');
+            $query->where('name', 'delivery');
         })->get(['id', 'name']);
         $deliveryTypes = [
             ['id' => 'internal', 'name' => 'Internal Delivery (Our Vehicle)'],
@@ -107,13 +104,13 @@ class StockTransferController extends Controller
         $transform = function (StockTransfer $transfer) {
             return [
                 'id' => $transfer->id,
-                'source_store' => $transfer->sourceStore?->name ?? 'N/A',
-                'destination_store' => $transfer->destinationStore?->name ?? 'N/A',
+                'source_store' => $transfer->sourceStore->name ?? 'N/A',
+                'destination_store' => $transfer->destinationStore->name ?? 'N/A',
                 'source_store_id' => $transfer->source_store_id,
                 'destination_store_id' => $transfer->destination_store_id,
                 'reference' => $transfer->reference,
                 'status' => $transfer->status,
-                'user_name' => $transfer->user?->name ?? 'N/A',
+                'user_name' => $transfer->user->name ?? 'N/A',
                 'transfer_date' => $transfer->transfer_date?->format('Y-m-d'),
                 'created_at' => $transfer->created_at?->format('d M Y H:i'),
                 'approved_status' => $transfer->approved_status ?? 'pending',
@@ -128,11 +125,11 @@ class StockTransferController extends Controller
                 'contact_number' => $transfer->contact_number,
                 'tracking_reference' => $transfer->tracking_reference,
                 'delivery_time' => $transfer->delivery_time?->format('Y-m-d'),
-                'items' => $transfer->items->map(fn($item) => [
+                'items' => $transfer->items->map(fn ($item) => [
                     'product_id' => $item->product_id,
                     'quantity' => $item->quantity,
-                    'product_name' => $item->product?->name ?? 'Deleted Product',
-                    'product_sku' => $item->product?->sku ?? 'N/A',
+                    'product_name' => $item->product->name ?? 'Deleted Product',
+                    'product_sku' => $item->product->sku ?? 'N/A',
                 ])->toArray(),
             ];
         };
@@ -146,7 +143,7 @@ class StockTransferController extends Controller
                 'per_page' => $perPage,
                 'from' => $all->count() ? 1 : 0,
                 'to' => $all->count(),
-                'links' => []
+                'links' => [],
             ];
         } else {
             $paginator = $query->latest('created_at')->paginate($perPage)->withQueryString();
@@ -155,7 +152,7 @@ class StockTransferController extends Controller
         }
 
         // 🔑 DEBUG LOG (unchanged)
-        if (!empty($transfers['data'] ?? $transfers->items())) {
+        if (! empty($transfers['data'] ?? $transfers->items())) {
             $firstTransfer = ($perPage === -1)
                 ? ($transfers['data'][0] ?? null)
                 : ($transfers->items()[0] ?? null);
@@ -200,7 +197,7 @@ class StockTransferController extends Controller
             'source_store_id' => 'required|exists:stores,id|different:destination_store_id',
             'destination_store_id' => 'required|exists:stores,id',
             'transfer_date' => 'required|date',
-            //'reference' => 'nullable|string|max:100',
+            // 'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -210,14 +207,14 @@ class StockTransferController extends Controller
         DB::beginTransaction();
         try {
             $nextId = StockTransfer::max('id') + 1;
-            $reference = 'TR-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+            $reference = 'TR-'.str_pad((string) $nextId, 6, '0', STR_PAD_LEFT);
 
             $transfer = StockTransfer::create([
                 'source_store_id' => $validated['source_store_id'],
                 'destination_store_id' => $validated['destination_store_id'],
                 'transfer_date' => $validated['transfer_date'],
                 'reference' => $reference,
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
                 'user_id' => Auth::id(),
                 'status' => 'draft',             // Primary Status
                 'approved_status' => 'pending',  // Secondary Status
@@ -231,12 +228,14 @@ class StockTransferController extends Controller
 
             DB::commit();
             Log::info("Transfer #{$transfer->id} created in DRAFT state.", ['user_id' => Auth::id()]);
+
             return redirect()->route('stock-transfers.index')->with('flash.success', 'Stock Transfer request created in DRAFT status.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Stock Transfer Creation Failed: " . $e->getMessage());
-            return back()->with('flash.error', 'Failed to create transfer: ' . $e->getMessage());
+            Log::error('Stock Transfer Creation Failed: '.$e->getMessage());
+
+            return back()->with('flash.error', 'Failed to create transfer: '.$e->getMessage());
         }
     }
 
@@ -254,7 +253,7 @@ class StockTransferController extends Controller
             'source_store_id' => ['required', 'exists:stores,id', Rule::notIn([$request->destination_store_id])],
             'destination_store_id' => 'required|exists:stores,id',
             'transfer_date' => 'required|date',
-            //'reference' => 'nullable|string|max:100',
+            // 'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -277,12 +276,14 @@ class StockTransferController extends Controller
             $stockTransfer->items()->saveMany($itemsToAttach);
 
             DB::commit();
+
             return back()->with('flash.success', 'Stock Transfer updated successfully. Approval status reset to pending.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Stock Transfer Update Failed: " . $e->getMessage());
-            return back()->with('flash.error', 'Failed to update transfer: ' . $e->getMessage());
+            Log::error('Stock Transfer Update Failed: '.$e->getMessage());
+
+            return back()->with('flash.error', 'Failed to update transfer: '.$e->getMessage());
         }
     }
 
@@ -301,18 +302,55 @@ class StockTransferController extends Controller
         return back()->with('flash.success', 'Stock Transfer deleted successfully.');
     }
 
+    /**
+     * Delete several transfers at once, skipping any that already left the warehouse.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return back()->with('flash.error', 'No transfers selected.');
+        }
+
+        $transfers = StockTransfer::whereIn('id', $ids)->get();
+        $deleted = 0;
+        $blocked = [];
+
+        foreach ($transfers as $transfer) {
+            if (in_array($transfer->status, ['sent', 'received'], true)) {
+                $blocked[] = $transfer->reference;
+
+                continue;
+            }
+
+            $transfer->delete();
+            $deleted++;
+        }
+
+        if ($blocked !== []) {
+            return back()->with(
+                'flash.warning',
+                $deleted.' deleted. Skipped because stock already moved: '.implode(', ', $blocked).'.'
+            );
+        }
+
+        return back()->with('flash.success', $deleted.' stock transfer'.($deleted === 1 ? '' : 's').' deleted.');
+    }
+
     // --- 🟢 NEW WORKFLOW ACTIONS ---
 
     /**
      * API endpoint to change the transfer status from DRAFT to INITIATED.
      * Locks the transfer for review.
      */
-    public final function initiate(StockTransfer $stockTransfer)
+    final public function initiate(StockTransfer $stockTransfer)
     {
         Log::info('--- Transfer INITIATE Attempt ---', ['transfer_id' => $stockTransfer->id, 'current_status' => $stockTransfer->status, 'user_id' => Auth::id()]);
 
         if ($stockTransfer->status !== 'draft') {
             Log::warning('Initiate Rejected: Status is not DRAFT.', ['transfer_id' => $stockTransfer->id]);
+
             return back()->with('flash.error', 'Only DRAFT transfers can be initiated for review.');
         }
 
@@ -325,37 +363,39 @@ class StockTransferController extends Controller
             // 🟢 NOTIFY SOURCE STORE (Management)
             $this->notifyStore(
                 $stockTransfer->source_store_id,
-                "Transfer Review Pending",
-                "Transfer #{$stockTransfer->reference} initiated by " . Auth::user()->name . ". Waiting for approval.",
+                'Transfer Review Pending',
+                "Transfer #{$stockTransfer->reference} initiated by ".Auth::user()->name.'. Waiting for approval.',
                 route('stock-transfers.index')
             );
 
             Log::info("Transfer #{$stockTransfer->id} successfully initiated for review.", ['user_id' => Auth::id()]);
+
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} submitted for review (Status: INITIATED).");
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Stock Transfer Initiate Failed: " . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
-            return back()->with('flash.error', 'Failed to initiate transfer: ' . $e->getMessage());
+            Log::error('Stock Transfer Initiate Failed: '.$e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+
+            return back()->with('flash.error', 'Failed to initiate transfer: '.$e->getMessage());
         }
     }
-
 
     /**
      * API endpoint to ACCEPT/APPROVE the transfer.
      */
-    public final function approve(StockTransfer $stockTransfer)
+    final public function approve(StockTransfer $stockTransfer)
     {
         Log::info('--- Transfer APPROVE/ACCEPT Attempt ---', [
             'transfer_id' => $stockTransfer->id,
             'current_status' => $stockTransfer->status,
             'current_approved_status' => $stockTransfer->approved_status,
-            'user_id' => Auth::id()
+            'user_id' => Auth::id(),
         ]);
 
         // 🛑 FIX: Must be INITIATED and PENDING
         if ($stockTransfer->status !== 'initiated' || $stockTransfer->approved_status !== 'pending') {
             Log::warning('Approve Rejected: Not in INITIATED/PENDING state.', ['transfer_id' => $stockTransfer->id]);
+
             return back()->with('flash.error', 'This transfer cannot be approved in its current state. It must be INITIATED and PENDING.');
         }
 
@@ -373,36 +413,39 @@ class StockTransferController extends Controller
             // 🟢 NOTIFY SOURCE STORE (Warehouse/Staff)
             $this->notifyStore(
                 $stockTransfer->source_store_id,
-                "Transfer Approved",
+                'Transfer Approved',
                 "Transfer #{$stockTransfer->reference} has been approved. Ready to Send.",
                 route('stock-transfers.index')
             );
 
             Log::info("Transfer #{$stockTransfer->id} accepted/approved. Ready to send.", ['user_id' => Auth::id()]);
+
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} accepted successfully! Ready for dispatch.");
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Stock Transfer Acceptance/Approval Failed: " . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
-            return back()->with('flash.error', 'Failed to accept transfer: ' . $e->getMessage());
+            Log::error('Stock Transfer Acceptance/Approval Failed: '.$e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+
+            return back()->with('flash.error', 'Failed to accept transfer: '.$e->getMessage());
         }
     }
 
     /**
      * API endpoint to DENY/REJECT the transfer.
      */
-    public final function reject(StockTransfer $stockTransfer)
+    final public function reject(StockTransfer $stockTransfer)
     {
         Log::info('--- Transfer REJECT/DENY Attempt ---', [
             'transfer_id' => $stockTransfer->id,
             'current_status' => $stockTransfer->status,
             'current_approved_status' => $stockTransfer->approved_status,
-            'user_id' => Auth::id()
+            'user_id' => Auth::id(),
         ]);
 
         // 🛑 FIX: Must be INITIATED and PENDING
         if ($stockTransfer->status !== 'initiated' || $stockTransfer->approved_status !== 'pending') {
             Log::warning('Reject Rejected: Not in INITIATED/PENDING state.', ['transfer_id' => $stockTransfer->id]);
+
             return back()->with('flash.error', 'This transfer cannot be denied in its current state. It must be INITIATED and PENDING.');
         }
 
@@ -420,197 +463,213 @@ class StockTransferController extends Controller
 
             $this->notifyStore(
                 $stockTransfer->source_store_id,
-                "Transfer Rejected",
-                "Transfer #{$stockTransfer->reference} was rejected by " . Auth::user()->name,
+                'Transfer Rejected',
+                "Transfer #{$stockTransfer->reference} was rejected by ".Auth::user()->name,
                 route('stock-transfers.index')
             );
 
             Log::info("Transfer #{$stockTransfer->id} denied/rejected. Flow stopped.", ['user_id' => Auth::id()]);
+
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} denied. Transfer flow stopped.");
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Stock Transfer Denial/Rejection Failed: " . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
-            return back()->with('flash.error', 'Failed to deny transfer: ' . $e->getMessage());
+            Log::error('Stock Transfer Denial/Rejection Failed: '.$e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+
+            return back()->with('flash.error', 'Failed to deny transfer: '.$e->getMessage());
         }
     }
-
 
     /**
      * API endpoint to change the transfer status to 'sent' and commit stock OUT from source.
      */
     /**
- * API endpoint to change the transfer status to 'sent', commit stock OUT from source,
- * and record delivery information.
- */
-public final function send(Request $request, StockTransfer $stockTransfer)
-{
-    Log::info('--- Stock Transfer SEND Attempt ---', [
-        'transfer_id' => $stockTransfer->id,
-        'current_status' => $stockTransfer->status,
-        'user_id' => Auth::id(),
-    ]);
-
-    // Pre-checks (Unchanged)
-    if ($stockTransfer->status !== 'accepted') {
-        Log::warning('Send Rejected: Primary status is not ACCEPTED.', ['transfer_id' => $stockTransfer->id]);
-        return back()->with('flash.error', 'This transfer must be ACCEPTED before it can be sent.');
-    }
-    if ($stockTransfer->approved_status !== 'approved') {
-        Log::warning('Send Rejected: Secondary status is not APPROVED.', ['transfer_id' => $stockTransfer->id]);
-        return back()->with('flash.error', 'Internal error: Transfer flow status ACCEPTED but audit status not APPROVED.');
-    }
-
-    // 🟢 NEW: Validate and extract delivery data
-    $deliveryType = $request->input('delivery_type');
-    $assignedToUserId = $request->input('assigned_to_user_id');
-    $carrierName = $request->input('carrier_name');
-    $contactNumber = $request->input('contact_number');
-    $trackingReference = $request->input('tracking_reference');
-    $deliveryTime = $request->input('delivery_time');
-
-    // 🟢 Validation: delivery_type is required
-    if (!in_array($deliveryType, ['internal', 'external'])) {
-        Log::warning('Send Rejected: Invalid delivery type.', ['transfer_id' => $stockTransfer->id, 'delivery_type' => $deliveryType]);
-        return back()->with('flash.error', 'Please select a valid delivery method.');
-    }
-
-    // 🟢 Validation: Internal requires assigned driver
-    if ($deliveryType === 'internal' && empty($assignedToUserId)) {
-        Log::warning('Send Rejected: Internal delivery missing driver.', ['transfer_id' => $stockTransfer->id]);
-        return back()->with('flash.error', 'Please assign a delivery staff member for internal delivery.');
-    }
-
-    // 🟢 Validation: External requires carrier name
-    if ($deliveryType === 'external' && empty($carrierName)) {
-        Log::warning('Send Rejected: External delivery missing carrier.', ['transfer_id' => $stockTransfer->id]);
-        return back()->with('flash.error', 'Please enter the carrier name for external delivery.');
-    }
-
-    // 🟢 Optional: Validate assigned user exists and has delivery role (optional but recommended)
-    if ($deliveryType === 'internal' && $assignedToUserId) {
-        $deliveryUser = \App\Models\User::find($assignedToUserId);
-        if (!$deliveryUser || !$deliveryUser->hasRole('delivery')) {
-            Log::warning('Send Rejected: Invalid or unauthorized delivery user.', [
-                'transfer_id' => $stockTransfer->id,
-                'user_id' => $assignedToUserId,
-            ]);
-            return back()->with('flash.error', 'Selected driver is not authorized for deliveries.');
-        }
-    }
-
-    $stockTransfer->load('items.product');
-    $user = Auth::user();
-
-    $transferReason = \App\Models\AdjustmentReason::firstWhere('name', 'Transfer');
-    $adjustmentReasonId = $transferReason?->id;
-
-    if (!$adjustmentReasonId) {
-        Log::error('Transfer reason "Transfer" not found.');
-        return back()->with('flash.error', 'Critical: Stock Adjustment Reason "Transfer" not found. Cannot proceed.');
-    }
-
-    DB::beginTransaction();
-    try {
-        Log::debug('Checkpoint 2: Entering DB Transaction.');
-
-        // 1. Commit Stock Adjustment OUT for the Source Store and Update Stock
-        foreach ($stockTransfer->items as $item) {
-            $sourceStock = \App\Models\Stock::where('store_id', $stockTransfer->source_store_id)
-                ->where('product_id', $item->product_id)
-                ->first();
-
-            if (!$sourceStock) {
-                Log::warning('Stock Row Missing at Source', [
-                    'product_id' => $item->product_id,
-                    'store_id' => $stockTransfer->source_store_id
-                ]);
-                $sourceStock = new \App\Models\Stock(['current_stock' => 0]);
-            }
-
-            Log::debug('Stock Check', [
-                'product_id' => $item->product_id,
-                'source_store' => $stockTransfer->source_store_id,
-                'available' => $sourceStock->current_stock,
-                'requested' => $item->quantity,
-            ]);
-
-            if ($sourceStock->current_stock < $item->quantity) {
-                DB::rollBack();
-                Log::error('Send Failed: Insufficient stock (Rolled Back).', [
-                    'product_id' => $item->product_id,
-                    'available' => $sourceStock->current_stock,
-                ]);
-                return back()->with('flash.error', "Insufficient stock for product {$item->product->sku} ({$item->product->name}) at source store. Transfer cancelled.");
-            }
-
-            \App\Models\StockAdjustment::create([
-                'product_id' => $item->product_id,
-                'store_id' => $stockTransfer->source_store_id,
-                'type' => 'out',
-                'quantity' => $item->quantity,
-                'old_stock' => $sourceStock->current_stock,
-                'new_stock' => $sourceStock->current_stock - $item->quantity,
-                'notes' => "Stock Transfer OUT (Reference: {$stockTransfer->reference})",
-                'adjustment_reason_id' => $adjustmentReasonId,
-                'user_id' => $user->id,
-                'related_transfer_id' => $stockTransfer->id,
-            ]);
-
-            $sourceStock->decrement('current_stock', $item->quantity);
-        }
-
-        // 2. 🟢 UPDATE TRANSFER WITH DELIVERY INFO AND STATUS
-        $stockTransfer->update([
-            'status' => 'sent',
-            'delivery_type' => $deliveryType,
-            'assigned_to_user_id' => $deliveryType === 'internal' ? $assignedToUserId : null,
-            'carrier_name' => $deliveryType === 'external' ? $carrierName : null,
-            'contact_number' => $deliveryType === 'external' ? $contactNumber : null,
-            'tracking_reference' => $deliveryType === 'external' ? $trackingReference : null,
-            'delivery_time' => $deliveryTime ? \Carbon\Carbon::parse($deliveryTime) : null,
-        ]);
-
-        DB::commit();
-        // 🟢 1. NOTIFY SOURCE (Confirmation)
-        $this->notifyStore(
-            $stockTransfer->source_store_id,
-            "Transfer Dispatched",
-            "Transfer #{$stockTransfer->reference} marked as SENT.",
-            route('stock-transfers.index')
-        );
-
-        // 🟢 2. NOTIFY DESTINATION (Alert Incoming)
-        $this->notifyStore(
-            $stockTransfer->destination_store_id,
-            "Incoming Stock",
-            "Transfer #{$stockTransfer->reference} is on its way from " . $stockTransfer->sourceStore->name,
-            route('stock-transfers.index')
-        );
-
-        Log::info('Transfer SENT successfully with delivery info.', [
+     * API endpoint to change the transfer status to 'sent', commit stock OUT from source,
+     * and record delivery information.
+     */
+    final public function send(Request $request, StockTransfer $stockTransfer)
+    {
+        Log::info('--- Stock Transfer SEND Attempt ---', [
             'transfer_id' => $stockTransfer->id,
-            'delivery_type' => $deliveryType,
+            'current_status' => $stockTransfer->status,
             'user_id' => Auth::id(),
         ]);
-        return back()->with('flash.success', "Transfer #{$stockTransfer->id} marked as SENT. Stock has been deducted from the source store.");
 
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        Log::error("Stock Transfer Send Failed: " . $e->getMessage(), [
-            'transfer_id' => $stockTransfer->id,
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ]);
-        return back()->with('flash.error', 'Failed to mark transfer as sent: ' . $e->getMessage());
+        // Pre-checks (Unchanged)
+        if ($stockTransfer->status !== 'accepted') {
+            Log::warning('Send Rejected: Primary status is not ACCEPTED.', ['transfer_id' => $stockTransfer->id]);
+
+            return back()->with('flash.error', 'This transfer must be ACCEPTED before it can be sent.');
+        }
+        if ($stockTransfer->approved_status !== 'approved') {
+            Log::warning('Send Rejected: Secondary status is not APPROVED.', ['transfer_id' => $stockTransfer->id]);
+
+            return back()->with('flash.error', 'Internal error: Transfer flow status ACCEPTED but audit status not APPROVED.');
+        }
+
+        // 🟢 NEW: Validate and extract delivery data
+        $deliveryType = $request->input('delivery_type');
+        $assignedToUserId = $request->input('assigned_to_user_id');
+        $carrierName = $request->input('carrier_name');
+        $contactNumber = $request->input('contact_number');
+        $trackingReference = $request->input('tracking_reference');
+        $deliveryTime = $request->input('delivery_time');
+
+        // 🟢 Validation: delivery_type is required
+        if (! in_array($deliveryType, ['internal', 'external'])) {
+            Log::warning('Send Rejected: Invalid delivery type.', ['transfer_id' => $stockTransfer->id, 'delivery_type' => $deliveryType]);
+
+            return back()->with('flash.error', 'Please select a valid delivery method.');
+        }
+
+        // 🟢 Validation: Internal requires assigned driver
+        if ($deliveryType === 'internal' && empty($assignedToUserId)) {
+            Log::warning('Send Rejected: Internal delivery missing driver.', ['transfer_id' => $stockTransfer->id]);
+
+            return back()->with('flash.error', 'Please assign a delivery staff member for internal delivery.');
+        }
+
+        // 🟢 Validation: External requires carrier name
+        if ($deliveryType === 'external' && empty($carrierName)) {
+            Log::warning('Send Rejected: External delivery missing carrier.', ['transfer_id' => $stockTransfer->id]);
+
+            return back()->with('flash.error', 'Please enter the carrier name for external delivery.');
+        }
+
+        // 🟢 Optional: Validate assigned user exists and has delivery role (optional but recommended)
+        // Reaching here for an internal transfer already guarantees a driver was supplied above.
+        if ($deliveryType === 'internal') {
+            $deliveryUser = \App\Models\User::find($assignedToUserId);
+            if (! $deliveryUser || ! $deliveryUser->hasRole('delivery')) {
+                Log::warning('Send Rejected: Invalid or unauthorized delivery user.', [
+                    'transfer_id' => $stockTransfer->id,
+                    'user_id' => $assignedToUserId,
+                ]);
+
+                return back()->with('flash.error', 'Selected driver is not authorized for deliveries.');
+            }
+        }
+
+        $stockTransfer->load('items.product');
+        $user = Auth::user();
+
+        // The seeder ships "Transfer In"/"Transfer Out"; a bare "Transfer" reason is
+        // created on demand so the workflow also works on a freshly seeded install.
+        $transferReason = \App\Models\AdjustmentReason::firstOrCreate(
+            ['name' => 'Transfer'],
+            ['name' => 'Transfer', 'slug' => 'transfer', 'description' => 'Stock movement between stores.']
+        );
+        $adjustmentReasonId = $transferReason->id;
+
+        if (! $adjustmentReasonId) {
+            Log::error('Transfer reason "Transfer" not found.');
+
+            return back()->with('flash.error', 'Critical: Stock Adjustment Reason "Transfer" not found. Cannot proceed.');
+        }
+
+        DB::beginTransaction();
+        try {
+            Log::debug('Checkpoint 2: Entering DB Transaction.');
+
+            // 1. Commit Stock Adjustment OUT for the Source Store and Update Stock
+            foreach ($stockTransfer->items as $item) {
+                $sourceStock = \App\Models\Stock::where('store_id', $stockTransfer->source_store_id)
+                    ->where('product_id', $item->product_id)
+                    ->first();
+
+                if (! $sourceStock) {
+                    Log::warning('Stock Row Missing at Source', [
+                        'product_id' => $item->product_id,
+                        'store_id' => $stockTransfer->source_store_id,
+                    ]);
+                    $sourceStock = new \App\Models\Stock(['current_stock' => 0]);
+                }
+
+                Log::debug('Stock Check', [
+                    'product_id' => $item->product_id,
+                    'source_store' => $stockTransfer->source_store_id,
+                    'available' => $sourceStock->current_stock,
+                    'requested' => $item->quantity,
+                ]);
+
+                if ($sourceStock->current_stock < $item->quantity) {
+                    DB::rollBack();
+                    Log::error('Send Failed: Insufficient stock (Rolled Back).', [
+                        'product_id' => $item->product_id,
+                        'available' => $sourceStock->current_stock,
+                    ]);
+
+                    return back()->with('flash.error', "Insufficient stock for product {$item->product->sku} ({$item->product->name}) at source store. Transfer cancelled.");
+                }
+
+                \App\Models\StockAdjustment::create([
+                    'product_id' => $item->product_id,
+                    'store_id' => $stockTransfer->source_store_id,
+                    'type' => 'out',
+                    'quantity' => $item->quantity,
+                    'old_stock' => $sourceStock->current_stock,
+                    'new_stock' => $sourceStock->current_stock - $item->quantity,
+                    'notes' => "Stock Transfer OUT (Reference: {$stockTransfer->reference})",
+                    'adjustment_reason_id' => $adjustmentReasonId,
+                    'user_id' => $user->id,
+                    'related_transfer_id' => $stockTransfer->id,
+                ]);
+
+                $sourceStock->decrement('current_stock', $item->quantity);
+            }
+
+            // 2. 🟢 UPDATE TRANSFER WITH DELIVERY INFO AND STATUS
+            $stockTransfer->update([
+                'status' => 'sent',
+                'delivery_type' => $deliveryType,
+                'assigned_to_user_id' => $deliveryType === 'internal' ? $assignedToUserId : null,
+                'carrier_name' => $deliveryType === 'external' ? $carrierName : null,
+                'contact_number' => $deliveryType === 'external' ? $contactNumber : null,
+                'tracking_reference' => $deliveryType === 'external' ? $trackingReference : null,
+                'delivery_time' => $deliveryTime ? \Carbon\Carbon::parse($deliveryTime) : null,
+            ]);
+
+            DB::commit();
+            // 🟢 1. NOTIFY SOURCE (Confirmation)
+            $this->notifyStore(
+                $stockTransfer->source_store_id,
+                'Transfer Dispatched',
+                "Transfer #{$stockTransfer->reference} marked as SENT.",
+                route('stock-transfers.index')
+            );
+
+            // 🟢 2. NOTIFY DESTINATION (Alert Incoming)
+            $this->notifyStore(
+                $stockTransfer->destination_store_id,
+                'Incoming Stock',
+                "Transfer #{$stockTransfer->reference} is on its way from ".$stockTransfer->sourceStore->name,
+                route('stock-transfers.index')
+            );
+
+            Log::info('Transfer SENT successfully with delivery info.', [
+                'transfer_id' => $stockTransfer->id,
+                'delivery_type' => $deliveryType,
+                'user_id' => Auth::id(),
+            ]);
+
+            return back()->with('flash.success', "Transfer #{$stockTransfer->id} marked as SENT. Stock has been deducted from the source store.");
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Stock Transfer Send Failed: '.$e->getMessage(), [
+                'transfer_id' => $stockTransfer->id,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return back()->with('flash.error', 'Failed to mark transfer as sent: '.$e->getMessage());
+        }
     }
-}
-
 
     /**
- * API endpoint to change the transfer status to 'received' and commit stock IN to destination.
- */
-    public final function receive(StockTransfer $stockTransfer)
+     * API endpoint to change the transfer status to 'received' and commit stock IN to destination.
+     */
+    final public function receive(StockTransfer $stockTransfer)
     {
         // --- Logging Start ---
         Log::info('--- Stock Transfer RECEIVE Attempt ---', [
@@ -623,26 +682,33 @@ public final function send(Request $request, StockTransfer $stockTransfer)
         // --- Pre-checks ---
         if ($stockTransfer->status !== 'sent') {
             Log::warning('Receive Rejected: Status is not SENT.', ['transfer_id' => $stockTransfer->id]);
+
             return back()->with('flash.error', 'Only SENT transfers can be marked as RECEIVED.');
         }
 
         if ($stockTransfer->approved_status !== 'approved') {
             Log::warning('Receive Rejected: Transfer was not APPROVED.', ['transfer_id' => $stockTransfer->id]);
+
             return back()->with('flash.error', 'Cannot receive a transfer that was not approved by management.');
         }
 
         $stockTransfer->load('items.product');
         $user = Auth::user();
 
-        $transferReason = \App\Models\AdjustmentReason::firstWhere('name', 'Transfer');
-        $adjustmentReasonId = $transferReason?->id;
+        // See send(): create the shared "Transfer" reason if the install does not have it.
+        $transferReason = \App\Models\AdjustmentReason::firstOrCreate(
+            ['name' => 'Transfer'],
+            ['name' => 'Transfer', 'slug' => 'transfer', 'description' => 'Stock movement between stores.']
+        );
+        $adjustmentReasonId = $transferReason->id;
 
-        if (!$adjustmentReasonId) {
+        if (! $adjustmentReasonId) {
             Log::warning('Adjustment Reason "Transfer" not found.');
+
             return back()->with('flash.error', 'Critical: Stock Adjustment Reason "Transfer" not found. Cannot process IN transaction.');
         }
 
-        Log::debug('Checkpoint 1: Adjustment Reason ID found: ' . $adjustmentReasonId);
+        Log::debug('Checkpoint 1: Adjustment Reason ID found: '.$adjustmentReasonId);
 
         // --- Transaction Start ---
         DB::beginTransaction();
@@ -708,7 +774,7 @@ public final function send(Request $request, StockTransfer $stockTransfer)
             // 🟢 1. NOTIFY DESTINATION (Stock Added)
             $this->notifyStore(
                 $stockTransfer->destination_store_id,
-                "Stock Received",
+                'Stock Received',
                 "Transfer #{$stockTransfer->reference} items added to inventory.",
                 route('stock-transfers.index')
             );
@@ -716,32 +782,33 @@ public final function send(Request $request, StockTransfer $stockTransfer)
             // 🟢 2. NOTIFY SOURCE (Completion)
             $this->notifyStore(
                 $stockTransfer->source_store_id,
-                "Transfer Completed",
+                'Transfer Completed',
                 "Transfer #{$stockTransfer->reference} was received by destination.",
                 route('stock-transfers.index')
             );
-            
+
             Log::info('Transfer RECEIVED successfully. Stock updated at destination.', [
                 'transfer_id' => $stockTransfer->id,
                 'destination_store_id' => $stockTransfer->destination_store_id,
                 'user_id' => Auth::id(),
             ]);
+
             return back()->with('flash.success', "Transfer #{$stockTransfer->id} marked as RECEIVED. Stock has been added to the destination store.");
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("Stock Transfer Receive Failed: " . $e->getMessage(), [
+            Log::error('Stock Transfer Receive Failed: '.$e->getMessage(), [
                 'transfer_id' => $stockTransfer->id,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return back()->with('flash.error', 'Failed to mark transfer as received: ' . $e->getMessage());
+
+            return back()->with('flash.error', 'Failed to mark transfer as received: '.$e->getMessage());
         }
     }
 
     // ... Export methods remain the same ...
-
 
     public function exportSinglePdf(StockTransfer $stockTransfer)
     {
@@ -762,15 +829,20 @@ public final function send(Request $request, StockTransfer $stockTransfer)
         $stockTransfer->load(['sourceStore', 'destinationStore', 'user', 'items.product']);
 
         return Excel::download(
-            new class($stockTransfer) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($stockTransfer) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $transfer;
-                public function __construct($transfer) { $this->transfer = $transfer; }
+
+                public function __construct($transfer)
+                {
+                    $this->transfer = $transfer;
+                }
 
                 public function collection()
                 {
                     // Flatten: One row per ITEM, not per transfer
                     $rows = collect([]);
-                    foreach($this->transfer->items as $item) {
+                    foreach ($this->transfer->items as $item) {
                         $rows->push([
                             'Reference' => $this->transfer->reference,
                             'Date' => $this->transfer->transfer_date?->format('Y-m-d'),
@@ -784,6 +856,7 @@ public final function send(Request $request, StockTransfer $stockTransfer)
                             'Initiated By' => $this->transfer->user->name ?? 'N/A',
                         ]);
                     }
+
                     return $rows;
                 }
 
@@ -801,7 +874,7 @@ public final function send(Request $request, StockTransfer $stockTransfer)
      */
     public function bulkExportPDF($ids)
     {
-            // $ids is now passed directly from the URL (e.g., "1,2,3")
+        // $ids is now passed directly from the URL (e.g., "1,2,3")
         $idArray = explode(',', $ids);
 
         $transfers = StockTransfer::whereIn('id', $idArray) // 🟢 Use $idArray here
@@ -820,10 +893,10 @@ public final function send(Request $request, StockTransfer $stockTransfer)
         return $pdf->download('stock_transfers_register.pdf');
     }
 
-        /**
-         * Bulk Excel: Register Log
-         */
-        // 🟢 FIX: Remove (Request $request) and replace with ($ids)
+    /**
+     * Bulk Excel: Register Log
+     */
+    // 🟢 FIX: Remove (Request $request) and replace with ($ids)
 
     public function bulkExportExcel($ids)
     {
@@ -841,9 +914,14 @@ public final function send(Request $request, StockTransfer $stockTransfer)
         }
 
         return Excel::download(
-            new class($transfers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+            new class($transfers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
                 protected $transfers;
-                public function __construct($transfers) { $this->transfers = $transfers; }
+
+                public function __construct($transfers)
+                {
+                    $this->transfers = $transfers;
+                }
 
                 public function collection()
                 {

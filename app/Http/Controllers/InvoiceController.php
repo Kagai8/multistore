@@ -2,29 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\Invoice;
-use App\Models\InvoiceItem;
-use App\Models\Customer;
-use App\Models\Product;
-use App\Models\Stock;
-use App\Models\Sale;
-use App\Models\SaleItem;
-use App\Models\StockAdjustment;
 use App\Models\AdjustmentReason;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Payment;
-use App\Models\PaymentToCustomer; // 🟢 NEW MODEL
-use App\Models\ManualTransaction;
 use App\Models\CardTransaction;
 use App\Models\CreditTransaction;
+use App\Models\Customer;
 use App\Models\CustomerDebt;
-use Illuminate\Support\Str;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\ManualTransaction;
+use App\Models\Payment;
+use App\Models\PaymentToCustomer;
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\Stock;
+use App\Models\StockAdjustment;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon; // 🟢 NEW MODEL
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
 class InvoiceController extends Controller
@@ -41,27 +41,27 @@ class InvoiceController extends Controller
 
         // ... (Query building remains the same) ...
         $query = Invoice::with([
-            'customer' => function($q) {
+            'customer' => function ($q) {
                 $q->select('id', 'name', 'credit_limit')
-                  ->withSum(['debts' => function($d) {
-                      $d->where('status', 'active');
-                  }], 'balance');
+                    ->withSum(['debts' => function ($d) {
+                        $d->where('status', 'active');
+                    }], 'balance');
             },
-            'user', 'store', 'items.product', 'voidApprover', 'refunder'
+            'user', 'store', 'items.product', 'voidApprover', 'refunder',
         ]);
 
         if ($search) {
-             // ... (Search logic remains same) ...
-             $query->where(function ($q) use ($search) {
+            // ... (Search logic remains same) ...
+            $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhereHas('customer', fn($sq) => $sq->where('name', 'like', "%{$search}%"));
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('customer', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
         if ($dateFrom || $dateTo) {
             // ... (Date logic remains same) ...
-             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
+            $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
             if ($start && $end) {
@@ -93,20 +93,21 @@ class InvoiceController extends Controller
         // 🟢 END NEW STATS
 
         // ... (Lookup data logic remains same) ...
-         $customers = Customer::select('id', 'name', 'credit_limit')
-            ->withSum(['debts' => function($q) {
+        $customers = Customer::select('id', 'name', 'credit_limit')
+            ->withSum(['debts' => function ($q) {
                 $q->where('status', 'active');
             }], 'balance')
             ->get()
-            ->map(function($c) {
+            ->map(function ($c) {
                 $limit = $c->credit_limit ?? 0;
                 $debt = $c->debts_sum_balance ?? 0;
                 $available = max(0, $limit - $debt);
+
                 return [
                     'id' => $c->id,
                     'name' => $c->name,
                     'credit_limit' => $limit,
-                    'available_credit' => $available
+                    'available_credit' => $available,
                 ];
             });
 
@@ -114,14 +115,14 @@ class InvoiceController extends Controller
         $productStocks = Stock::select('product_id', 'store_id', 'current_stock')
             ->get()
             ->groupBy('product_id')
-            ->map(fn($stocks) => $stocks->keyBy('store_id')->map(fn($stock) => (int)$stock->current_stock));
+            ->map(fn ($stocks) => $stocks->keyBy('store_id')->map(fn ($stock) => (int) $stock->current_stock));
 
         $totalCount = Invoice::count();
         $filteredCount = $query->count();
 
         $transform = function (Invoice $invoice) {
-             // ... (Transform logic remains same) ...
-             $custLimit = $invoice->customer->credit_limit ?? 0;
+            // ... (Transform logic remains same) ...
+            $custLimit = $invoice->customer->credit_limit ?? 0;
             $custDebt = $invoice->customer->debts_sum_balance ?? 0;
             $custAvailable = max(0, $custLimit - $custDebt);
 
@@ -148,7 +149,7 @@ class InvoiceController extends Controller
                 'void_reason' => $invoice->void_reason,
                 'refunded_at' => $invoice->refunded_at ? $invoice->refunded_at->format('Y-m-d H:i') : null,
                 'refunded_by_name' => $invoice->refunder->name ?? null,
-                'items' => $invoice->items->map(fn($item) => [
+                'items' => $invoice->items->map(fn ($item) => [
                     'product_id' => $item->product_id,
                     'product_name' => $item->product->name ?? 'N/A',
                     'quantity' => $item->quantity,
@@ -208,7 +209,7 @@ class InvoiceController extends Controller
         DB::beginTransaction();
         try {
             $count = Invoice::count() + 1;
-            $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($count, 6, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'INV-'.date('Y').'-'.str_pad((string) $count, 6, '0', STR_PAD_LEFT);
 
             $subTotal = 0;
             $itemsToCreate = [];
@@ -230,9 +231,9 @@ class InvoiceController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'invoice_number' => $invoiceNumber,
                 'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
+                'due_date' => $validated['due_date'] ?? null,
                 'payment_arrangement' => $validated['payment_arrangement'],
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
                 'sub_total' => $subTotal,
                 'total_amount' => $subTotal,
                 'status' => 'draft',
@@ -245,23 +246,25 @@ class InvoiceController extends Controller
             // 🟢 NOTIFY STORE
             $this->notifyStore(
                 $invoice->store_id,
-                "Draft Invoice Created",
-                "Invoice #{$invoiceNumber} created by " . Auth::user()->name . ". Status: Draft.",
+                'Draft Invoice Created',
+                "Invoice #{$invoiceNumber} created by ".Auth::user()->name.'. Status: Draft.',
                 route('invoices.index')
             );
+
             return redirect()->route('invoices.index')->with('success', 'Draft Invoice created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Invoice Creation Failed: " . $e->getMessage());
-            return back()->with('error', 'Failed to create invoice: ' . $e->getMessage());
+            Log::error('Invoice Creation Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to create invoice: '.$e->getMessage());
         }
     }
 
     public function update(Request $request, Invoice $invoice)
     {
         if ($invoice->status !== 'draft') {
-            return back()->with('error', "Only DRAFTS can be edited.");
+            return back()->with('error', 'Only DRAFTS can be edited.');
         }
 
         $validated = $request->validate([
@@ -298,9 +301,9 @@ class InvoiceController extends Controller
             $invoice->update([
                 'customer_id' => $validated['customer_id'],
                 'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
+                'due_date' => $validated['due_date'] ?? null,
                 'payment_arrangement' => $validated['payment_arrangement'],
-                'notes' => $validated['notes'],
+                'notes' => $validated['notes'] ?? null,
                 'sub_total' => $subTotal,
                 'total_amount' => $subTotal,
             ]);
@@ -309,19 +312,21 @@ class InvoiceController extends Controller
             $invoice->items()->saveMany($itemsToCreate);
 
             DB::commit();
+
             return back()->with('success', 'Draft Invoice updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Invoice Update Failed: " . $e->getMessage());
-            return back()->with('error', 'Failed to update invoice: ' . $e->getMessage());
+            Log::error('Invoice Update Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to update invoice: '.$e->getMessage());
         }
     }
 
     public function destroy(Invoice $invoice)
     {
         if ($invoice->status !== 'draft') {
-            return back()->with('error', "Only DRAFTS can be deleted.");
+            return back()->with('error', 'Only DRAFTS can be deleted.');
         }
 
         $invoice->items()->delete();
@@ -359,8 +364,8 @@ class InvoiceController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$stock || $stock->current_stock < $item->quantity) {
-                    throw new \Exception("Insufficient stock for: " . ($item->product->name ?? 'Unknown'));
+                if (! $stock || $stock->current_stock < $item->quantity) {
+                    throw new \Exception('Insufficient stock for: '.($item->product->name ?? 'Unknown'));
                 }
 
                 StockAdjustment::create([
@@ -383,14 +388,14 @@ class InvoiceController extends Controller
             // We do NOT create the Sale record here to avoid the "Sales Table Check Constraint" error.
             $invoice->update([
                 'status' => 'posted',
-                'payment_status' => 'unpaid'
+                'payment_status' => 'unpaid',
             ]);
 
             DB::commit();
             // 🟢 NOTIFY STORE
             $this->notifyStore(
                 $invoice->store_id,
-                "Invoice Posted",
+                'Invoice Posted',
                 "Invoice #{$invoice->invoice_number} is now live. Stock deducted.",
                 route('invoices.index')
             );
@@ -399,8 +404,9 @@ class InvoiceController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Invoice Posting Failed: " . $e->getMessage());
-            return back()->with('error', "Error Posting: " . $e->getMessage());
+            Log::error('Invoice Posting Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Error Posting: '.$e->getMessage());
         }
     }
 
@@ -429,12 +435,12 @@ class InvoiceController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$stock) {
-                     $stock = Stock::create([
+                if (! $stock) {
+                    $stock = Stock::create([
                         'store_id' => $invoice->store_id,
                         'product_id' => $item->product_id,
-                        'current_stock' => 0
-                     ]);
+                        'current_stock' => 0,
+                    ]);
                 }
 
                 StockAdjustment::create([
@@ -454,8 +460,8 @@ class InvoiceController extends Controller
 
             // 2. CANCEL LEDGER (Sale) - Only if it exists!
             $sale = Sale::where('source_id', $invoice->id)
-                        ->where('source_type', Invoice::class)
-                        ->first();
+                ->where('source_type', Invoice::class)
+                ->first();
 
             if ($sale) {
                 $sale->update(['status' => 'cancelled']);
@@ -466,23 +472,25 @@ class InvoiceController extends Controller
                 'status' => 'void',
                 'voided_at' => now(),
                 'voided_by' => Auth::id(),
-                'void_reason' => 'Manual Void'
+                'void_reason' => 'Manual Void',
             ]);
 
             DB::commit();
             // 🟢 NOTIFY STORE
             $this->notifyStore(
                 $invoice->store_id,
-                "Invoice Voided",
-                "Invoice #{$invoice->invoice_number} was VOIDED by " . Auth::user()->name . ". Stock returned.",
+                'Invoice Voided',
+                "Invoice #{$invoice->invoice_number} was VOIDED by ".Auth::user()->name.'. Stock returned.',
                 route('invoices.index')
             );
+
             return back()->with('success', 'Invoice Voided successfully. Stock returned.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Invoice Void Failed: " . $e->getMessage());
-            return back()->with('error', 'Failed to void invoice: ' . $e->getMessage());
+            Log::error('Invoice Void Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to void invoice: '.$e->getMessage());
         }
     }
 
@@ -519,7 +527,7 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
         try {
-            $groupId = 'GRP-' . strtoupper(Str::random(8));
+            $groupId = 'GRP-'.strtoupper(Str::random(8));
             $totalProcessed = 0;
 
             foreach ($validated['payments'] as $line) {
@@ -534,27 +542,31 @@ class InvoiceController extends Controller
                 // --- Payment Creation Logic ---
                 if ($method === 'mpesa' && $mpesaMode === 'stk') {
                     $childModel = \App\Models\MpesaTransaction::where('checkout_request_id', $ref)->first();
-                    if (!$childModel) {
+                    if (! $childModel) {
                         $childModel = ManualTransaction::create([
-                            'method_category' => 'mpesa_manual', 'reference_no' => $ref, 'amount_tendered' => $amount, 'notes' => "M-Pesa STK (Orphan)"
+                            'method_category' => 'mpesa_manual', 'reference_no' => $ref, 'amount_tendered' => $amount, 'notes' => 'M-Pesa STK (Orphan)',
                         ]);
                     }
                 } elseif (in_array($method, ['cash', 'bank_transfer', 'other']) || ($method === 'mpesa')) {
-                    $category = match($method) { 'cash' => 'cash', 'bank_transfer' => 'bank_transfer', 'mpesa' => 'mpesa_manual', default => 'other' };
+                    $category = match ($method) {
+                        'cash' => 'cash', 'bank_transfer' => 'bank_transfer', 'mpesa' => 'mpesa_manual', default => 'other'
+                    };
                     $childModel = ManualTransaction::create([
-                        'method_category' => $category, 'reference_no' => $ref, 'amount_tendered' => $amount, 'notes' => $method === 'mpesa' ? "Manual M-Pesa" : null,
+                        'method_category' => $category, 'reference_no' => $ref, 'amount_tendered' => $amount, 'notes' => $method === 'mpesa' ? 'Manual M-Pesa' : null,
                     ]);
                 } elseif ($method === 'card') {
-                    $childModel = CardTransaction::create([ 'card_type' => 'visa', 'auth_code' => $ref, 'last_four' => null ]);
+                    $childModel = CardTransaction::create(['card_type' => 'visa', 'auth_code' => $ref, 'last_four' => null]);
                 } elseif ($method === 'credit_limit') {
                     $customer = $invoice->customer;
                     $currentDebt = CustomerDebt::where('customer_id', $customer->id)->where('status', 'active')->sum('balance');
-                    if (($currentDebt + $amount) > $customer->credit_limit) throw new \Exception("Credit limit exceeded.");
+                    if (($currentDebt + $amount) > $customer->credit_limit) {
+                        throw new \Exception('Credit limit exceeded.');
+                    }
                     $debt = CustomerDebt::create([
-                        'customer_id' => $customer->id, 'source_type' => Invoice::class, 'source_id' => $invoice->id, 'principal_amount' => $amount, 'balance' => $amount, 'due_date' => Carbon::now()->addDays(30), 'status' => 'active'
+                        'customer_id' => $customer->id, 'source_type' => Invoice::class, 'source_id' => $invoice->id, 'principal_amount' => $amount, 'balance' => $amount, 'due_date' => Carbon::now()->addDays(30), 'status' => 'active',
                     ]);
                     $childModel = CreditTransaction::create([
-                        'customer_id' => $customer->id, 'customer_debt_id' => $debt->id, 'amount' => $amount, 'running_balance' => $currentDebt + $amount
+                        'customer_id' => $customer->id, 'customer_debt_id' => $debt->id, 'amount' => $amount, 'running_balance' => $currentDebt + $amount,
                     ]);
                 }
 
@@ -577,7 +589,7 @@ class InvoiceController extends Controller
                     'type' => 'change',
                     'method' => 'cash',
                     'notes' => "Change for invoice {$invoice->invoice_number}",
-                    'payment_date' => now()
+                    'payment_date' => now(),
                 ]);
             }
 
@@ -597,7 +609,7 @@ class InvoiceController extends Controller
             // 🟢 CREATE OR UPDATE SALE (Lazy Load)
             $sale = Sale::where('source_id', $invoice->id)->where('source_type', Invoice::class)->first();
 
-            if (!$sale) {
+            if (! $sale) {
                 // FIRST PAYMENT: Create the Sale Record
                 // Use 'partial' or 'paid'. Avoid 'unpaid' to satisfy DB Constraint.
                 $sale = Sale::create([
@@ -629,27 +641,30 @@ class InvoiceController extends Controller
             DB::commit();
 
             // 🟢 NOTIFY STORE
-            $paymentMessage = "Payment of " . number_format($totalProcessed) . " received for Invoice #{$invoice->invoice_number}.";
-            if ($change > 0) $paymentMessage .= " Change given: " . number_format($change);
+            $paymentMessage = 'Payment of '.number_format($totalProcessed)." received for Invoice #{$invoice->invoice_number}.";
+            if ($change > 0) {
+                $paymentMessage .= ' Change given: '.number_format($change);
+            }
 
             $this->notifyStore(
                 $invoice->store_id,
-                "Payment Received",
+                'Payment Received',
                 $paymentMessage,
                 route('invoices.index')
             );
 
             // Helpful message
             $msg = $change > 0
-                ? "Payment Recorded. Change Due: KSh " . number_format($change, 2)
-                : "Payment Recorded Successfully.";
+                ? 'Payment Recorded. Change Due: KSh '.number_format($change, 2)
+                : 'Payment Recorded Successfully.';
 
             return back()->with('success', $msg);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Payment Error: " . $e->getMessage());
-            return back()->with('error', 'Error: ' . $e->getMessage());
+            Log::error('Payment Error: '.$e->getMessage());
+
+            return back()->with('error', 'Error: '.$e->getMessage());
         }
     }
 
@@ -682,11 +697,11 @@ class InvoiceController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$stock) {
+                if (! $stock) {
                     $stock = Stock::create([
                         'store_id' => $invoice->store_id,
                         'product_id' => $item->product_id,
-                        'current_stock' => 0
+                        'current_stock' => 0,
                     ]);
                 }
 
@@ -717,7 +732,7 @@ class InvoiceController extends Controller
                 'type' => 'refund',
                 'method' => 'cash',
                 'notes' => "Full refund for Invoice #{$invoice->invoice_number}",
-                'payment_date' => now()
+                'payment_date' => now(),
             ]);
 
             // ---------------------------------------------------------
@@ -725,8 +740,8 @@ class InvoiceController extends Controller
             // ---------------------------------------------------------
             // 🟢 Direct Query is safer here
             $sale = Sale::where('source_id', $invoice->id)
-                        ->where('source_type', Invoice::class)
-                        ->first();
+                ->where('source_type', Invoice::class)
+                ->first();
 
             if ($sale) {
                 $sale->update([
@@ -752,17 +767,18 @@ class InvoiceController extends Controller
             // 🟢 NOTIFY STORE
             $this->notifyStore(
                 $invoice->store_id,
-                "Invoice Refunded",
-                "Full refund processed for Invoice #{$invoice->invoice_number} by " . Auth::user()->name,
+                'Invoice Refunded',
+                "Full refund processed for Invoice #{$invoice->invoice_number} by ".Auth::user()->name,
                 route('invoices.index')
             );
-            
+
             return back()->with('success', 'Refund Processed. Stock returned & Cash logged.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Refund Failed: " . $e->getMessage());
-            return back()->with('error', 'Refund failed: ' . $e->getMessage());
+            Log::error('Refund Failed: '.$e->getMessage());
+
+            return back()->with('error', 'Refund failed: '.$e->getMessage());
         }
     }
 
@@ -778,7 +794,8 @@ class InvoiceController extends Controller
         return $pdf->stream("Receipt_{$invoice->invoice_number}.pdf");
     }
 
-    public function exportSinglePdf(Invoice $invoice) {
+    public function exportSinglePdf(Invoice $invoice)
+    {
         // 🟢 LOAD EVERYTHING: Context, Items, Payments, and Audit Users
         $invoice->load([
             'customer',
@@ -787,7 +804,7 @@ class InvoiceController extends Controller
             'items.product',
             'payments.user', // Load who took the payment
             'voidApprover',
-            'refunder'
+            'refunder',
         ]);
 
         $pdf = Pdf::loadView('invoices.single-pdf', compact('invoice'))
@@ -796,41 +813,74 @@ class InvoiceController extends Controller
         return $pdf->download("Invoice_{$invoice->invoice_number}.pdf");
     }
 
-    public function exportSingleExcel(Invoice $invoice) {
+    public function exportSingleExcel(Invoice $invoice)
+    {
         $invoice->load(['customer', 'store', 'user', 'items.product']);
-        return Excel::download(new class($invoice) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+
+        return Excel::download(new class($invoice) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $invoice;
-            public function __construct($invoice) { $this->invoice = $invoice; }
-            public function collection() {
+
+            public function __construct($invoice)
+            {
+                $this->invoice = $invoice;
+            }
+
+            public function collection()
+            {
                 $rows = collect([]);
-                foreach($this->invoice->items as $item) {
+                foreach ($this->invoice->items as $item) {
                     $rows->push([$this->invoice->invoice_number, $this->invoice->invoice_date->format('Y-m-d'), $this->invoice->customer->name, Str::upper($this->invoice->status), $item->product->name, $item->quantity, $item->unit_price, $item->sub_total]);
                 }
+
                 return $rows;
             }
-            public function headings(): array { return ['Invoice #', 'Date', 'Customer', 'Status', 'Product', 'Qty', 'Unit Price', 'Total']; }
+
+            public function headings(): array
+            {
+                return ['Invoice #', 'Date', 'Customer', 'Status', 'Product', 'Qty', 'Unit Price', 'Total'];
+            }
         }, "invoice_{$invoice->invoice_number}.xlsx");
     }
 
-    public function bulkExportPDF($ids) {
+    public function bulkExportPDF($ids)
+    {
         $idArray = explode(',', $ids);
         $invoices = Invoice::whereIn('id', $idArray)->with(['customer', 'store', 'user'])->withCount('items')->latest()->get();
-        if ($invoices->isEmpty()) return back()->with('error', 'No invoices selected.');
+        if ($invoices->isEmpty()) {
+            return back()->with('error', 'No invoices selected.');
+        }
         $pdf = Pdf::loadView('invoices.bulk-pdf', compact('invoices'))->setPaper('a4', 'portrait');
+
         return $pdf->download('invoices_register.pdf');
     }
 
-    public function bulkExportExcel($ids) {
+    public function bulkExportExcel($ids)
+    {
         $idArray = explode(',', $ids);
         $invoices = Invoice::whereIn('id', $idArray)->with(['customer', 'store', 'user'])->withCount('items')->latest()->get();
-        if ($invoices->isEmpty()) return back()->with('error', 'No invoices selected.');
-        return Excel::download(new class($invoices) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
+        if ($invoices->isEmpty()) {
+            return back()->with('error', 'No invoices selected.');
+        }
+
+        return Excel::download(new class($invoices) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+        {
             protected $invoices;
-            public function __construct($invoices) { $this->invoices = $invoices; }
-            public function collection() {
+
+            public function __construct($invoices)
+            {
+                $this->invoices = $invoices;
+            }
+
+            public function collection()
+            {
                 return $this->invoices->map(fn ($inv) => [$inv->id, $inv->invoice_number, $inv->customer->name, $inv->store->name, $inv->total_amount, $inv->paid_amount, Str::upper($inv->status), $inv->invoice_date->format('Y-m-d'), $inv->user->name]);
             }
-            public function headings(): array { return ['ID', 'Invoice #', 'Customer', 'Store', 'Total', 'Paid', 'Status', 'Date', 'Created By']; }
+
+            public function headings(): array
+            {
+                return ['ID', 'Invoice #', 'Customer', 'Store', 'Total', 'Paid', 'Status', 'Date', 'Created By'];
+            }
         }, 'invoices_register.xlsx');
     }
 }

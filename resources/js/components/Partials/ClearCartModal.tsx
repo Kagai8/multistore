@@ -1,4 +1,3 @@
-import React from 'react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -8,7 +7,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import { Trash2 } from 'lucide-react';
 
 interface Props {
@@ -26,14 +25,17 @@ export default function ClearCartModal({ open, onClose, onConfirm }: Props) {
                         <Trash2 className="h-5 w-5" /> Clear Shopping Cart?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will remove all items from the current ticket. This action cannot be undone.
+                        This will remove all items from the current ticket. This
+                        action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel onClick={onClose}>
+                        Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={onConfirm}
-                        className="bg-red-600 hover:bg-red-700 text-white border-none"
+                        className="border-none bg-red-600 text-white hover:bg-red-700"
                     >
                         Yes, Clear Cart
                     </AlertDialogAction>

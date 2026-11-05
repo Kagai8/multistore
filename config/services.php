@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'mpesa' => [
+        'callback_url' => env('MPESA_CALLBACK_URL'),
+    ],
+
 ];

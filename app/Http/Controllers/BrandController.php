@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
 use App\Models\Brand;
-use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -32,8 +30,8 @@ class BrandController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -44,16 +42,16 @@ class BrandController extends Controller
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
             // If only start date is provided, filter from that day onwards
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('created_at', '>=', $start);
             }
             // If only end date is provided, filter up to that day
-            elseif (!$start && $end) {
+            elseif (! $start && $end) {
                 $query->where('created_at', '<=', $end);
             }
             // If both are provided, use whereBetween
             elseif ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
         // END NEW DATE FILTER LOGIC
@@ -105,7 +103,7 @@ class BrandController extends Controller
 
         return Inertia::render('brands/index', [
             'brands' => $query->latest()->paginate($request->perPage ?? 10),
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -157,8 +155,6 @@ class BrandController extends Controller
         //
     }
 
-
-
     /**
      * Update the specified resource in storage.
      */
@@ -203,6 +199,7 @@ class BrandController extends Controller
 
         return redirect()->back()->with('success', 'Brand deleted successfully');
     }
+
     public function exportSinglePdf(Brand $brand)
     {
         $pdf = Pdf::loadView('brands.brand-single', compact('brand'))
@@ -212,104 +209,115 @@ class BrandController extends Controller
     }
 
     public function exportSingleExcel(Brand $brand)
-        {
-            return Excel::download(
-                new class($brand) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $brand;
-                    public function __construct($brand) { $this->brand = $brand; }
+    {
+        return Excel::download(
+            new class($brand) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $brand;
 
-                    public function collection()
-                    {
-                        return collect([[
-                            'ID' => $this->brand->id,
-                            'Name' => $this->brand->name,
-                            'Slug' => $this->brand->slug,
-                            'Description' => $this->brand->description,
-                            'Created Date' => $this->brand->created_at->format('d M Y'),
-                        ]]);
-                    }
-
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Description', 'Created Date'];
-                    }
-                },
-                "brand_{$brand->id}.xlsx"
-            );
-        }
-    public function bulkDelete(Request $request)
-        {
-            $ids = $request->input('ids', []);
-
-            if (empty($ids)) {
-                return back()->with('error', 'No brands selected.');
-            }
-
-            $brands = Brand::whereIn('id', $ids)->get();
-
-            foreach ($brands as $brand) {
-                if ($brand->logo && Storage::disk('public')->exists($brand->logo)) {
-                    Storage::disk('public')->delete($brand->logo);
+                public function __construct($brand)
+                {
+                    $this->brand = $brand;
                 }
-                $brand->delete();
-            }
 
-            return back()->with('success', count($ids) . ' brand(s) deleted successfully.');
+                public function collection()
+                {
+                    return collect([[
+                        'ID' => $this->brand->id,
+                        'Name' => $this->brand->name,
+                        'Slug' => $this->brand->slug,
+                        'Description' => $this->brand->description,
+                        'Created Date' => $this->brand->created_at->format('d M Y'),
+                    ]]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Description', 'Created Date'];
+                }
+            },
+            "brand_{$brand->id}.xlsx"
+        );
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return back()->with('error', 'No brands selected.');
         }
+
+        $brands = Brand::whereIn('id', $ids)->get();
+
+        foreach ($brands as $brand) {
+            if ($brand->logo && Storage::disk('public')->exists($brand->logo)) {
+                Storage::disk('public')->delete($brand->logo);
+            }
+            $brand->delete();
+        }
+
+        return back()->with('success', count($ids).' brand(s) deleted successfully.');
+    }
 
     public function bulkExportPDF(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $brands = Brand::whereIn('id', $ids)->get();
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $brands = Brand::whereIn('id', $ids)->get();
 
-            if ($brands->isEmpty()) {
-                return back()->with('error', 'No brands selected for export.');
-            }
-
-            $pdf = Pdf::loadView('brands.brand-bulk-pdf', compact('brands'))
-                ->setPaper('a4', 'portrait');
-
-            return $pdf->download('brands_export.pdf');
+        if ($brands->isEmpty()) {
+            return back()->with('error', 'No brands selected for export.');
         }
+
+        $pdf = Pdf::loadView('brands.brand-bulk-pdf', compact('brands'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('brands_export.pdf');
+    }
 
     public function bulkExportExcel(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $brands = Brand::whereIn('id', $ids)->get();
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $brands = Brand::whereIn('id', $ids)->get();
 
-            if ($brands->isEmpty()) {
-                return back()->with('error', 'No brands selected for export.');
-            }
-
-            return Excel::download(
-                new class($brands) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $brands;
-                    public function __construct($brands) { $this->brands = $brands; }
-
-                    public function collection()
-                    {
-                        return $this->brands->map(fn ($brand) => [
-                            'ID' => $brand->id,
-                            'Name' => $brand->name,
-                            'Slug' => $brand->slug,
-                            'Description' => $brand->description,
-                            'Created Date' => optional($brand->created_at)->format('d M Y'),
-                        ]);
-                    }
-
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Description', 'Created Date'];
-                    }
-                },
-                'brands_export.xlsx'
-            );
+        if ($brands->isEmpty()) {
+            return back()->with('error', 'No brands selected for export.');
         }
+
+        return Excel::download(
+            new class($brands) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $brands;
+
+                public function __construct($brands)
+                {
+                    $this->brands = $brands;
+                }
+
+                public function collection()
+                {
+                    return $this->brands->map(fn ($brand) => [
+                        'ID' => $brand->id,
+                        'Name' => $brand->name,
+                        'Slug' => $brand->slug,
+                        'Description' => $brand->description,
+                        'Created Date' => optional($brand->created_at)->format('d M Y'),
+                    ]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Description', 'Created Date'];
+                }
+            },
+            'brands_export.xlsx'
+        );
+    }
 
     // 🧾 Download Excel Template
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headers
@@ -361,12 +369,12 @@ class BrandController extends Controller
                 fclose($handle);
             }
         } else {
-            $sheets = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
+            $sheets = \Maatwebsite\Excel\Facades\Excel::toArray(new \stdClass, $file);
             $rawRows = $sheets[0] ?? [];
             if (count($rawRows) > 0) {
                 $header = array_map('strtolower', $rawRows[0]);
                 unset($rawRows[0]);
-                $rows = array_map(function($r) use ($header) {
+                $rows = array_map(function ($r) use ($header) {
                     // Handle mismatched row lengths in Excel
                     return count($header) === count($r) ? array_combine($header, $r) : [];
                 }, $rawRows);
@@ -378,10 +386,14 @@ class BrandController extends Controller
         // 2. Import Loop with "While" Check
         foreach ($rows as $row) {
             // Skip empty rows caused by Excel formatting or parsing
-            if (empty($row)) continue;
+            if (empty($row)) {
+                continue;
+            }
 
             $originalName = trim($row['name'] ?? '');
-            if (empty($originalName)) continue;
+            if (empty($originalName)) {
+                continue;
+            }
 
             // Start with the intended name
             $name = $originalName;
@@ -411,5 +423,3 @@ class BrandController extends Controller
         return back()->with('success', "$imported brand(s) imported successfully.");
     }
 }
-
-

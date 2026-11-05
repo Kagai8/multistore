@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
-use App\Models\Supplier; // 🟢 Use the correct Model
-use Illuminate\Http\Request;
+use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon; // 🟢 Use the correct Model
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -32,10 +31,10 @@ class SupplierController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%")
                   // 🟢 Include new searchable fields
-                  ->orWhere('contact_person', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('contact_person', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -44,14 +43,12 @@ class SupplierController extends Controller
             $start = $dateFrom ? Carbon::parse($dateFrom)->startOfDay() : null;
             $end = $dateTo ? Carbon::parse($dateTo)->endOfDay() : null;
 
-            if ($start && !$end) {
+            if ($start && ! $end) {
                 $query->where('created_at', '>=', $start);
-            }
-            elseif (!$start && $end) {
+            } elseif (! $start && $end) {
                 $query->where('created_at', '<=', $end);
-            }
-            elseif ($start && $end) {
-                 $query->whereBetween('created_at', [$start, $end]);
+            } elseif ($start && $end) {
+                $query->whereBetween('created_at', [$start, $end]);
             }
         }
 
@@ -107,7 +104,7 @@ class SupplierController extends Controller
 
         return Inertia::render('suppliers/index', [ // 🟢 Correct Inertia path
             'suppliers' => $suppliers, // 🟢 Rename variable
-            'filters' => $request->only(['search', 'perPage','dateFrom', 'dateTo']),
+            'filters' => $request->only(['search', 'perPage', 'dateFrom', 'dateTo']),
             'totalCount' => $totalCount,
             'filteredCount' => $filteredCount,
         ]);
@@ -157,10 +154,10 @@ class SupplierController extends Controller
     {
         // 🟢 FIX: Add unique rule, ignoring the current supplier's ID
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:suppliers,name,' . $supplier->id,
+            'name' => 'required|string|max:255|unique:suppliers,name,'.$supplier->id,
             'contact_person' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|unique:suppliers,email,' . $supplier->id, // 🟢 Correct Unique check
+            'email' => 'nullable|email|unique:suppliers,email,'.$supplier->id, // 🟢 Correct Unique check
             'address' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -186,9 +183,9 @@ class SupplierController extends Controller
 
         return redirect()->back()->with('success', 'Supplier deleted successfully');
     }
+
     public function exportSinglePdf(Supplier $supplier) // 🟢 Use Supplier Model
     {
-        
 
         $pdf = Pdf::loadView('suppliers.supplier-single', compact('supplier')) // 🟢 Correct view
             ->setPaper('a4', 'portrait');
@@ -197,108 +194,119 @@ class SupplierController extends Controller
     }
 
     public function exportSingleExcel(Supplier $supplier) // 🟢 Use Supplier Model
-        {
-            return Excel::download(
-                new class($supplier) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $supplier;
-                    public function __construct($supplier) { $this->supplier = $supplier; }
+    {
+        return Excel::download(
+            new class($supplier) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $supplier;
 
-                    public function collection()
-                    {
-                        return collect([[
-                            'ID' => $this->supplier->id,
-                            'Name' => $this->supplier->name,
-                            'Slug' => $this->supplier->slug,
-                            'Contact Person' => $this->supplier->contact_person, // 🟢 New Field
-                            'Email' => $this->supplier->email,                   // 🟢 New Field
-                            'Phone' => $this->supplier->phone,                   // 🟢 New Field
-                            'Address' => $this->supplier->address,               // 🟢 New Field
-                            'Active' => $this->supplier->is_active ? 'Yes' : 'No',
-                            'Created Date' => $this->supplier->created_at->format('d M Y'),
-                        ]]);
-                    }
+                public function __construct($supplier)
+                {
+                    $this->supplier = $supplier;
+                }
 
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Contact Person', 'Email', 'Phone', 'Address', 'Active', 'Created Date'];
-                    }
-                },
-                "supplier_{$supplier->id}.xlsx" // 🟢 Correct file name
-            );
-        }
+                public function collection()
+                {
+                    return collect([[
+                        'ID' => $this->supplier->id,
+                        'Name' => $this->supplier->name,
+                        'Slug' => $this->supplier->slug,
+                        'Contact Person' => $this->supplier->contact_person, // 🟢 New Field
+                        'Email' => $this->supplier->email,                   // 🟢 New Field
+                        'Phone' => $this->supplier->phone,                   // 🟢 New Field
+                        'Address' => $this->supplier->address,               // 🟢 New Field
+                        'Active' => $this->supplier->is_active ? 'Yes' : 'No',
+                        'Created Date' => $this->supplier->created_at->format('d M Y'),
+                    ]]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Contact Person', 'Email', 'Phone', 'Address', 'Active', 'Created Date'];
+                }
+            },
+            "supplier_{$supplier->id}.xlsx" // 🟢 Correct file name
+        );
+    }
+
     public function bulkDelete(Request $request)
-        {
-            $ids = $request->input('ids', []);
+    {
+        $ids = $request->input('ids', []);
 
-            if (empty($ids)) {
-                return back()->with('error', 'No suppliers selected.'); // 🟢 Correct message
-            }
-
-            // ❌ Removed Brand fetching/deletion loop
-
-            // 🟢 FIX: Use static destroy method for efficient bulk deletion
-            $deletedCount = Supplier::destroy($ids);
-
-            return back()->with('success', $deletedCount . ' supplier(s) deleted successfully.'); // 🟢 Correct message
+        if (empty($ids)) {
+            return back()->with('error', 'No suppliers selected.'); // 🟢 Correct message
         }
+
+        // ❌ Removed Brand fetching/deletion loop
+
+        // 🟢 FIX: Use static destroy method for efficient bulk deletion
+        $deletedCount = Supplier::destroy($ids);
+
+        return back()->with('success', $deletedCount.' supplier(s) deleted successfully.'); // 🟢 Correct message
+    }
 
     public function bulkExportPDF(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $suppliers = Supplier::whereIn('id', $ids)->get(); // 🟢 Use Supplier Model
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $suppliers = Supplier::whereIn('id', $ids)->get(); // 🟢 Use Supplier Model
 
-            if ($suppliers->isEmpty()) {
-                return back()->with('error', 'No suppliers selected for export.'); // 🟢 Correct message
-            }
-
-            $pdf = Pdf::loadView('suppliers.supplier-bulk-pdf', compact('suppliers')) // 🟢 Correct view
-                ->setPaper('a4', 'portrait');
-
-            return $pdf->download('suppliers_export.pdf'); // 🟢 Correct file name
+        if ($suppliers->isEmpty()) {
+            return back()->with('error', 'No suppliers selected for export.'); // 🟢 Correct message
         }
+
+        $pdf = Pdf::loadView('suppliers.supplier-bulk-pdf', compact('suppliers')) // 🟢 Correct view
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('suppliers_export.pdf'); // 🟢 Correct file name
+    }
 
     public function bulkExportExcel(Request $request)
-        {
-            $ids = explode(',', $request->input('ids', ''));
-            $suppliers = Supplier::whereIn('id', $ids)->get(); // 🟢 Use Supplier Model
+    {
+        $ids = array_values(array_filter(explode(',', (string) $request->input('ids', '')), fn ($id) => $id !== ''));
+        $suppliers = Supplier::whereIn('id', $ids)->get(); // 🟢 Use Supplier Model
 
-            if ($suppliers->isEmpty()) {
-                return back()->with('error', 'No suppliers selected for export.'); // 🟢 Correct message
-            }
-
-            return Excel::download(
-                new class($suppliers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings {
-                    protected $suppliers;
-                    public function __construct($suppliers) { $this->suppliers = $suppliers; }
-
-                    public function collection()
-                    {
-                        return $this->suppliers->map(fn ($supplier) => [ // 🟢 Correct variable name
-                            'ID' => $supplier->id,
-                            'Name' => $supplier->name,
-                            'Slug' => $supplier->slug,
-                            'Contact Person' => $supplier->contact_person,
-                            'Email' => $supplier->email,
-                            'Phone' => $supplier->phone,
-                            'Address' => $supplier->address,
-                            'Active' => $supplier->is_active ? 'Yes' : 'No',
-                            'Created Date' => optional($supplier->created_at)->format('d M Y'),
-                        ]);
-                    }
-
-                    public function headings(): array
-                    {
-                        return ['ID', 'Name', 'Slug', 'Contact Person', 'Email', 'Phone', 'Address', 'Active', 'Created Date'];
-                    }
-                },
-                'suppliers_export.xlsx' // 🟢 Correct file name
-            );
+        if ($suppliers->isEmpty()) {
+            return back()->with('error', 'No suppliers selected for export.'); // 🟢 Correct message
         }
+
+        return Excel::download(
+            new class($suppliers) implements \Maatwebsite\Excel\Concerns\FromCollection, \Maatwebsite\Excel\Concerns\WithHeadings
+            {
+                protected $suppliers;
+
+                public function __construct($suppliers)
+                {
+                    $this->suppliers = $suppliers;
+                }
+
+                public function collection()
+                {
+                    return $this->suppliers->map(fn ($supplier) => [ // 🟢 Correct variable name
+                        'ID' => $supplier->id,
+                        'Name' => $supplier->name,
+                        'Slug' => $supplier->slug,
+                        'Contact Person' => $supplier->contact_person,
+                        'Email' => $supplier->email,
+                        'Phone' => $supplier->phone,
+                        'Address' => $supplier->address,
+                        'Active' => $supplier->is_active ? 'Yes' : 'No',
+                        'Created Date' => optional($supplier->created_at)->format('d M Y'),
+                    ]);
+                }
+
+                public function headings(): array
+                {
+                    return ['ID', 'Name', 'Slug', 'Contact Person', 'Email', 'Phone', 'Address', 'Active', 'Created Date'];
+                }
+            },
+            'suppliers_export.xlsx' // 🟢 Correct file name
+        );
+    }
 
     // 🧾 Download Excel Template
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headers
@@ -314,7 +322,6 @@ class SupplierController extends Controller
         $sheet->setCellValue('C2', '555-1234');
         $sheet->setCellValue('D2', 'contact@supplier.com');
         $sheet->setCellValue('E2', '123 Main St, City');
-
 
         // Auto-size columns
         foreach (range('A', 'E') as $col) {
@@ -351,11 +358,11 @@ class SupplierController extends Controller
                 fclose($handle);
             }
         } else {
-            $sheets = Excel::toArray([], $file);
+            $sheets = Excel::toArray(new \stdClass, $file);
             $rows = $sheets[0] ?? [];
             $header = array_map('strtolower', $rows[0]);
             unset($rows[0]);
-            $rows = array_map(fn($r) => array_combine($header, $r), $rows);
+            $rows = array_map(fn ($r) => array_combine($header, $r), $rows);
         }
 
         $imported = 0;
@@ -365,7 +372,9 @@ class SupplierController extends Controller
             $email = trim($row['email'] ?? ''); // 🟢 Get Email
 
             // Requires name and either phone or email
-            if (empty($name)) continue;
+            if (empty($name)) {
+                continue;
+            }
 
             $baseSlug = Str::slug($name);
             $slug = $baseSlug;
