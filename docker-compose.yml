@@ -43,7 +43,7 @@ services:
       PORT: "8080"
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_URL: http://localhost:8080
+      APP_URL: http://localhost:8090
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: "5432"
@@ -51,7 +51,9 @@ services:
       DB_USERNAME: inventory
       DB_PASSWORD: secret
     ports:
-      - "8080:8080"
+      # Host 8090 -> container 8080. 8080 is already taken on this machine by
+      # the separate single_store stack.
+      - "8090:8080"
     volumes:
       # Product, brand, category and company-logo uploads survive a down/up.
       - storage-public:/var/www/html/storage/app/public

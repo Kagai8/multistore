@@ -71,6 +71,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
+# Silences AH00558 ("could not reliably determine the server's FQDN") on boot.
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint
 
