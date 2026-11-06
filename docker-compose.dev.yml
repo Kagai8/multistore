@@ -1,0 +1,42 @@
+# Dev overlay — instant feedback for every file type.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# The container runs YOUR folder instead of its baked-in copy, so a saved file is
+# live on the next request. Frontend needs one extra terminal: `npm run dev`.
+#
+# When you are satisfied, go back to the production image:
+#   docker compose up -d --build
+#
+# Both modes share the same database and uploads. Neither deletes anything.
+
+services:
+  app:
+    volumes:
+      # The whole project comes from your Mac.
+      - .:/var/www/html
+
+      # Linux-owned volumes for the folders the web server writes into. Without
+      # these, Apache cannot write logs/sessions and every page returns a 500.
+      - storage:/var/www/html/storage
+      - storage-public:/var/www/html/storage/app/public
+      - storage-public:/var/www/html/public/storage
+      - bootstrap-cache:/var/www/html/bootstrap/cache
+
+      # One env file in play, so Valet's .env can never leak into the container.
+      - ./.env.docker:/var/www/html/.env:ro
+
+      # OPcache must notice edited files (production deliberately disables this).
+      - ./docker/php.dev.ini:/usr/local/etc/php/conf.d/zz-app.ini:ro
+
+      # Live entrypoint, so tweaks apply without rebuilding the image.
+      - ./docker/entrypoint.sh:/usr/local/bin/entrypoint:ro
+
+    environment:
+      # Clear cached config/views on boot instead of freezing them.
+      SKIP_CACHE: "true"
+
+volumes:
+  storage:
+  storage-public:
+  bootstrap-cache:

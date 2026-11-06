@@ -35,6 +35,12 @@ export const StoreTableConfig = {
             className: 'p-4 border text-left text-xs',
         },
         {
+            label: 'Status',
+            key: 'is_active',
+            type: 'boolean', // Your CustomTable already has a beautiful green/red badge renderer for this!
+            className: 'w-32',
+        },
+        {
             label: 'Created Date',
             key: 'created_at',
             className: 'p-4 border text-center text-xs',

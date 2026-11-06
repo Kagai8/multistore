@@ -25,9 +25,22 @@ if [ -n "$PORT" ] && [ "$PORT" != "80" ]; then
 fi
 
 # ------------------------------------------------------------------ storage
+# Dev mode mounts storage as an empty volume, so the skeleton must exist before
+# Laravel writes to it. Harmless in production, where the image already has them.
+mkdir -p storage/app/public storage/app/private storage/framework/cache/data \
+         storage/framework/sessions storage/framework/views storage/logs \
+         bootstrap/cache 2>/dev/null || true
+
 # Products, brands, categories and company logos are stored on the "public"
 # disk, so the symlink must exist before the first request.
-php artisan storage:link --force >/dev/null 2>&1 || true
+#
+# Dev mode mounts public/ from the host, so an absolute /var/www/html path would
+# be dangling on the Mac. A relative link is valid in both places.
+if [ "$SKIP_CACHE" = "true" ]; then
+    php artisan storage:link --relative --force >/dev/null 2>&1 || true
+else
+    php artisan storage:link --force >/dev/null 2>&1 || true
+fi
 
 # --------------------------------------------------------- wait for database
 if [ "${DB_CONNECTION:-pgsql}" != "sqlite" ]; then
@@ -58,9 +71,18 @@ fi
 # Cached here rather than at build time so container env vars are honoured.
 # route:cache is intentionally omitted: routes/web.php, routes/api.php and
 # routes/settings.php each define a closure route, and route caching would fail.
-php artisan config:cache
-php artisan event:cache
-php artisan view:cache
+if [ "$SKIP_CACHE" = "true" ]; then
+    # Dev overlay (docker-compose.dev.yml): the code is bind-mounted, so cached
+    # config/views would go stale the moment a file is saved.
+    echo "[entrypoint] SKIP_CACHE=true -> clearing caches instead of caching."
+    php artisan config:clear >/dev/null
+    php artisan event:clear >/dev/null 2>&1 || true
+    php artisan view:clear >/dev/null
+else
+    php artisan config:cache
+    php artisan event:cache
+    php artisan view:cache
+fi
 
 # Files created above are root-owned; hand storage back to Apache.
 chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true

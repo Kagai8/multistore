@@ -32,6 +32,7 @@ interface Store {
     phone?: string | null;
     email?: string | null;
     address?: string | null;
+    is_active: boolean;
     created_at: string;
 }
 
@@ -48,6 +49,7 @@ interface FilterProps {
     perPage: string;
     dateFrom?: string | null;
     dateTo?: string | null;
+    status?: string; //
 }
 
 interface IndexProps {
@@ -96,6 +98,7 @@ export default function Index({
         perPage: filters.perPage || '10',
         dateFrom: filters.dateFrom || null,
         dateTo: filters.dateTo || null,
+        status: filters.status || '',
     });
 
     // Simple handler for all non-file fields
@@ -121,6 +124,7 @@ export default function Index({
             ...(filtersForm.perPage && { perPage: filtersForm.perPage }),
             ...(filtersForm.dateFrom && { dateFrom: filtersForm.dateFrom }),
             ...(filtersForm.dateTo && { dateTo: filtersForm.dateTo }),
+            ...(filtersForm.status && { status: filtersForm.status }),
         };
 
         handleFilterRequest(query);
@@ -130,8 +134,9 @@ export default function Index({
     const handleReset = () => {
         setFilterData('search', '');
         setFilterData('perPage', '10');
-        setFilterData('dateFrom', null);
-        setFilterData('dateTo', null);
+        setFilterData('dateFrom', ''); // Changed to '' for consistency
+        setFilterData('dateTo', '');   // Changed to '' for consistency
+        setFilterData('status', '');   // 🟢 FIXED: Use empty string instead of null
         handleFilterRequest({});
     };
 
@@ -202,19 +207,30 @@ export default function Index({
         setShowDeleteModal(true);
     };
 
-    // Confirm delete
-    const confirmDelete = () => {
+        const confirmDelete = () => {
         if (!storeToDelete) return;
 
         router.delete(route(`${routePrefix}.destroy`, storeToDelete.id), {
             onSuccess: (resp: any) => {
-                const msg =
-                    resp?.props?.flash?.success || 'Store deleted successfully';
+                const msg = resp?.props?.flash?.success || 'Store deleted successfully';
                 toast.success(msg);
                 setShowDeleteModal(false);
                 setStoreToDelete(null);
             },
-            onError: () => toast.error('Failed to delete store'),
+            onError: (errors: any) => {
+                console.log("🔍 DELETE ERROR OBJECT:", errors); // Check browser console (F12) to see exactly what Laravel sends
+
+                const blockers = errors?.delete_error;
+
+                if (blockers && Array.isArray(blockers) && blockers.length > 0) {
+                    const reasonList = blockers.map((reason: string) => `• ${reason}`).join('\n');
+                    toast.error(`Cannot delete "${storeToDelete.name}":\n${reasonList}`);
+                } else if (typeof blockers === 'string') {
+                    toast.error(`Cannot delete "${storeToDelete.name}":\n• ${blockers}`);
+                } else {
+                    toast.error('Failed to delete store. (Check browser console for details)');
+                }
+            },
         });
     };
 
@@ -247,17 +263,16 @@ export default function Index({
             {
                 preserveScroll: true,
                 onSuccess: (resp: any) => {
-                    const msg =
-                        resp?.props?.flash?.success ||
-                        `${ids.length} store(s) deleted`;
+                    const msg = resp?.props?.flash?.success || `${ids.length} store(s) deleted`;
                     toast.success(msg);
                     setShowBulkDeleteModal(false);
                     setStoresToBulkDeleteIds([]);
                 },
-                onError: () => {
-                    toast.error('Failed to delete selected stores');
-                    setShowBulkDeleteModal(false);
-                    setStoresToBulkDeleteIds([]);
+                onError: (errors: any) => {
+                    // 🟢 NEW: Read the bulk error message from the backend
+                    const errorMsg = errors?.error || 'Failed to delete selected stores.';
+                    toast.error(errorMsg);
+                    // Keep modal open so they can read the reason!
                 },
             },
         );
@@ -359,6 +374,27 @@ export default function Index({
                         placeholder="Search Store by Name, Code, or Email..."
                         name="search"
                     />
+
+                    {/* 🟢 NEW: Status Filter Dropdown */}
+                        <select
+                            value={filtersForm.status || ''}
+                            onChange={(e) => {
+                                const newStatus = e.target.value; // This is always a string ('', 'active', or 'inactive')
+                                setFilterData('status', newStatus); // 🟢 FIXED: No more `|| null`
+                                handleFilterRequest({
+                                    ...(filtersForm.search && { search: filtersForm.search }),
+                                    ...(filtersForm.perPage && { perPage: filtersForm.perPage }),
+                                    ...(filtersForm.dateFrom && { dateFrom: filtersForm.dateFrom }),
+                                    ...(filtersForm.dateTo && { dateTo: filtersForm.dateTo }),
+                                    ...(e.target.value && { status: e.target.value }),
+                                });
+                            }}
+                            className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm focus:ring-1 focus:ring-orange-500"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
 
                     <Button
                         onClick={handleReset}

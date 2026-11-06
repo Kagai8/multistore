@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * App\Models\Store
@@ -37,12 +38,68 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Store extends Model
 {
+    use SoftDeletes; // 🟢 NEW: Enable soft deletes
+
     protected $fillable = [
         'name',
         'type',
-        'code', // Include in fillable because the system inserts it
+        'code',
         'phone',
         'email',
         'address',
+        'is_active', // 🟢 NEW: Allow mass assignment for is_active
     ];
+
+    // 🟢 NEW: Cast is_active to boolean automatically
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+        /**
+     * Check if the store is safe to delete.
+     * Returns an array of reasons why it CANNOT be deleted.
+     * If the array is empty, it is safe to delete.
+     */
+    public function getDeletionBlockers(): array
+    {
+        $blockers = [];
+
+        // 1. Check for assigned users
+        $userCount = User::where('store_id', $this->id)->count();
+        if ($userCount > 0) {
+            $blockers[] = "{$userCount} user(s) are currently assigned to this store.";
+        }
+
+        // 2. Check for existing stock records
+        $stockCount = Stock::where('store_id', $this->id)->count();
+        if ($stockCount > 0) {
+            $blockers[] = "{$stockCount} active stock record(s) exist for this store.";
+        }
+
+        // 3. Check for financial transactions (Sales, POS Sales, or Invoices)
+        $saleCount = Sale::where('store_id', $this->id)->count();
+        $posSaleCount = PosSale::where('store_id', $this->id)->count();
+        $invoiceCount = Invoice::where('store_id', $this->id)->count();
+
+        if ($saleCount > 0 || $posSaleCount > 0 || $invoiceCount > 0) {
+            $blockers[] = "Has historical financial transactions ({$saleCount} sales, {$posSaleCount} POS sales, {$invoiceCount} invoices).";
+        }
+
+        // 4. Check for Stock Transfers (where this store is source OR destination)
+        $transferCount = StockTransfer::where('source_store_id', $this->id)
+            ->orWhere('destination_store_id', $this->id)
+            ->count();
+
+        if ($transferCount > 0) {
+            $blockers[] = "{$transferCount} stock transfer(s) are linked to this store.";
+        }
+
+        // 5. Safety net: Prevent deleting the main warehouse (adjust ID if your primary warehouse is different)
+        if ($this->type === 'warehouse' && $this->id === 1) {
+            $blockers[] = "Cannot delete the primary system warehouse.";
+        }
+
+        return $blockers;
+    }
 }
+

@@ -1,0 +1,1169 @@
+.
+├── .dockerignore
+├── .editorconfig
+├── .env
+├── .env.docker
+├── .env.example
+├── .git/    (1315 files, dependencies)
+├── .gitattributes
+├── .github/
+│   ├── appmod/
+│   │   └── appcat/
+│   └── workflows/
+│       ├── lint.yml
+│       └── tests.yml
+├── .gitignore
+├── .phpunit.result.cache
+├── .prettierignore
+├── .prettierrc
+├── 000-default.conf
+├── Dockerfile
+├── _ide_helper.php
+├── app/
+│   ├── Console/
+│   │   └── Commands/
+│   │       └── AuditSalesMargins.php
+│   ├── Exports/
+│   │   ├── FinancialReportExport.php
+│   │   └── ValuationReportExport.php
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── AdjustmentReasonController.php
+│   │   │   ├── Auth/
+│   │   │   │   ├── AuthenticatedSessionController.php
+│   │   │   │   ├── EmailVerificationNotificationController.php
+│   │   │   │   ├── EmailVerificationPromptController.php
+│   │   │   │   ├── NewPasswordController.php
+│   │   │   │   ├── PasswordResetLinkController.php
+│   │   │   │   ├── RegisteredUserController.php
+│   │   │   │   └── VerifyEmailController.php
+│   │   │   ├── BrandController.php
+│   │   │   ├── CategoryController.php
+│   │   │   ├── CompanySettingController.php
+│   │   │   ├── Controller.php
+│   │   │   ├── CustomerController.php
+│   │   │   ├── DashboardController.php
+│   │   │   ├── DebtController.php
+│   │   │   ├── FinancialReportController.php
+│   │   │   ├── InvoiceController.php
+│   │   │   ├── MpesaController.php
+│   │   │   ├── NewStockEntryController.php
+│   │   │   ├── NotificationController.php
+│   │   │   ├── PaymentController.php
+│   │   │   ├── PaymentToCustomerController.php
+│   │   │   ├── PermissionController.php
+│   │   │   ├── PosController.php
+│   │   │   ├── PosSessionController.php
+│   │   │   ├── ProductController.php
+│   │   │   ├── PurchaseOrderController.php
+│   │   │   ├── PurchaseOrderItemController.php
+│   │   │   ├── QuotationController.php
+│   │   │   ├── RoleController.php
+│   │   │   ├── SaleController.php
+│   │   │   ├── SaleItemController.php
+│   │   │   ├── Settings/
+│   │   │   │   ├── PasswordController.php
+│   │   │   │   ├── ProfileController.php
+│   │   │   │   └── TwoFactorAuthenticationController.php
+│   │   │   ├── StockAdjustmentController.php
+│   │   │   ├── StockAdjustmentRequestController.php
+│   │   │   ├── StockController.php
+│   │   │   ├── StockTransferController.php
+│   │   │   ├── StockTransferItemController.php
+│   │   │   ├── StoreController.php
+│   │   │   ├── StorePaymentSettingController.php
+│   │   │   ├── SupplierController.php
+│   │   │   ├── UnitController.php
+│   │   │   ├── UserController.php
+│   │   │   └── ValuationReportController.php
+│   │   ├── Middleware/
+│   │   │   ├── HandleAppearance.php
+│   │   │   └── HandleInertiaRequests.php
+│   │   └── Requests/
+│   │       ├── Auth/
+│   │       │   └── LoginRequest.php
+│   │       ├── Inventory/
+│   │       ├── ReportFilterRequest.php
+│   │       └── Settings/
+│   │           ├── ProfileUpdateRequest.php
+│   │           └── TwoFactorAuthenticationRequest.php
+│   ├── Models/
+│   │   ├── AdjustmentReason.php
+│   │   ├── Brand.php
+│   │   ├── CardTransaction.php
+│   │   ├── Category.php
+│   │   ├── CompanySetting.php
+│   │   ├── CreditTransaction.php
+│   │   ├── Customer.php
+│   │   ├── CustomerDebt.php
+│   │   ├── DebtRepayment.php
+│   │   ├── Invoice.php
+│   │   ├── InvoiceItem.php
+│   │   ├── ManualTransaction.php
+│   │   ├── MpesaTransaction.php
+│   │   ├── NewStockEntry.php
+│   │   ├── Payment.php
+│   │   ├── PaymentToCustomer.php
+│   │   ├── Permission.php
+│   │   ├── PosSale.php
+│   │   ├── PosSaleItem.php
+│   │   ├── PosSession.php
+│   │   ├── Product.php
+│   │   ├── PurchaseOrder.php
+│   │   ├── PurchaseOrderItem.php
+│   │   ├── Quotation.php
+│   │   ├── QuotationItem.php
+│   │   ├── Role.php
+│   │   ├── Sale.php
+│   │   ├── SaleItem.php
+│   │   ├── Scopes/
+│   │   │   ├── StoreScope.php
+│   │   │   └── TransferScope.php
+│   │   ├── Stock.php
+│   │   ├── StockAdjustment.php
+│   │   ├── StockAdjustmentRequest.php
+│   │   ├── StockTransfer.php
+│   │   ├── StockTransferItem.php
+│   │   ├── Store.php
+│   │   ├── StorePaymentSetting.php
+│   │   ├── Supplier.php
+│   │   ├── Unit.php
+│   │   └── User.php
+│   ├── Notifications/
+│   │   └── SystemAlert.php
+│   └── Providers/
+│       ├── AppServiceProvider.php
+│       └── FortifyServiceProvider.php
+├── artisan
+├── bootstrap/
+│   ├── app.php
+│   ├── cache/    (2 files, generated)
+│   └── providers.php
+├── components.json
+├── composer.json
+├── composer.lock
+├── config/
+│   ├── app.php
+│   ├── auth.php
+│   ├── cache.php
+│   ├── database.php
+│   ├── dompdf.php
+│   ├── excel.php
+│   ├── filesystems.php
+│   ├── fortify.php
+│   ├── inertia.php
+│   ├── logging.php
+│   ├── mail.php
+│   ├── permission.php
+│   ├── queue.php
+│   ├── sanctum.php
+│   ├── services.php
+│   └── session.php
+├── database/
+│   ├── .gitignore
+│   ├── factories/
+│   │   └── UserFactory.php
+│   ├── migrations/
+│   │   ├── 0001_01_01_000000_create_users_table.php
+│   │   ├── 0001_01_01_000001_create_cache_table.php
+│   │   ├── 0001_01_01_000002_create_jobs_table.php
+│   │   ├── 2024_01_01_000000_create_permission_tables.php
+│   │   ├── 2025_08_26_100418_add_two_factor_columns_to_users_table.php
+│   │   ├── 2025_10_07_133016_create_brands_table.php
+│   │   ├── 2025_10_20_194604_create_categories_table.php
+│   │   ├── 2025_10_20_213651_create_units_table.php
+│   │   ├── 2025_10_21_040932_create_suppliers_table.php
+│   │   ├── 2025_10_21_045342_create_products_table.php
+│   │   ├── 2025_10_23_212835_make_products_sku_nullable.php
+│   │   ├── 2025_11_06_211839_add_special_price_to_products_table.php
+│   │   ├── 2025_11_06_232710_create_customers_table.php
+│   │   ├── 2025_11_07_000231_create_stores_table.php
+│   │   ├── 2025_11_10_000000_create_adjustment_reasons_table.php
+│   │   ├── 2025_11_11_131507_create_stocks_table.php
+│   │   ├── 2025_11_11_135056_create_stock_adjustments_table.php
+│   │   ├── 2025_11_12_184214_create_new_stock_entries_table.php
+│   │   ├── 2025_11_12_205533_add_type_to_stores_table.php
+│   │   ├── 2025_11_13_000646_create_stock_transfers_table.php
+│   │   ├── 2025_11_13_000824_create_stock_transfer_items_table.php
+│   │   ├── 2025_11_13_190333_add_related_transfer_id_to_stock_adjustments_table.php
+│   │   ├── 2025_11_25_221758_add_audit_fields_to_stock_transfers_table.php
+│   │   ├── 2025_11_26_180619_create_stock_adjustment_requests_table.php
+│   │   ├── 2025_12_10_191131_add_delivery_columns_to_stock_transfers_table.php
+│   │   ├── 2025_12_27_223129_create_finance_module_tables.php
+│   │   ├── 2026_01_07_112608_add_price_category_to_items_tables.php
+│   │   ├── 2026_01_07_125352_add_void_user_columns_to_invoices_table.php
+│   │   ├── 2026_01_07_180356_create_store_payment_settings_table.php
+│   │   ├── 2026_01_07_180431_update_payments_table_structure.php
+│   │   ├── 2026_01_07_180522_create_payment_method_tables.php
+│   │   ├── 2026_01_08_121323_make_payment_id_nullable_in_mpesa_transactions.php
+│   │   ├── 2026_01_08_145236_create_personal_access_tokens_table.php
+│   │   ├── 2026_01_13_213745_create_payment_to_customers_table.php
+│   │   ├── 2026_01_13_220105_add_refund_columns_to_invoices_table.php
+│   │   ├── 2026_01_14_190728_create_pos_sessions_table.php
+│   │   ├── 2026_01_14_190729_create_pos_sales_table.php
+│   │   ├── 2026_01_14_190730_create_pos_sale_items_table.php
+│   │   ├── 2026_01_14_193716_add_loyalty_points_to_customers_table.php
+│   │   ├── 2026_01_15_132545_add_pos_sale_id_to_payment_to_customers_table.php
+│   │   ├── 2026_01_16_181215_create_debt_repayments_table.php
+│   │   ├── 2026_01_16_211041_add_quotation_id_to_invoices_table.php
+│   │   ├── 2026_01_16_211625_create_quotations_table.php
+│   │   ├── 2026_01_16_211830_create_quotation_items_table.php
+│   │   ├── 2026_01_17_174714_create_notifications_table.php
+│   │   ├── 2026_01_17_201123_make_unit_and_supplier_nullable_on_products.php
+│   │   ├── 2026_01_18_184919_create_company_settings_table.php
+│   │   ├── 2026_01_20_172556_create_purchase_order_items_table.php
+│   │   ├── 2026_01_20_172556_create_purchase_orders_table.php
+│   │   ├── 2026_01_20_182344_add_columns_to_purchase_order_items_table.php
+│   │   ├── 2026_01_20_183550_add_user_id_to_purchase_orders.php
+│   │   ├── 2026_01_20_192151_add_dates_to_purchase_orders.php
+│   │   ├── 2026_01_26_135406_change_transfer_date_to_nullable_in_stock_transfers_table.php
+│   │   └── 2026_11_06_211708_add_is_active_and_soft_deletes_to_stores_table.php
+│   └── seeders/
+│       ├── DatabaseSeeder.php
+│       └── RolesAndPermissionsSeeder.php
+├── docker/
+│   ├── entrypoint.sh
+│   ├── php.dev.ini
+│   └── php.ini
+├── docker-compose.dev.yml
+├── docker-compose.yml
+├── eslint.config.js
+├── gen_tree.py
+├── node_modules/    (25970 files, dependencies)
+├── package-lock.json
+├── package.json
+├── phpstan.neon
+├── phpunit.xml
+├── pint.json
+├── project-structure.txt
+├── public/
+│   ├── .htaccess
+│   ├── apple-touch-icon.png
+│   ├── build/    (148 files, generated)
+│   ├── favicon.ico
+│   ├── favicon.png
+│   ├── favicon.svg
+│   ├── hot
+│   ├── index.php
+│   ├── logo.svg
+│   ├── robots.txt
+│   └── storage/
+├── resources/
+│   ├── css/
+│   │   └── app.css
+│   ├── js/
+│   │   ├── actions/
+│   │   │   ├── App/
+│   │   │   │   ├── Http/
+│   │   │   │   │   ├── Controllers/
+│   │   │   │   │   │   ├── AdjustmentReasonController.ts
+│   │   │   │   │   │   ├── Auth/
+│   │   │   │   │   │   │   ├── AuthenticatedSessionController.ts
+│   │   │   │   │   │   │   ├── EmailVerificationNotificationController.ts
+│   │   │   │   │   │   │   ├── EmailVerificationPromptController.ts
+│   │   │   │   │   │   │   ├── NewPasswordController.ts
+│   │   │   │   │   │   │   ├── PasswordResetLinkController.ts
+│   │   │   │   │   │   │   ├── RegisteredUserController.ts
+│   │   │   │   │   │   │   ├── VerifyEmailController.ts
+│   │   │   │   │   │   │   └── index.ts
+│   │   │   │   │   │   ├── BrandController.ts
+│   │   │   │   │   │   ├── CategoryController.ts
+│   │   │   │   │   │   ├── CompanySettingController.ts
+│   │   │   │   │   │   ├── CustomerController.ts
+│   │   │   │   │   │   ├── DashboardController.ts
+│   │   │   │   │   │   ├── DebtController.ts
+│   │   │   │   │   │   ├── FinancialReportController.ts
+│   │   │   │   │   │   ├── InvoiceController.ts
+│   │   │   │   │   │   ├── MpesaController.ts
+│   │   │   │   │   │   ├── NewStockEntryController.ts
+│   │   │   │   │   │   ├── NotificationController.ts
+│   │   │   │   │   │   ├── PaymentController.ts
+│   │   │   │   │   │   ├── PaymentToCustomerController.ts
+│   │   │   │   │   │   ├── PermissionController.ts
+│   │   │   │   │   │   ├── PosController.ts
+│   │   │   │   │   │   ├── PosSessionController.ts
+│   │   │   │   │   │   ├── ProductController.ts
+│   │   │   │   │   │   ├── PurchaseOrderController.ts
+│   │   │   │   │   │   ├── PurchaseOrderItemController.ts
+│   │   │   │   │   │   ├── QuotationController.ts
+│   │   │   │   │   │   ├── RoleController.ts
+│   │   │   │   │   │   ├── SaleController.ts
+│   │   │   │   │   │   ├── SaleItemController.ts
+│   │   │   │   │   │   ├── Settings/
+│   │   │   │   │   │   │   ├── PasswordController.ts
+│   │   │   │   │   │   │   ├── ProfileController.ts
+│   │   │   │   │   │   │   ├── TwoFactorAuthenticationController.ts
+│   │   │   │   │   │   │   └── index.ts
+│   │   │   │   │   │   ├── StockAdjustmentController.ts
+│   │   │   │   │   │   ├── StockAdjustmentRequestController.ts
+│   │   │   │   │   │   ├── StockController.ts
+│   │   │   │   │   │   ├── StockTransferController.ts
+│   │   │   │   │   │   ├── StockTransferItemController.ts
+│   │   │   │   │   │   ├── StoreController.ts
+│   │   │   │   │   │   ├── StorePaymentSettingController.ts
+│   │   │   │   │   │   ├── SupplierController.ts
+│   │   │   │   │   │   ├── UnitController.ts
+│   │   │   │   │   │   ├── UserController.ts
+│   │   │   │   │   │   ├── ValuationReportController.ts
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── Illuminate/
+│   │   │   │   ├── Routing/
+│   │   │   │   │   ├── RedirectController.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   └── Laravel/
+│   │   │       ├── Fortify/
+│   │   │       │   ├── Http/
+│   │   │       │   │   ├── Controllers/
+│   │   │       │   │   │   ├── ConfirmablePasswordController.ts
+│   │   │       │   │   │   ├── ConfirmedPasswordStatusController.ts
+│   │   │       │   │   │   ├── ConfirmedTwoFactorAuthenticationController.ts
+│   │   │       │   │   │   ├── RecoveryCodeController.ts
+│   │   │       │   │   │   ├── TwoFactorAuthenticatedSessionController.ts
+│   │   │       │   │   │   ├── TwoFactorAuthenticationController.ts
+│   │   │       │   │   │   ├── TwoFactorQrCodeController.ts
+│   │   │       │   │   │   ├── TwoFactorSecretKeyController.ts
+│   │   │       │   │   │   └── index.ts
+│   │   │       │   │   └── index.ts
+│   │   │       │   └── index.ts
+│   │   │       ├── Sanctum/
+│   │   │       │   ├── Http/
+│   │   │       │   │   ├── Controllers/
+│   │   │       │   │   │   ├── CsrfCookieController.ts
+│   │   │       │   │   │   └── index.ts
+│   │   │       │   │   └── index.ts
+│   │   │       │   └── index.ts
+│   │   │       └── index.ts
+│   │   ├── app.tsx
+│   │   ├── components/
+│   │   │   ├── InvoiceItemEditor.tsx
+│   │   │   ├── NotificationBell.tsx
+│   │   │   ├── Partials/
+│   │   │   │   ├── ActiveCart.tsx
+│   │   │   │   ├── CategoryTabs.tsx
+│   │   │   │   ├── ClearCartModal.tsx
+│   │   │   │   ├── CloseRegisterModal.tsx
+│   │   │   │   ├── DebtPaymentModal.tsx
+│   │   │   │   ├── FooterLog.tsx
+│   │   │   │   ├── OpenRegisterModal.tsx
+│   │   │   │   ├── PosPaymentModal.tsx
+│   │   │   │   ├── ProductGrid.tsx
+│   │   │   │   ├── ReceiptSuccessModal.tsx
+│   │   │   │   └── ReceiptTemplate.tsx
+│   │   │   ├── alert-error.tsx
+│   │   │   ├── app-content.tsx
+│   │   │   ├── app-header.tsx
+│   │   │   ├── app-logo-icon.tsx
+│   │   │   ├── app-logo.tsx
+│   │   │   ├── app-shell.tsx
+│   │   │   ├── app-sidebar-header.tsx
+│   │   │   ├── app-sidebar.tsx
+│   │   │   ├── appearance-tabs.tsx
+│   │   │   ├── bi-header.tsx
+│   │   │   ├── breadcrumbs.tsx
+│   │   │   ├── complex-modal-form.tsx
+│   │   │   ├── complex-table.tsx
+│   │   │   ├── config/
+│   │   │   │   ├── filters/
+│   │   │   │   │   ├── adjustment-filters.ts
+│   │   │   │   │   ├── debt-filters.ts
+│   │   │   │   │   ├── movement-filters.ts
+│   │   │   │   │   ├── payments-filters.ts
+│   │   │   │   │   ├── performance-filters.ts
+│   │   │   │   │   ├── profit-loss-filters.ts
+│   │   │   │   │   ├── refunds-filters.ts
+│   │   │   │   │   ├── tax-filters.ts
+│   │   │   │   │   └── valuation-filters.ts
+│   │   │   │   ├── forms/
+│   │   │   │   │   ├── adjustment-reason-modal-form.ts
+│   │   │   │   │   ├── brand-modal-form.ts
+│   │   │   │   │   ├── category-modal-form.ts
+│   │   │   │   │   ├── company-setting-modal-form.ts
+│   │   │   │   │   ├── customer-modal-form.ts
+│   │   │   │   │   ├── invoice-modal-form.ts
+│   │   │   │   │   ├── newstockentry-modal-form.ts
+│   │   │   │   │   ├── payment-modal-form.ts
+│   │   │   │   │   ├── payment-settings-modal-form.ts
+│   │   │   │   │   ├── payment-to-customer-modal-form.ts
+│   │   │   │   │   ├── permissions-modal-form.ts
+│   │   │   │   │   ├── pos-session-modal-form.ts
+│   │   │   │   │   ├── product-modal-form.ts
+│   │   │   │   │   ├── purchase-order-modal-form.ts
+│   │   │   │   │   ├── quotation-modal-form.ts
+│   │   │   │   │   ├── roles-modal-form.ts
+│   │   │   │   │   ├── sale-modal-form.ts
+│   │   │   │   │   ├── stock-adjustment-request-modal-form.ts
+│   │   │   │   │   ├── stock-modal-form.ts
+│   │   │   │   │   ├── stock-transfer-delivery-modal-form.ts
+│   │   │   │   │   ├── stocktransfer-modal-form.ts
+│   │   │   │   │   ├── store-modal-form.ts
+│   │   │   │   │   ├── supplier-modal-form.ts
+│   │   │   │   │   ├── unit-modal-form.ts
+│   │   │   │   │   └── user-modal-form.ts
+│   │   │   │   ├── mode-registry/
+│   │   │   │   │   └── mode-registry.ts
+│   │   │   │   ├── stats/
+│   │   │   │   │   ├── adjustment-stats.ts
+│   │   │   │   │   ├── debt-stats.ts
+│   │   │   │   │   ├── movement-stats.ts
+│   │   │   │   │   ├── payments-stats.ts
+│   │   │   │   │   ├── performance-stats.ts
+│   │   │   │   │   ├── profit-loss-stats.ts
+│   │   │   │   │   ├── refunds-stats.ts
+│   │   │   │   │   ├── tax-stats.ts
+│   │   │   │   │   └── valuation-stats.ts
+│   │   │   │   └── tables/
+│   │   │   │       ├── adjustment-report-table.ts
+│   │   │   │       ├── adjustment-table.ts
+│   │   │   │       ├── brand-table.ts
+│   │   │   │       ├── category-table.ts
+│   │   │   │       ├── company-setting-table.ts
+│   │   │   │       ├── customer-table.ts
+│   │   │   │       ├── debt-report-table.ts
+│   │   │   │       ├── debt-statement-table.ts
+│   │   │   │       ├── debt-table.ts
+│   │   │   │       ├── invoice-table.ts
+│   │   │   │       ├── movement-report-table.ts
+│   │   │   │       ├── newstockentry-table.ts
+│   │   │   │       ├── payment-settings-table.ts
+│   │   │   │       ├── payment-table.ts
+│   │   │   │       ├── payment-to-customer-table.ts
+│   │   │   │       ├── payments-report-table.ts
+│   │   │   │       ├── performance-report-table.ts
+│   │   │   │       ├── permission-table.ts
+│   │   │   │       ├── pos-session-table.ts
+│   │   │   │       ├── product-table.ts
+│   │   │   │       ├── profit-loss-report-table.ts
+│   │   │   │       ├── purchase-order-items-table.ts
+│   │   │   │       ├── purchase-order-table.ts
+│   │   │   │       ├── quotation-table.ts
+│   │   │   │       ├── refunds-report-table.ts
+│   │   │   │       ├── roles-table.ts
+│   │   │   │       ├── sale-item-table.ts
+│   │   │   │       ├── sales-table.ts
+│   │   │   │       ├── stock-adjustment-request-table.ts
+│   │   │   │       ├── stock-table.ts
+│   │   │   │       ├── stockadjustment-table.ts
+│   │   │   │       ├── stocktransfer-table.ts
+│   │   │   │       ├── store-table.ts
+│   │   │   │       ├── supplier-table.ts
+│   │   │   │       ├── tax-report-table.ts
+│   │   │   │       ├── unit-table.ts
+│   │   │   │       ├── user-table.ts
+│   │   │   │       └── valuation-report-table.ts
+│   │   │   ├── custom-table.tsx
+│   │   │   ├── custom-toast.tsx
+│   │   │   ├── delete-user.tsx
+│   │   │   ├── filter-grid.tsx
+│   │   │   ├── finance-modal-form.tsx
+│   │   │   ├── heading-small.tsx
+│   │   │   ├── heading.tsx
+│   │   │   ├── icon.tsx
+│   │   │   ├── input-error.tsx
+│   │   │   ├── mode-navigator.tsx
+│   │   │   ├── payment-modal.tsx
+│   │   │   ├── report-table.tsx
+│   │   │   ├── simple-custom-modal-form.tsx
+│   │   │   ├── stats-grid.tsx
+│   │   │   ├── success-modal.tsx
+│   │   │   ├── text-link.tsx
+│   │   │   ├── two-factor-recovery-codes.tsx
+│   │   │   ├── two-factor-setup-modal.tsx
+│   │   │   ├── ui/
+│   │   │   │   ├── alert-dialog.tsx
+│   │   │   │   ├── alert.tsx
+│   │   │   │   ├── avatar.tsx
+│   │   │   │   ├── badge.tsx
+│   │   │   │   ├── breadcrumb.tsx
+│   │   │   │   ├── button.tsx
+│   │   │   │   ├── card.tsx
+│   │   │   │   ├── checkbox.tsx
+│   │   │   │   ├── command.tsx
+│   │   │   │   ├── dialog.tsx
+│   │   │   │   ├── dropdown-menu.tsx
+│   │   │   │   ├── icon.tsx
+│   │   │   │   ├── input-otp.tsx
+│   │   │   │   ├── input.tsx
+│   │   │   │   ├── label.tsx
+│   │   │   │   ├── navigation-menu.tsx
+│   │   │   │   ├── pagination.tsx
+│   │   │   │   ├── popover.tsx
+│   │   │   │   ├── radio-group.tsx
+│   │   │   │   ├── searchable-select.tsx
+│   │   │   │   ├── select.tsx
+│   │   │   │   ├── separator.tsx
+│   │   │   │   ├── sheet.tsx
+│   │   │   │   ├── sidebar.tsx
+│   │   │   │   ├── skeleton.tsx
+│   │   │   │   ├── stock-status-icon.tsx
+│   │   │   │   ├── switch.tsx
+│   │   │   │   ├── tag-input.tsx
+│   │   │   │   ├── textarea.tsx
+│   │   │   │   ├── toggle.tsx
+│   │   │   │   └── tooltip.tsx
+│   │   │   ├── user-info.tsx
+│   │   │   ├── user-menu-content.tsx
+│   │   │   └── zero-state.tsx
+│   │   ├── hooks/
+│   │   │   ├── use-appearance.tsx
+│   │   │   ├── use-clipboard.ts
+│   │   │   ├── use-initials.tsx
+│   │   │   ├── use-mobile-navigation.ts
+│   │   │   ├── use-mobile.tsx
+│   │   │   └── use-two-factor-auth.ts
+│   │   ├── layouts/
+│   │   │   ├── app/
+│   │   │   │   └── app-sidebar-layout.tsx
+│   │   │   ├── app-layout.tsx
+│   │   │   ├── auth/
+│   │   │   │   └── auth-simple-layout.tsx
+│   │   │   ├── auth-layout.tsx
+│   │   │   └── settings/
+│   │   │       └── layout.tsx
+│   │   ├── lib/
+│   │   │   └── utils.ts
+│   │   ├── pages/
+│   │   │   ├── adjustment-reason/
+│   │   │   │   └── index.tsx
+│   │   │   ├── auth/
+│   │   │   │   ├── confirm-password.tsx
+│   │   │   │   ├── forgot-password.tsx
+│   │   │   │   ├── login.tsx
+│   │   │   │   ├── register.tsx
+│   │   │   │   ├── reset-password.tsx
+│   │   │   │   ├── two-factor-challenge.tsx
+│   │   │   │   └── verify-email.tsx
+│   │   │   ├── brands/
+│   │   │   │   └── index.tsx
+│   │   │   ├── categories/
+│   │   │   │   └── index.tsx
+│   │   │   ├── company-settings/
+│   │   │   │   └── index.tsx
+│   │   │   ├── customers/
+│   │   │   │   └── index.tsx
+│   │   │   ├── dashboard.tsx
+│   │   │   ├── debts/
+│   │   │   │   ├── index.tsx
+│   │   │   │   └── show.tsx
+│   │   │   ├── financial-reports/
+│   │   │   │   └── index.tsx
+│   │   │   ├── invoices/
+│   │   │   │   └── index.tsx
+│   │   │   ├── newstockentries/
+│   │   │   │   └── index.tsx
+│   │   │   ├── payment-settings/
+│   │   │   │   └── index.tsx
+│   │   │   ├── payments/
+│   │   │   │   └── index.tsx
+│   │   │   ├── payments-to-customers/
+│   │   │   │   └── index.tsx
+│   │   │   ├── permissions/
+│   │   │   │   └── index.tsx
+│   │   │   ├── pos/
+│   │   │   │   └── index.tsx
+│   │   │   ├── pos-sessions/
+│   │   │   │   └── index.tsx
+│   │   │   ├── products/
+│   │   │   │   └── index.tsx
+│   │   │   ├── purchase-order-items/
+│   │   │   │   └── index.tsx
+│   │   │   ├── purchase-orders/
+│   │   │   │   ├── PurchaseOrderItemEditor.tsx
+│   │   │   │   └── index.tsx
+│   │   │   ├── quotations/
+│   │   │   │   └── index.tsx
+│   │   │   ├── roles/
+│   │   │   │   └── index.tsx
+│   │   │   ├── sale-items/
+│   │   │   │   └── index.tsx
+│   │   │   ├── sales/
+│   │   │   │   └── index.tsx
+│   │   │   ├── settings/
+│   │   │   │   ├── appearance.tsx
+│   │   │   │   ├── password.tsx
+│   │   │   │   ├── profile.tsx
+│   │   │   │   └── two-factor.tsx
+│   │   │   ├── stock-transfer-items/
+│   │   │   │   └── index.tsx
+│   │   │   ├── stockadjustments/
+│   │   │   │   └── index.tsx
+│   │   │   ├── stocks/
+│   │   │   │   ├── index.tsx
+│   │   │   │   └── stock-adjustment-request.tsx
+│   │   │   ├── stocktransfers/
+│   │   │   │   ├── TransferItemEditor.tsx
+│   │   │   │   └── index.tsx
+│   │   │   ├── stores/
+│   │   │   │   └── index.tsx
+│   │   │   ├── suppliers/
+│   │   │   │   └── index.tsx
+│   │   │   ├── units/
+│   │   │   │   └── index.tsx
+│   │   │   ├── users/
+│   │   │   │   └── index.tsx
+│   │   │   └── valuation-reports/
+│   │   │       └── index.tsx
+│   │   ├── routes/
+│   │   │   ├── adjustmentreasons/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── appearance/
+│   │   │   │   └── index.ts
+│   │   │   ├── brands/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── categories/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── company-settings/
+│   │   │   │   └── index.ts
+│   │   │   ├── customers/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── debts/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── financial-reports/
+│   │   │   │   └── index.ts
+│   │   │   ├── index.ts
+│   │   │   ├── invoices/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── login/
+│   │   │   │   └── index.ts
+│   │   │   ├── mpesa/
+│   │   │   │   └── index.ts
+│   │   │   ├── new-stock-entries/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── notifications/
+│   │   │   │   └── index.ts
+│   │   │   ├── password/
+│   │   │   │   ├── confirm/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── payment-settings/
+│   │   │   │   └── index.ts
+│   │   │   ├── payments/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── payments-to-customers/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── permissions/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── pos/
+│   │   │   │   └── index.ts
+│   │   │   ├── pos-sessions/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── products/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── profile/
+│   │   │   │   └── index.ts
+│   │   │   ├── purchase-order-items/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── purchase-orders/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── quotations/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── register/
+│   │   │   │   └── index.ts
+│   │   │   ├── roles/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── sale-items/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── sales/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── sanctum/
+│   │   │   │   └── index.ts
+│   │   │   ├── stock-adjustment-requests/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── stock-adjustments/
+│   │   │   │   └── index.ts
+│   │   │   ├── stock-transfer-items/
+│   │   │   │   └── index.ts
+│   │   │   ├── stock-transfers/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── stocks/
+│   │   │   │   ├── bulk-export/
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── storage/
+│   │   │   │   └── index.ts
+│   │   │   ├── stores/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── suppliers/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── two-factor/
+│   │   │   │   ├── index.ts
+│   │   │   │   └── login/
+│   │   │   │       └── index.ts
+│   │   │   ├── units/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── users/
+│   │   │   │   ├── export/
+│   │   │   │   │   ├── excel/
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── pdf/
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── valuation-reports/
+│   │   │   │   └── index.ts
+│   │   │   └── verification/
+│   │   │       └── index.ts
+│   │   ├── ssr.tsx
+│   │   ├── types/
+│   │   │   ├── global.d.ts
+│   │   │   ├── index.d.ts
+│   │   │   ├── reports.ts
+│   │   │   └── vite-env.d.ts
+│   │   ├── utilis/
+│   │   │   └── authorization.ts
+│   │   └── wayfinder/
+│   │       └── index.ts
+│   └── views/
+│       ├── app.blade.php
+│       ├── brands/
+│       │   ├── brand-bulk-pdf.blade.php
+│       │   └── brand-single.blade.php
+│       ├── categories/
+│       │   ├── category-bulk-pdf.blade.php
+│       │   └── category-single.blade.php
+│       ├── customers/
+│       │   ├── customer-bulk-pdf.blade.php
+│       │   └── customer-single.blade.php
+│       ├── debts/
+│       │   ├── list-pdf.blade.php
+│       │   └── statement-pdf.blade.php
+│       ├── invoices/
+│       │   ├── bulk-pdf.blade.php
+│       │   ├── receipt-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── new-stock-entries/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── payments/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── payments-to-customers/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── pos-sessions/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── products/
+│       │   ├── product-single.blade.php
+│       │   └── products-bulk-pdf.blade.php
+│       ├── purchase-order-items/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── purchase-orders/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── quotations/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── reports/
+│       │   ├── adjustments.blade.php
+│       │   ├── financial.blade.php
+│       │   ├── movement.blade.php
+│       │   └── valuation.blade.php
+│       ├── sale-items/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── sales/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── stock-adjustment-requests/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── stock-transfer-items/
+│       │   └── bulk-pdf.blade.php
+│       ├── stock-transfers/
+│       │   ├── bulk-pdf.blade.php
+│       │   └── single-pdf.blade.php
+│       ├── stock_adjustments/
+│       │   └── bulk-adjustment-pdf.blade.php
+│       ├── stocks/
+│       │   ├── stock-single-policy.blade.php
+│       │   └── stocks-bulk-pdf.blade.php
+│       ├── stores/
+│       │   ├── store-bulk-pdf.blade.php
+│       │   └── store-single.blade.php
+│       ├── suppliers/
+│       │   ├── supplier-bulk-pdf.blade.php
+│       │   └── supplier-single.blade.php
+│       └── units/
+│           ├── unit-bulk-pdf.blade.php
+│           └── unit-single-pdf.blade.php
+├── routes/
+│   ├── api.php
+│   ├── auth.php
+│   ├── console.php
+│   ├── settings.php
+│   └── web.php
+├── storage/
+│   ├── app/
+│   │   ├── .gitignore
+│   │   ├── private/
+│   │   │   └── .gitignore
+│   │   └── public/
+│   │       ├── .gitignore
+│   │       ├── brands/
+│   │       │   ├── 457tYlvSvzC3vhpTM69on5sy7YSFYEcSi2VWn5x0.webp
+│   │       │   ├── 7gF6UnMkSLxMn9HyZ4y83Hxw8h0nbeCIae1ibgYh.png
+│   │       │   ├── 9IwkT4BFY2l2bRy0jPR4DvDXUdgPBeC5nxr92CDA.png
+│   │       │   ├── 9asEJLRBZItjg6vrbjOUmjePPL7hdDooVpCiC6MA.png
+│   │       │   ├── AQHGLP0Dk8MYfdnqQRQmpso6SJMCAlcvOCSJBOmW.png
+│   │       │   ├── BhBcKOsG3wGOo7VusRlJUBgHgOU0rnpPXNHMIx8W.png
+│   │       │   ├── D6z5Euu62exYdd66I4I6Y4b9eeIEXHZN7O5Rfduf.png
+│   │       │   ├── IEbcuS0CIh5KQaRRbMGDGC3KnaxKbyXW6cAnz6vZ.png
+│   │       │   ├── Nt0knm5YAsVpX0DP2Yzt5QkloDZG5TwBnoiGTO4c.jpg
+│   │       │   ├── PE0mk1pQtVfboBUtUzPSy5O12DWhUccy7VoR4NsP.png
+│   │       │   ├── R8shQqEvQvr1II2rCXfwd03lbyoyu2Zr3Vt1U8Ap.png
+│   │       │   ├── Tyq1auRIHo1P1Rfwu6MWgRFp9lqCAIkssaep7dHW.png
+│   │       │   ├── Ux7d1waSr3nLtgGhdXVEjzmPrj4QNSa1dwaoI2KR.png
+│   │       │   ├── X4S80TmbMpkSPhRELwOqt0BRCR7ZKYO2i08tnRgZ.png
+│   │       │   ├── Yl6E4sv40fIRsRd2Zk4B6KoH7odqbWJzLCYietfG.png
+│   │       │   ├── hkc8OhW3FPJ9IbVsVUqphKfYz0ZEPn2oFYSY3qqE.png
+│   │       │   ├── hwuwpTvzraIgK3EgDpNzMZ3ARcCiXDownMN2KvsX.png
+│   │       │   ├── j864mj6Haqv8i4oFUz2mo1Gao88EinnT0XdBQdub.png
+│   │       │   ├── ktqz93gmfm8VfCrQBa2Z5v5EEZJXY06jhbOrUlZY.png
+│   │       │   ├── l2co6urVkT4d1pBQJMgon4E6ynDSgDjHEV5IRzVU.png
+│   │       │   ├── o3ANZZAWvcC0kLgtrzmLpur1JsoTw5ZHwDHakQgC.png
+│   │       │   ├── oVAI58gzcR90J4cf7xAcOPDUghJCR6VuqMkfYM3K.png
+│   │       │   ├── ts5RGN19fL0PozQ05ydva9b1PJVxoMAevAfGSw2c.png
+│   │       │   ├── whJNa9NoITOseuMaDDB0KONLSaks4GwAgKDVJoHG.jpg
+│   │       │   ├── xf00HqZfNIlF49XZKU1g1CjYVTc4CFEtmxjCGyDJ.jpg
+│   │       │   ├── xpP2nmHbEi2Q3BWfQyPgfQpCGYWnTRpiXdh6ICjR.png
+│   │       │   └── y5pveFafM08t5zTBd4m9jDjvaRLh7gNxzBuOg9Vx.png
+│   │       ├── categories/
+│   │       │   ├── 0xPOM4AQGjiNS6xzlFFD3SN4X01LB9DBMiNZOXkA.jpg
+│   │       │   ├── 4fQpoHCH6XX3bxBFbhZeA9dm5D6B1udHxQTsFTZg.jpg
+│   │       │   ├── BNLgZU57aKNB00aBKqlD6S30jnKWAzjbvuoPoiyY.jpg
+│   │       │   ├── Ck5O7Wmx5HH6ngfEXV29QHgqTTmRCMwm1nescjXG.jpg
+│   │       │   ├── EYhQpdHUkDrhe0pbywHu3B29xkhcmukf81ipbVIf.png
+│   │       │   ├── H9siJSmIBmZxRqfB9mA9oYI0EmvWhx0xtTowKNQQ.jpg
+│   │       │   ├── KE8liLqNv5U23pLJjnQ3RYhrmQOnm0gOfPXxwDu2.jpg
+│   │       │   ├── SobB7gKEOKTbY0uoOO14jzkqkCjII59ypRf2pAQR.jpg
+│   │       │   ├── TCnsOMZktwGKd1Kj4nua8pTSAfe691s0sEdGFH1m.png
+│   │       │   ├── TtA4WgWD7EVKq0UeMltK36J5Gscx2Ir4U0uxLv69.jpg
+│   │       │   ├── fdjLOUa541V5COiqaqk8MbpXaDQ10Joe8lXAVE7w.jpg
+│   │       │   ├── jNAkJg7xaJwC7AMLSso07PaEtGFiI9bGdr6KRXdp.png
+│   │       │   ├── kx4IOBLg0sRLyw5Zfp4kXDWaBOUYbCuByYHYZK6k.webp
+│   │       │   └── nWeBTSQad2tJYGqY6Ha9eHJuKnZSb5jdbu6pxwR0.jpg
+│   │       ├── company_logos/
+│   │       │   └── njIVHBuHnpDppfqflIUzD1ApSilpXqzgiZtq6HZs.png
+│   │       └── products/
+│   │           ├── main/
+│   │           │   ├── 20Z4WSBZyDPhjZyuFXGfEri6SydvsCZFC9C3Vpx8.png
+│   │           │   ├── 37jHpCP3mDxvyoIITX0EsqGuypHKpxzFXQE4dMVX.webp
+│   │           │   ├── 3ey7KvTEpluazuFrhGZQ3QqvyXETldM05fI8l41C.jpg
+│   │           │   ├── 4n8zrxFMFkUWq66RzdsyJHnezW5jpdFKF453ILTL.avif
+│   │           │   ├── 7yC7GzPVOqN5xB3dK0aOkDI1yc8RanFxKezMDKgp.webp
+│   │           │   ├── 8D3qBYVjq1DvQvZUJ1LdUpdnrw6IkFIjATyGTJmt.webp
+│   │           │   ├── AV1qOJ5APcVWBmnoDeEhYNO60yoTINHvcjLm80rf.webp
+│   │           │   ├── Azwp87aH4lDfY2DJ1Art70irsSx0X4mwcV6PIwcF.jpg
+│   │           │   ├── Bu19xVrqSIp1cBlGiTQf7LbGlQMcGoRtKORjweiX.jpg
+│   │           │   ├── CraHHm8G8Rfmq70pLXhYcyYCqhvdS9UERuh5JkZn.webp
+│   │           │   ├── IcmMsEXkdR3wBzp7hleoEJLEwpqLB7qUB6HFp4dP.webp
+│   │           │   ├── JFkaFxiSQtOI65FLN4vX71eaScvq0Qbes6oUmR2t.webp
+│   │           │   ├── JO6NnzefAPkb328jyQJ2JQlvQG5YM8VyMJ8bvsIE.jpg
+│   │           │   ├── KxXRfyDDyZohKbOlEYU1zdXk15Cz2pC4HZymzPjw.jpg
+│   │           │   ├── MzzDZ924NeyyEk4WKLbsa1KcxHx5uK3Ek4CPtLty.webp
+│   │           │   ├── OatjUocJhpT5s8zv6tx9lji502adm3veRoLoelUJ.jpg
+│   │           │   ├── RbzyXwYzYOp28K6P0dXQkwlT93VRiKdHjLwJ6MML.jpg
+│   │           │   ├── SRc91zPtdxqasoN2x9kL3xCeFsjKFchkn20I7WBU.webp
+│   │           │   ├── ai93DZKX9NdD4AiDnkoVR1sBXB4JlgMkLhcY36Y7.jpg
+│   │           │   ├── c56e6cI4M1WKOOSmXSQSjfH3LDmvjQXcgqCSocSQ.jpg
+│   │           │   ├── ev3ir0fOzcjlyZQLVjc4IiVdYnPjpQTQz4A3S9OG.jpg
+│   │           │   ├── f5nhxvuAtilFw5fPfbwkp97FDCBd2GPVJPhVWQ8R.jpg
+│   │           │   ├── fQiVX564Kq0NJCYUxZqnjKcA07joFr3cuUW9Hx13.jpg
+│   │           │   ├── j3UiICkNMeCNLhjaTQ0PICURVDRZqLHyPCMWxjAQ.jpg
+│   │           │   ├── mdsaDT7qdktNHQKKJPMuaA5UMRJBbxmFtqjLx9bh.png
+│   │           │   ├── qj1MSbBUf6498FB0SNRZ0y0Ba1v0F5LJ0xZqUtAF.jpg
+│   │           │   ├── z6JjFOu5jlYjwljkOwdxIF3uRgFKTdSouFRC911O.webp
+│   │           │   └── zdbIia9JEdy4Oa8qFCEPqdJ7weRzf3QE97IkKMsY.webp
+│   │           └── multi/
+│   │               ├── 0EnlCF2xJPXd8BKJIuk7VgN8dRF1JS84RyAMH5la.jpg
+│   │               ├── 0syz8NabFFWjTkn7IgBJIVE6qc4OzByhi87VVmsm.jpg
+│   │               ├── 2ghlkyBbPdXfopbw4tmOuJB2OT7Lpl1HsCd7lM8K.webp
+│   │               ├── 3l0HMFFV7sk2HM4eHuKdTB4Qjyviomt343iDSNJK.jpg
+│   │               ├── 57sdMiWAYuS8naAJzAtjtyCJDY2SybvG9OVS6XbG.jpg
+│   │               ├── 5DWItdJoGhMfblQbfCDNCS9NjyKHquKUEVZtLrHW.jpg
+│   │               ├── 5V3AzyOn3aF4DbBZBH6GOXxojdE3rdQ8AHaKmMiW.webp
+│   │               ├── 5l07iTNU7Qd7TBBBeezI4mnBxa9UPRnygXz15oja.webp
+│   │               ├── 5pucx2vo6eB8fs2T6ndIXeCkoMWSLmfCRFTv5GXt.webp
+│   │               ├── 6PKRy8n95l6g0sBHNRN0snnJ0ysjosZWwhZhqxO3.webp
+│   │               ├── 6W28Ijf9O5FGQTse6qDyocyNO8j6jkBIApQ6dTiG.webp
+│   │               ├── 712AdNsZfxC0vHVqcCjm8gjEiAHc4X3gWtWe5a1K.jpg
+│   │               ├── 7kY8aTfTj1MRhJmNkbNgqMu1WrhFAoaG4BQDhyQD.webp
+│   │               ├── 89CaMrDBVcmkEyzmBPDw2bLJQDTThUezSLty2EHH.webp
+│   │               ├── AKbPuosCp76NOIB8oz1XjIBv6ytJ9FUQZfv73qGw.jpg
+│   │               ├── AWX4lx7ZF4yeEx9ltlk1zKIIO6bILGq4gY5RlHYt.webp
+│   │               ├── AfFZJThF77qFJ9yYIOvalCstChEzWqRLiNfTritx.webp
+│   │               ├── AosBGzrTE9cogvdidne5L4Hd1AJXxKsdLxdjKnA3.jpg
+│   │               ├── AoxLRz14FGunOsjsh1A2ENxZubDiE95P9I4wPFZ2.webp
+│   │               ├── DSAmSH2gZo8D7I9EIUsZxF2BpwsrG1gYYfojeYjZ.webp
+│   │               ├── EJd3ksnsH0hemSguM0gMTqELkEhBq2GBIGocX38E.jpg
+│   │               ├── ESIFWkbvxiYK1Hb8Xlo7lCesI2frIrQaEord86p0.webp
+│   │               ├── EZ15HroW7ChBnSA3uFXW60KTuCXeLwOETjQvupVF.webp
+│   │               ├── EueHqVkJ1nHVEAiPY067Y8GUuRxkK4PfaafOKKTT.jpg
+│   │               ├── F6fFE43tG5lRYUWHHHR2FxooDkPhpiD8B07bpAqD.jpg
+│   │               ├── GTO8DPAZlkXGvkvevbByy39hWUXt4mvS3X0Umqus.webp
+│   │               ├── HPTLYpf68tYRhSBLVH6IWEPGREsPa4bSMNHOs6Sg.webp
+│   │               ├── IknZrqh6rewDQKNASrUMmOXHUdvckycWAIsGtOdi.webp
+│   │               ├── J7PjETOl5VXTkSAxqMt6gbUuX0S3P7hDzdXVNVPu.webp
+│   │               ├── JcVDDxIjpp0G8NTm6FD3LJMVqZBiLQjCeZfgbtlQ.jpg
+│   │               ├── JxY4JWYCN0AKB33xl5gysbjxq57euS0KnHuNkNBp.jpg
+│   │               ├── JxaJWe1yQp5Lt5RQ4kOiZ8DcMLReBi221hu1fkX6.jpg
+│   │               ├── KDQx7iSpEorCa9jvUNL12ixxVpaEyOvamlMR8iP6.jpg
+│   │               ├── LIkOs8r8cC2Iui4aoHLwzjS9eP1bqgsDJeBgQB6c.webp
+│   │               ├── LW2pEKBMTZzTCz3S91TUcDew7e1Db1kbN1U0hcUN.jpg
+│   │               ├── Mwt76lbcD5zbIYnVpCv7DjSp5DFUoILcP9qrktYn.webp
+│   │               ├── N8WbVOsY92IgF70dquVf96zdhpveX2CWrWOTt9lV.webp
+│   │               ├── NE0b1QC1BzGTmv42Gcc0VOp0pIymUJzlHg3UZvd3.jpg
+│   │               ├── NbKq7XScJLJL7s8yYwTiHkrQ8OSA4M6aBQEG3nYu.jpg
+│   │               ├── OiUn7C1i3OuwkL0zJegGLgvjrE3JstBnqerrOR9j.webp
+│   │               ├── OvxLhrqMjsPEvnobcOpy68GQR6FfzFFwpN54SIOe.webp
+│   │               ├── PjhiFpHU9GothHww3T1PboKSZmREzpSX6bwCZThu.webp
+│   │               ├── QD1Qy7cZBfc6lcPJ6GUPZHmDOSuFHomojI7HTuHX.png
+│   │               ├── QiIelBpbZ1cn3HJ5EjAgb6AVr9DtD44hvgzsyEbf.webp
+│   │               ├── SqA8j98z2yHxw4DjUfSy8TddbUbhsuOd28lMNNKF.jpg
+│   │               ├── SshZeF81Y3ecEnaIhajvIwl2ydd7U5U1wXhcYBbD.webp
+│   │               ├── TrwK9G0fUUdJ6tmczGrbuYqNWbJCTRnRd6154apQ.jpg
+│   │               ├── U3aBjMmMKdj2ddu6E0JfAlOL7KwJct2dWDxgphhc.webp
+│   │               ├── UGeBPry44wvSInKCGrw7EKNx6iBPdS2GHYq556iy.jpg
+│   │               ├── VQOr1uJ6l3aX3WNRHEsmpahpSli5MXevYDUGmT0r.jpg
+│   │               ├── VV0dTpP2khjNNvWcw7l42toeOCBLIIxLeI1BfQSM.jpg
+│   │               ├── WVmsZ1kJlXuFtkPfPOdnXu3ep20i725OnQx2YDW3.jpg
+│   │               ├── XIbVPtbZ9k1cAb8LtUJrhPi0OVnjHThj9wb17Mst.jpg
+│   │               ├── XK8vbBxz2CfDtzdzwg04pg9NNcYis6xhKhqOxGKy.jpg
+│   │               ├── XWZYTyqQZs9Vl6QD8bfCmK4fAMHY3pSPeRDOC1O9.webp
+│   │               ├── Xb0ItJtUg6eLapcL06bi9dhrSNnivRO1bfTunyu6.jpg
+│   │               ├── YQX1jOZ6JL5A43w9HVn0C9RX4DYN5L8GYtcmyePB.webp
+│   │               ├── ZL7hsCOiYqlfxRtmNJoDmeOCaDRsvSejLOELLFX7.webp
+│   │               ├── Zg2uTMDajIuIseKanuQblIYvRb6qafG1tD8ktZFT.webp
+│   │               ├── ZhXCzSsqtIloEMBXsocYTGXHWkWVukXd1N9WR9LW.webp
+│   │               ├── ZyabDBO5JYQ1hnDxE64gyII58flEtLnDePESY5Rd.webp
+│   │               ├── a9dv76TQ3vnxs3UYNoRRf42jzlg99HRQ9HWmA9Ku.webp
+│   │               ├── aUJB5njLi1sZHeHFJRdyAgsMwy37ArFBb5rCYg1c.webp
+│   │               ├── aURpiNRMRJmZlIJSAXVdndaYGrqUeE8dT7kX2L7H.jpg
+│   │               ├── b784FWD5fOa5NoMUwHHVuHedVlNXVhHqIUJ40Ffz.webp
+│   │               ├── bxuz0H8cuU3gl94fGRr7DNigKOGtgziXNotCx1RQ.jpg
+│   │               ├── c512NDyMyt6wYLtGmRbREc8FqqcBIcd8U5Fbh3nD.png
+│   │               ├── cBoAGj14u7D6vjCsG7MDP6Y0rUiyq9Sy1lwznRRi.jpg
+│   │               ├── diKFQOf4YZLUMTQqYIPfhAFwyASXtIi6akG9OvaC.webp
+│   │               ├── e58UipgOmK8OgTqotQhsqs30Vl9PHbrXeLITaSaz.png
+│   │               ├── ge2IojGXG46v2u9VKbl9AkNsuGbmP59KP75TrEO9.avif
+│   │               ├── hhdbYMhmkmY7fsBiI29O6glOc0k09YM2MKKawKoU.jpg
+│   │               ├── hqsI9alT05QjLGqhlnRIL9nEqEAsfUSnT1awGwXg.webp
+│   │               ├── i49nosX4hiW0JVBdFSZpAvq8HdR8wIXWcPhsNpqa.webp
+│   │               ├── iZwMrplYGjblTCCpaGgOCZ1zWdxOjXsj6g452Y9w.webp
+│   │               ├── igwhZOSzBBBCYYYT13iiq2XanjxuoAHcqaQcvOOE.webp
+│   │               ├── ipDHuxk5sn6gTj0xxse1Zm3CzVLU1tsjeK9J7eJY.jpg
+│   │               ├── jV5O4WDHtc8ZcJgn68Vty1ojoTDqeyvDhSj2KdkH.jpg
+│   │               ├── jaW6XRk748hi5VFBCYAucqpZ6aRar8AFoH4a1XjX.webp
+│   │               ├── k8wVRrVAnMpKscKDThsZCCdirZGD1UcWprUkibeB.jpg
+│   │               ├── ka4LLdrUcB7akaXoSHgg089L67uSpDIxvkpeNetW.jpg
+│   │               ├── kmNmKFDxUxyqyXaasvtKLSvhGCs6bxvPNXCQaAPh.webp
+│   │               ├── m0R2vJFFaP98atQL4LQDScU2xc7fFtKgyP9FebTU.png
+│   │               ├── mNgOmNWGf4Y46EPzoqOttnQRuq74VdQcAvwaVcV7.jpg
+│   │               ├── nIXglBEg2FHQBEySOAjQWaXarJleOyKEUJmJw7Hd.jpg
+│   │               ├── nOEQqvukdi5XY06OYHkQQehWWRS6AjAIrPJuquNI.jpg
+│   │               ├── nhWkbCvo2LQPfl8sZpJGSHUUgnXIZkArjjJrtKPW.webp
+│   │               ├── oggWQnnFKV5T0csAYyd3H0gmteJoZaNrwCSh5lNN.webp
+│   │               ├── ovh68MxQlkbsy125c76maMv21hSRouCSu2ui71gj.webp
+│   │               ├── qZ4tiDmemCjYZLecl3ZOtquWXYYgj2Kcd4LNsGbc.webp
+│   │               ├── rMXzXAUgFGPWPVhXU56BjyAdWARiu41qn8L3pkNh.webp
+│   │               ├── t3oawlaXCeyXgJqZn5N2tPkpNt1BuWWXz9tNa8r5.jpg
+│   │               ├── tUmipnu07wRJXVNFExjj87oCS2bW3M6y8x28dGjh.jpg
+│   │               ├── ugmRttplZEL8imfZJ1jkkPl0VgmLwsulEuBjVIYP.webp
+│   │               ├── vsJIo5gfDtBqU4H3JA1aP1f9XlzYvDieqIZw2a6l.webp
+│   │               ├── x5xEMLqCwE1KY4qrUcPCMY1nb5aPWVzL7On2QvSB.webp
+│   │               ├── xnyN0qcwU2bgSs96cOjDg067fid4ugCjq6zBiSId.webp
+│   │               ├── yhdhx0BU1Ktzj0bXFWKRz58jqAvpIaZjiTNA7G0t.jpg
+│   │               ├── zD9KbHH9cJJ6guGmqI2piNe0xO1iFEEemuS0eP2k.webp
+│   │               └── zMeajagrUyUFdh1583E7EijkzhzRTbw03cX9aL04.webp
+│   ├── framework/
+│   │   ├── .gitignore
+│   │   ├── cache/    (2 files, generated)
+│   │   ├── sessions/    (1 files, generated)
+│   │   ├── testing/
+│   │   │   ├── .gitignore
+│   │   │   └── disks/
+│   │   │       └── local/
+│   │   └── views/    (5 files, generated)
+│   ├── logs/    (4 files, generated)
+│   └── pail/
+│       └── .gitignore
+├── stubs/
+│   ├── export.model.stub
+│   ├── export.plain.stub
+│   ├── export.query-model.stub
+│   ├── export.query.stub
+│   ├── import.collection.stub
+│   └── import.model.stub
+├── tests/
+│   ├── Feature/
+│   │   ├── Auth/
+│   │   │   ├── AuthenticationTest.php
+│   │   │   ├── EmailVerificationTest.php
+│   │   │   ├── PasswordConfirmationTest.php
+│   │   │   ├── PasswordResetTest.php
+│   │   │   ├── RegistrationTest.php
+│   │   │   ├── TwoFactorChallengeTest.php
+│   │   │   └── VerificationNotificationTest.php
+│   │   ├── DashboardTest.php
+│   │   ├── Qa/
+│   │   │   ├── InvoiceLifecycleTest.php
+│   │   │   ├── PosLifecycleTest.php
+│   │   │   ├── ProcurementLifecycleTest.php
+│   │   │   ├── QaTestCase.php
+│   │   │   ├── RouteIntegrityTest.php
+│   │   │   ├── SmokeRoutesTest.php
+│   │   │   ├── StockAdjustmentTest.php
+│   │   │   └── StockTransferLifecycleTest.php
+│   │   └── Settings/
+│   │       ├── PasswordUpdateTest.php
+│   │       ├── ProfileUpdateTest.php
+│   │       └── TwoFactorAuthenticationTest.php
+│   ├── TestCase.php
+│   └── Unit/
+├── tsconfig.json
+├── vendor/    (11357 files, dependencies)
+└── vite.config.ts

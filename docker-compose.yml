@@ -31,6 +31,14 @@ services:
       # 5433 on the host: your Homebrew Postgres already owns 5432.
       - "5433:5432"
 
+  mail:
+    # Catches every email the app sends. Web inbox: http://localhost:8026
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      # 8026 on the host: the single_store stack already owns 8025.
+      - "8026:8025"
+
   app:
     build:
       context: .
@@ -60,6 +68,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mail:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/up || exit 1"]
       interval: 30s

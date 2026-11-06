@@ -34,8 +34,16 @@ class StoreController extends Controller
         $perPage = (int) ($request->input('perPage', 10));
         $dateFrom = $request->input('dateFrom');
         $dateTo = $request->input('dateTo');
+        $status = $request->input('status');
 
         $query = Store::query();
+
+        // 🟢 NEW: Status Filter
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -70,6 +78,7 @@ class StoreController extends Controller
                 'phone' => $store->phone,
                 'email' => $store->email,
                 'address' => $store->address,
+                'is_active' => (bool) $store->is_active,
                 'created_at' => $store->created_at ? $store->created_at->format('d M Y') : null,
             ];
         };
@@ -139,17 +148,22 @@ class StoreController extends Controller
      */
     public function destroy(Store $store)
     {
+        // 1. Check for blockers
+        $blockers = $store->getDeletionBlockers();
+
+        // 2. If there are blockers, abort and send them back to the frontend
+        if (!empty($blockers)) {
+            return back()->withErrors(['delete_error' => $blockers]);
+        }
+
+        // 3. Safe to delete (Soft Delete will happen automatically because of the trait)
         $store->delete();
 
         return redirect()->back()->with('success', 'Store deleted successfully');
     }
 
-    // ----------------------------------------------------------------------
-    // 📦 ACTIONS: Bulk Delete and Export
-    // ----------------------------------------------------------------------
-
     /**
-     * Remove multiple stores.
+     * Remove multiple stores (Bulk Soft Delete).
      */
     public function bulkDelete(Request $request)
     {
@@ -157,11 +171,32 @@ class StoreController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'No stores selected.');
         }
+
+        $stores = Store::whereIn('id', $ids)->get();
+        $allBlockers = [];
+
+        // 1. Check every selected store for blockers
+        foreach ($stores as $store) {
+            $blockers = $store->getDeletionBlockers();
+            if (!empty($blockers)) {
+                $allBlockers[$store->name] = $blockers;
+            }
+        }
+
+        // 2. If ANY store has blockers, abort the whole bulk action
+        if (!empty($allBlockers)) {
+            $errorMessage = "Cannot delete selected stores. ";
+            foreach ($allBlockers as $name => $reasons) {
+                $errorMessage .= "[$name]: " . implode('; ', $reasons) . " ";
+            }
+            return back()->with('error', $errorMessage);
+        }
+
+        // 3. Safe to delete all
         Store::whereIn('id', $ids)->delete();
 
         return back()->with('success', count($ids).' store(s) deleted successfully.');
     }
-
     /**
      * Export selected stores to PDF.
      */
