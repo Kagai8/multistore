@@ -9,12 +9,17 @@ name: multi-store
 
 services:
   db:
-    image: postgres:17-alpine
+    # Matches the host server (Postgres.app 18) so dumps restore without
+    # cross-major-version surprises.
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: inventory_db
       POSTGRES_USER: inventory
       POSTGRES_PASSWORD: secret
+      # Postgres 18 images default PGDATA to /var/lib/postgresql/18/docker.
+      # Pinned here so the volume below is the one that actually persists.
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
