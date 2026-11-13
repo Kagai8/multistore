@@ -54,6 +54,7 @@ class CustomerController extends Controller
                 'number' => $customer->number,
                 'email' => $customer->email,
                 'credit_limit' => $customer->credit_limit,
+                'loyalty_points' => $customer->loyalty_points ?? 0,
                 'created_at' => $customer->created_at ? $customer->created_at->format('d M Y') : null,
             ];
         };
@@ -78,14 +79,28 @@ class CustomerController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+        public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:customers,name',
-            'number' => 'nullable|string|max:20',
+            // Accepts: 2547..., 07..., 7..., +2547...
+            'number' => ['nullable', 'string', 'regex:/^(?:\+?254|0)?7\d{8}$/'],
             'email' => 'nullable|email|max:255|unique:customers,email',
             'credit_limit' => 'nullable|numeric|min:0',
         ]);
+
+        // 🟢 FORCE 254 FORMAT BEFORE SAVING
+        if (!empty($validated['number'])) {
+            $num = preg_replace('/[^0-9]/', '', $validated['number']);
+            if (str_starts_with($num, '07')) {
+                $num = '254' . substr($num, 1);
+            } elseif (str_starts_with($num, '7')) {
+                $num = '254' . $num;
+            } elseif (str_starts_with($num, '25407')) {
+                $num = '2547' . substr($num, 4);
+            }
+            $validated['number'] = $num;
+        }
 
         Customer::create($validated);
 
@@ -99,10 +114,24 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('customers')->ignore($customer->id)],
-            'number' => 'nullable|string|max:20',
+            'number' => ['nullable', 'string', 'regex:/^(?:\+?254|0)?[17]\d{8}$/'],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('customers')->ignore($customer->id)],
             'credit_limit' => 'nullable|numeric|min:0',
+            'loyalty_points' => 'nullable|numeric|min:0',
         ]);
+
+        // 🟢 FORCE 254 FORMAT BEFORE SAVING
+        if (!empty($validated['number'])) {
+            $num = preg_replace('/[^0-9]/', '', $validated['number']);
+            if (str_starts_with($num, '01') || str_starts_with($num, '07')) {
+                $num = '254' . substr($num, 1);
+            } elseif (str_starts_with($num, '1') || str_starts_with($num, '7')) {
+                $num = '254' . $num;
+            } elseif (str_starts_with($num, '25401') || str_starts_with($num, '25407')) {
+                $num = '254' . substr($num, 4);
+            }
+            $validated['number'] = $num;
+        }
 
         $customer->update($validated);
 
@@ -114,6 +143,15 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
+        // 1. Check for blockers
+        $blockers = $customer->getDeletionBlockers();
+
+        // 2. If there are blockers, abort and send them back to the frontend
+        if (!empty($blockers)) {
+            return back()->withErrors(['delete_error' => $blockers]);
+        }
+
+        // 3. Safe to delete
         $customer->delete();
 
         return redirect()->back()->with('success', 'Customer deleted successfully');
@@ -178,6 +216,28 @@ class CustomerController extends Controller
         if (empty($ids)) {
             return back()->with('error', 'No customers selected.');
         }
+
+        $customers = Customer::whereIn('id', $ids)->get();
+        $allBlockers = [];
+
+        // 1. Check every selected customer for blockers
+        foreach ($customers as $customer) {
+            $blockers = $customer->getDeletionBlockers();
+            if (!empty($blockers)) {
+                $allBlockers[$customer->name] = $blockers;
+            }
+        }
+
+        // 2. If ANY customer has blockers, abort the whole bulk action
+        if (!empty($allBlockers)) {
+            $errorMessage = "Cannot delete selected customers. ";
+            foreach ($allBlockers as $name => $reasons) {
+                $errorMessage .= "[$name]: " . implode('; ', $reasons) . " ";
+            }
+            return back()->with('error', $errorMessage);
+        }
+
+        // 3. Safe to delete all
         Customer::whereIn('id', $ids)->delete();
 
         return back()->with('success', count($ids).' customer(s) deleted successfully.');
@@ -254,11 +314,12 @@ class CustomerController extends Controller
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setCellValue('A1', 'name');
-        $sheet->setCellValue('B1', 'number');
+        $sheet->setCellValue('B1', 'number (e.g., 254722988486)');
         $sheet->setCellValue('C1', 'email');
         $sheet->setCellValue('D1', 'credit_limit');
+        $sheet->setCellValue('E1', 'loyalty_points');
 
-        foreach (range('A', 'D') as $col) {
+        foreach (range('A', 'E') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         $writer = new Xlsx($spreadsheet);
@@ -290,7 +351,11 @@ class CustomerController extends Controller
             }
 
             // Extract header and map data
-            $header = array_map('strtolower', array_map('trim', $rows[0]));
+            $header = array_map(function ($col) {
+                $col = strtolower(trim((string) $col));
+                // Strip guidance text like "number (e.g., 254...)" down to the field key
+                return preg_split('/[\s(]/', $col)[0];
+            }, $rows[0]);
             unset($rows[0]); // Remove header row from data
 
             // Check if mandatory fields (name) are present
@@ -325,6 +390,24 @@ class CustomerController extends Controller
             $email = $row['email'] ?? null;
             $number = $row['number'] ?? null;
             $creditLimit = $row['credit_limit'] ?? 0.00;
+            $loyaltyPoints = $row['loyalty_points'] ?? 0;
+
+            // 🟢 NORMALIZE PHONE NUMBER FOR IMPORTS
+            if ($number) {
+                $number = preg_replace('/[^0-9]/', '', (string) $number);
+                if (str_starts_with($number, '01') || str_starts_with($number, '07')) {
+                    $number = '254' . substr($number, 1);
+                } elseif (str_starts_with($number, '1') || str_starts_with($number, '7')) {
+                    $number = '254' . $number;
+                } elseif (str_starts_with($number, '25401') || str_starts_with($number, '25407')) {
+                    $number = '254' . substr($number, 4);
+                }
+
+                if (!preg_match('/^254[0-9]{9}$/', $number)) {
+                    $errors[] = 'Row '.($index + 2).": Invalid phone '{$row['number']}'. Must be 12 digits starting with 254.";
+                    continue;
+                }
+            }
 
             // --- Validation and Existence Check ---
             try {
@@ -348,8 +431,8 @@ class CustomerController extends Controller
                     'name' => $name,
                     'number' => $number,
                     'email' => $email,
-                    // Ensure credit limit is numeric
                     'credit_limit' => is_numeric($creditLimit) ? $creditLimit : 0.00,
+                    'loyalty_points' => is_numeric($loyaltyPoints) ? $loyaltyPoints : 0,
                 ]);
 
                 $imported++;
@@ -359,16 +442,15 @@ class CustomerController extends Controller
         }
 
         // --- Final Response ---
-        $message = "{$imported} customer(s) imported successfully.";
-
         if (! empty($errors)) {
-            // If there are errors, return them with the success message
-            $errorDetail = implode("\n- ", array_slice($errors, 0, 5)); // Show up to 5 errors
-            $message .= ' However, '.count($errors)." row(s) failed to import. Examples:\n- ".$errorDetail;
+            // Single-line summary so the toast can actually display it
+            $skipped = implode('; ', array_slice($errors, 0, 6));
+            $more = count($errors) > 6 ? ' …' : '';
+            $message = "{$imported} imported, ".count($errors)." skipped: {$skipped}{$more}";
 
             return back()->with('flash.warning', $message);
         }
 
-        return back()->with('flash.success', $message);
+        return back()->with('flash.success', "{$imported} customer(s) imported successfully.");
     }
 }

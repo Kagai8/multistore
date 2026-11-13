@@ -18,6 +18,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
         ]);
+
+        // 2. 🟢 NEW: System master data (Walk-In Customer, etc.)
+        $this->call([
+            CustomerSeeder::class,
+        ]);
         // User::factory(10)->create();
 
         User::firstOrCreate(

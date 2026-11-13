@@ -45,11 +45,14 @@ class Customer extends Model
         'number',
         'email',
         'credit_limit',
+        'loyalty_points',
     ];
 
     // Cast credit_limit to float for convenience
     protected $casts = [
         'credit_limit' => 'float',
+        'loyalty_points' => 'float',
+
     ];
 
     /**
@@ -66,5 +69,44 @@ class Customer extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    /**
+     * Check if the customer is safe to delete.
+     * Returns an array of reasons why it CANNOT be deleted.
+     */
+    public function getDeletionBlockers(): array
+    {
+        $blockers = [];
+
+        // 1. Check for active debts
+        $activeDebts = \App\Models\CustomerDebt::where('customer_id', $this->id)
+            ->where('status', 'active') // Adjust 'status' to your actual column name (e.g., 'is_active' or 'balance' > 0)
+            ->count();
+
+        if ($activeDebts > 0) {
+            $blockers[] = "Customer has {$activeDebts} active debt(s).";
+        }
+
+        // 2. Check for historical invoices (audit trail)
+        $invoiceCount = \App\Models\Invoice::where('customer_id', $this->id)->count();
+        if ($invoiceCount > 0) {
+            $blockers[] = "Customer has {$invoiceCount} historical invoice(s).";
+        }
+
+        // 3. Check for POS/Regular Sales (audit & loyalty trail)
+        $saleCount = \App\Models\Sale::where('customer_id', $this->id)->count();
+        $posSaleCount = \App\Models\PosSale::where('customer_id', $this->id)->count();
+
+        if ($saleCount > 0 || $posSaleCount > 0) {
+            $blockers[] = "Customer has historical sales records ({$saleCount} invoices, {$posSaleCount} POS sales).";
+        }
+
+        // 4. Protect the system "Walk-In Customer"
+        if ($this->name === 'Walk-In Customer') {
+            $blockers[] = "This is a protected system record and cannot be deleted.";
+        }
+
+        return $blockers;
     }
 }

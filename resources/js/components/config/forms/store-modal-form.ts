@@ -58,6 +58,14 @@ export const StoreModalFormConfig = {
             placeholder: 'Full physical address',
             colSpan: 2, // Span two columns for the address
         },
+        {
+            id: 'is_active',
+            key: 'is_active',
+            name: 'is_active',
+            label: 'Store Status (Active)',
+            type: 'checkbox',
+            colSpan: 1,
+        },
     ],
 
     buttons: [

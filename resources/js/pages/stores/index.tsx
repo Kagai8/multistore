@@ -88,6 +88,7 @@ export default function Index({
         phone: '',
         email: '',
         address: '',
+        is_active: true, // 🟢 default ACTIVE on create
         // NOTE: 'code' is intentionally excluded from the form data as it is system-generated
         _method: 'POST',
     });
@@ -163,6 +164,7 @@ export default function Index({
             phone: store.phone || '',
             email: store.email || '',
             address: store.address || '',
+            is_active: store.is_active, // 🟢 load real status on edit/view
             _method: 'PUT' as any, // Important for PUT request
         });
         setSelectedStore(store);
@@ -263,16 +265,21 @@ export default function Index({
             {
                 preserveScroll: true,
                 onSuccess: (resp: any) => {
+                    // 🟢 CRITICAL FIX: Check for flash errors FIRST!
+                    if (resp?.props?.flash?.error) {
+                        toast.error(resp.props.flash.error);
+                        return; // 🛑 STOP HERE. Keep modal open, do not clear selection.
+                    }
+
+                    // Only show success if there was no error
                     const msg = resp?.props?.flash?.success || `${ids.length} store(s) deleted`;
                     toast.success(msg);
                     setShowBulkDeleteModal(false);
                     setStoresToBulkDeleteIds([]);
                 },
                 onError: (errors: any) => {
-                    // 🟢 NEW: Read the bulk error message from the backend
                     const errorMsg = errors?.error || 'Failed to delete selected stores.';
                     toast.error(errorMsg);
-                    // Keep modal open so they can read the reason!
                 },
             },
         );

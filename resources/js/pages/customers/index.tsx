@@ -41,6 +41,7 @@ interface Customer {
     number?: string | null;
     email?: string | null;
     credit_limit: number;
+    loyalty_points?: number | null; // 🟢 ADDED: Fixes the red marker
     created_at: string;
 }
 
@@ -102,6 +103,7 @@ export default function Index({
         number: '',
         email: '',
         credit_limit: 0.0,
+        loyalty_points: 0,
         _method: 'POST',
     });
 
@@ -207,8 +209,8 @@ export default function Index({
                 name: customer.name,
                 number: customer.number || '',
                 email: customer.email || '',
-                // Ensure credit_limit is handled as a number/string for the input
                 credit_limit: customer.credit_limit.toFixed(2) as any,
+                loyalty_points: customer.loyalty_points ?? 0,
                 _method: 'PUT',
             }));
             setSelectedCustomer(customer);
@@ -269,11 +271,28 @@ export default function Index({
         if (!customerToDelete) return;
 
         router.delete(route('customers.destroy', customerToDelete.id), {
-            onSuccess: () => {
+            onSuccess: (resp: any) => {
+                const msg = resp?.props?.flash?.success || 'Customer deleted successfully';
+                toast.success(msg);
                 setShowDeleteModal(false);
                 setCustomerToDelete(null);
             },
-            onError: () => toast.error('Failed to delete customer'),
+            onError: (err: any) => {
+                // 🔍 This will print the exact structure Laravel sends to your browser console (F12)
+                console.log("🔍 DELETE ERROR OBJECT:", err);
+
+                // Check multiple possible locations for the error array
+                const blockers = err?.delete_error || err?.errors?.delete_error;
+
+                if (blockers && Array.isArray(blockers) && blockers.length > 0) {
+                    const reasonList = blockers.map((reason: string) => `• ${reason}`).join('\n');
+                    toast.error(`Cannot delete "${customerToDelete.name}":\n${reasonList}`, { duration: 8000 });
+                } else if (typeof blockers === 'string') {
+                    toast.error(`Cannot delete "${customerToDelete.name}":\n• ${blockers}`, { duration: 8000 });
+                } else {
+                    toast.error('Failed to delete customer. (Check browser console for details)');
+                }
+            },
             preserveScroll: true,
             preserveState: true,
         });
@@ -310,17 +329,19 @@ export default function Index({
             {
                 preserveScroll: true,
                 onSuccess: (resp: any) => {
-                    const msg =
-                        resp?.props?.flash?.success ||
-                        `${ids.length} customer(s) deleted`;
+                    // 🟢 CRITICAL FIX: Check for flash errors FIRST!
+                    if (resp?.props?.flash?.error) {
+                        toast.error(resp.props.flash.error, { duration: 9000 });
+                        return; // 🛑 STOP HERE. Keep modal open so they can read it.
+                    }
+
+                    const msg = resp?.props?.flash?.success || `${ids.length} customer(s) deleted`;
                     toast.success(msg);
                     setShowBulkDeleteModal(false);
                     setCustomersToBulkDeleteIds([]);
                 },
                 onError: () => {
                     toast.error('Failed to delete selected customers');
-                    setShowBulkDeleteModal(false);
-                    setCustomersToBulkDeleteIds([]);
                 },
             },
         );
@@ -358,11 +379,18 @@ export default function Index({
             forceFormData: true,
             onStart: () => toast.loading('Importing...', { id: 'import' }),
             onSuccess: (resp: any) => {
-                toast.success(
-                    resp?.props?.flash?.success ||
-                        'Customers imported successfully',
-                    { id: 'import' },
-                );
+                const flash = resp?.props?.flash || {};
+                if (flash.warning) {
+                    // Long-lived so the user can read every skipped row
+                    toast.warning(flash.warning, { id: 'import', duration: 9000 });
+                } else if (flash.error) {
+                    toast.error(flash.error, { id: 'import' });
+                } else {
+                    toast.success(
+                        flash.success || 'Customers imported successfully',
+                        { id: 'import' },
+                    );
+                }
             },
             onError: (errors: any) => {
                 const errorMessage =

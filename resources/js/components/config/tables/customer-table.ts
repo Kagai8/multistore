@@ -26,6 +26,12 @@ export const CustomerTableConfig = {
             className: 'p-4 border text-center text-sm font-mono',
         },
         {
+            label: 'Loyalty Points',
+            key: 'loyalty_points    ',
+            type: 'number', // Use the new number type for formatting
+            className: 'p-4 border text-center text-sm font-mono',
+        },
+        {
             label: 'Created Date',
             key: 'created_at',
             className: 'p-4 border text-center text-xs',

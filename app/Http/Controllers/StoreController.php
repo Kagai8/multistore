@@ -111,6 +111,7 @@ class StoreController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255|unique:stores,email',
             'address' => 'nullable|string',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         // 🔑 SYSTEM GENERATED: Inject the unique code before creation
@@ -133,6 +134,7 @@ class StoreController extends Controller
             // Allow null email, but if present, it must be unique and ignore the current store's ID
             'email' => ['nullable', 'email', 'max:255', Rule::unique('stores')->ignore($store->id)],
             'address' => 'nullable|string',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         // 🔑 SYSTEM GENERATED: Ensure 'code' is never updated by user input
